@@ -1,127 +1,143 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1310" width="1600" height="1310" style="background-color: #f5f8f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <title>Known-knowns, known-unknowns and unknown-unknowns: why a checklist beats intuition</title>
-  <desc>Visual explanation of known-knowns, known-unknowns, and unknown-unknowns using CPU and interrupt analysis, contrasted with a USE method checklist and ROI-based analysis depth stopping criteria.</desc>
+  <desc>Infographic illustrating known-knowns, known-unknowns, and unknown-unknowns in performance analysis, how the USE checklist reveals them, and ROI criteria for depth of investigation.</desc>
 
   <defs>
-    <marker id="arrow-up" viewBox="0 0 12 12" refX="6" refY="2" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M1,10 L6,2 L11,10 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
-
-  
-  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Known-knowns, known-unknowns and unknown-unknowns:</text>
-  <text x="800" y="114" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">why a checklist beats intuition</text>
+  <text x="800" y="65" text-anchor="middle" font-size="44" font-weight="bold" fill="#303a36">Known-knowns, known-unknowns and unknown-unknowns:</text>
+  <text x="800" y="118" text-anchor="middle" font-size="44" font-weight="bold" fill="#207448">why a checklist beats intuition</text>
 
   
 
   
-  
-  <line x1="85" y1="560" x2="85" y2="195" stroke="#207448" stroke-width="5" marker-end="url(#arrow-up)" />
+  <line x1="65" y1="630" x2="65" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <text x="110" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="110" dy="0">as you learn more,</tspan>
-    <tspan x="110" dy="32">unknown-unknowns</tspan>
-    <tspan x="110" dy="32">turn into</tspan>
-    <tspan x="110" dy="32">known-unknowns</tspan>
-  </text>
+  <rect x="95" y="325" width="320" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="255" y="375" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">as you learn more,</text>
+  <text x="255" y="415" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">unknown-unknowns turn</text>
+  <text x="255" y="455" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">into known-unknowns</text>
 
   
-  <rect x="300" y="170" width="670" height="115" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
   
-  <g transform="translate(325, 199)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="10" y="10" width="36" height="36" rx="4" fill="#ffffff" />
-    <path d="M18,20 L38,20 M18,28 L38,28 M18,36 L38,36" stroke-width="3" />
-    <line x1="20" y1="2" x2="20" y2="10" />
-    <line x1="28" y1="2" x2="28" y2="10" />
-    <line x1="36" y1="2" x2="36" y2="10" />
-    <line x1="20" y1="46" x2="20" y2="54" />
-    <line x1="28" y1="46" x2="28" y2="54" />
-    <line x1="36" y1="46" x2="36" y2="54" />
-    <line x1="2" y1="20" x2="10" y2="20" />
-    <line x1="2" y1="28" x2="10" y2="28" />
-    <line x1="2" y1="36" x2="10" y2="36" />
-    <line x1="46" y1="20" x2="54" y2="20" />
-    <line x1="46" y1="28" x2="54" y2="28" />
-    <line x1="46" y1="36" x2="54" y2="36" />
+  <rect x="445" y="160" width="590" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(470, 195)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="8" y="8" width="40" height="40" rx="4" fill="#e8f1ea" />
+    <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448" />
+    <line x1="20" y1="2" x2="20" y2="8" stroke-linecap="round" />
+    <line x1="28" y1="2" x2="28" y2="8" stroke-linecap="round" />
+    <line x1="36" y1="2" x2="36" y2="8" stroke-linecap="round" />
+    <line x1="20" y1="48" x2="20" y2="54" stroke-linecap="round" />
+    <line x1="28" y1="48" x2="28" y2="54" stroke-linecap="round" />
+    <line x1="36" y1="48" x2="36" y2="54" stroke-linecap="round" />
+    <line x1="2" y1="20" x2="8" y2="20" stroke-linecap="round" />
+    <line x1="2" y1="28" x2="8" y2="28" stroke-linecap="round" />
+    <line x1="2" y1="36" x2="8" y2="36" stroke-linecap="round" />
+    <line x1="48" y1="20" x2="54" y2="20" stroke-linecap="round" />
+    <line x1="48" y1="28" x2="54" y2="28" stroke-linecap="round" />
+    <line x1="48" y1="36" x2="54" y2="36" stroke-linecap="round" />
   </g>
-  <text x="405" y="218" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Known-known:</text>
-  <text x="405" y="254" font-family="sans-serif" font-size="24" fill="#303a36">you know the CPU is 10% busy</text>
+  <text x="555" y="215" font-size="28" font-weight="bold" fill="#207448">Known-known:</text>
+  <text x="555" y="258" font-size="24" fill="#303a36">you know the CPU is 10% busy</text>
 
   
-  <rect x="300" y="315" width="670" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <rect x="445" y="325" width="590" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(325, 347)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="24" fill="#ffffff" />
-    <path d="M22,22 C22,17 34,17 34,23 C34,28 28,29 28,34" />
-    <circle cx="28" cy="42" r="2.5" fill="#207448" stroke="none" />
+  <g transform="translate(470, 365)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="28" cy="28" r="22" fill="#e8f1ea" />
+    <path d="M 22 22 C 22 18 34 18 34 24 C 34 28 28 29 28 34" stroke-linecap="round" />
+    <circle cx="28" cy="40" r="1.5" fill="#207448" stroke="none" />
   </g>
-  <text x="405" y="363" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Known-unknown:</text>
-  <text x="405" y="401" font-family="sans-serif" font-size="24" fill="#303a36">you know you have not looked at interrupt load</text>
+  <text x="555" y="375" font-size="28" font-weight="bold" fill="#207448">Known-unknown:</text>
+  <text x="555" y="415" font-size="24" fill="#303a36">you know you have not looked at</text>
+  <text x="555" y="450" font-size="24" fill="#303a36">interrupt load</text>
 
   
-  <rect x="300" y="465" width="670" height="125" rx="14" fill="#fdf3e7" stroke="#db8129" stroke-width="4" />
+  <rect x="445" y="495" width="590" height="150" rx="14" fill="#fff9f4" stroke="#db8129" stroke-width="3" />
   
-  <g transform="translate(325, 500)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M28,6 L48,15 L48,31 C48,43 28,52 28,52 C28,52 8,43 8,31 L8,15 Z" fill="#ffffff" />
-    <line x1="28" y1="20" x2="28" y2="33" />
-    <circle cx="28" cy="41" r="2.5" fill="#db8129" stroke="none" />
+  <g transform="translate(470, 535)" stroke="#db8129" stroke-width="3" fill="none">
+    <path d="M 28 6 L 52 48 L 4 48 Z" fill="#faeee4" stroke-linejoin="round" />
+    <line x1="28" y1="20" x2="28" y2="34" stroke-linecap="round" />
+    <circle cx="28" cy="41" r="2" fill="#db8129" stroke="none" />
   </g>
-  <text x="405" y="513" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Unknown-unknown:</text>
-  <text x="405" y="552" font-family="sans-serif" font-size="24" fill="#303a36">you do not know that interrupts consume cores</text>
+  <text x="555" y="545" font-size="28" font-weight="bold" fill="#db8129">Unknown-unknown:</text>
+  <text x="555" y="585" font-size="24" fill="#303a36">you do not know that interrupts</text>
+  <text x="555" y="620" font-size="24" fill="#303a36">consume cores</text>
 
   
-  <rect x="1010" y="170" width="550" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <rect x="1065" y="160" width="485" height="485" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(1045, 202)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="8" y="6" width="40" height="46" rx="4" fill="#ffffff" />
-    <path d="M16,20 L22,26 L36,14" />
-    <line x1="16" y1="34" x2="38" y2="34" stroke-width="3" />
-    <line x1="16" y1="42" x2="30" y2="42" stroke-width="3" />
+  <g transform="translate(1100, 195)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="10" y="10" width="40" height="48" rx="4" fill="#ffffff" />
+    <path d="M 20 10 L 20 6 C 20 4 22 2 25 2 L 35 2 C 38 2 40 4 40 6 L 40 10" stroke-linejoin="round" />
+    <path d="M 18 24 L 24 30 L 34 18" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="20" y1="38" x2="42" y2="38" stroke-linecap="round" />
+    <line x1="20" y1="46" x2="38" y2="46" stroke-linecap="round" />
   </g>
-  <text x="1120" y="240" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Checklist &amp; USE Method</text>
-  <text x="1045" y="305" font-family="sans-serif" font-size="25" fill="#303a36">
-    <tspan x="1045" dy="0">A checklist that goes resource by</tspan>
-    <tspan x="1045" dy="38">resource, the USE method, is built</tspan>
-    <tspan x="1045" dy="38">to expose them: any question you</tspan>
-    <tspan x="1045" dy="38">cannot answer is a known unknown,</tspan>
-    <tspan x="1045" dy="38">and writing it down is part of</tspan>
-    <tspan x="1045" dy="38">the work</tspan>
-  </text>
+  <text x="1100" y="295" font-size="24" fill="#303a36">A checklist that goes resource</text>
+  <text x="1100" y="335" font-size="24" fill="#303a36">by resource, the USE method,</text>
+  <text x="1100" y="375" font-size="24" fill="#303a36">is built to expose them: any</text>
+  <text x="1100" y="415" font-size="24" fill="#303a36">question you cannot answer is</text>
+  <text x="1100" y="455" font-size="24" fill="#303a36">a known unknown, and writing</text>
+  <text x="1100" y="495" font-size="24" fill="#303a36">it down is part of the work</text>
 
   
-  <rect x="40" y="630" width="1520" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <rect x="50" y="675" width="1500" height="475" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(75, 660)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="30" r="22" fill="#ffffff" />
-    <line x1="28" y1="30" x2="40" y2="18" stroke="#db8129" stroke-width="4" />
-    <circle cx="28" cy="30" r="4" fill="#207448" stroke="none" />
-    <path d="M14,30 A14,14 0 0,1 42,30" stroke-width="3" stroke-dasharray="3,3" />
+  <text x="80" y="728" font-size="32" font-weight="bold" fill="#207448">Depth depends on return on investment: when to stop</text>
+
+  
+  <rect x="75" y="760" width="460" height="360" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(105, 785)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="28" cy="28" r="22" />
+    <path d="M 28 6 A 22 22 0 0 1 48 38 L 28 28 Z" fill="#db8129" stroke="#db8129" />
   </g>
-  <text x="145" y="700" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Depth depends on return on investment: when to stop</text>
+  <text x="105" y="875" font-size="24" fill="#303a36">Stop when you have explained the</text>
+  <text x="105" y="913" font-size="24" fill="#303a36">bulk of the problem; a 3x CPU</text>
+  <text x="105" y="951" font-size="24" fill="#303a36">rise where the cause you found</text>
+  <text x="105" y="989" font-size="24" fill="#303a36">accounts for 12% of the CPU</text>
+  <text x="105" y="1027" font-size="24" fill="#303a36">is not explained</text>
 
   
-  <circle cx="95" cy="762" r="8" fill="#207448" />
-  <text x="125" y="770" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="125" dy="0">Stop when you have explained the bulk of the problem; a 3x CPU rise where the cause</tspan>
-    <tspan x="125" dy="34">you found accounts for 12% of the CPU is not explained</tspan>
-  </text>
+  <rect x="565" y="760" width="460" height="360" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(595, 785)" stroke="#207448" stroke-width="3" fill="none">
+    <line x1="28" y1="8" x2="28" y2="48" stroke-linecap="round" />
+    <line x1="10" y1="18" x2="46" y2="18" stroke-linecap="round" />
+    <path d="M 10 18 L 4 36 L 16 36 Z" fill="#e8f1ea" stroke-linejoin="round" />
+    <path d="M 46 18 L 40 36 L 52 36 Z" fill="#e8f1ea" stroke-linejoin="round" />
+    <line x1="18" y1="48" x2="38" y2="48" stroke-linecap="round" />
+  </g>
+  <text x="595" y="875" font-size="24" fill="#303a36">Stop when the potential</text>
+  <text x="595" y="913" font-size="24" fill="#303a36">gain is smaller than the</text>
+  <text x="595" y="951" font-size="24" fill="#303a36">cost of the analysis</text>
 
   
-  <circle cx="95" cy="860" r="8" fill="#207448" />
-  <text x="125" y="868" font-family="sans-serif" font-size="24" fill="#303a36">Stop when the potential gain is smaller than the cost of the analysis</text>
+  <rect x="1055" y="760" width="460" height="360" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(1085, 785)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="8" width="44" height="12" rx="2" fill="#e8f1ea" />
+    <rect x="6" y="24" width="44" height="12" rx="2" fill="#e8f1ea" />
+    <rect x="6" y="40" width="44" height="12" rx="2" fill="#e8f1ea" />
+    <circle cx="14" cy="14" r="1.5" fill="#207448" stroke="none" />
+    <circle cx="14" cy="30" r="1.5" fill="#207448" stroke="none" />
+    <circle cx="14" cy="46" r="1.5" fill="#207448" stroke="none" />
+  </g>
+  <text x="1085" y="875" font-size="24" fill="#303a36">At GPU-cluster scale one</text>
+  <text x="1085" y="913" font-size="24" fill="#303a36">percent of goodput is worth</text>
+  <text x="1085" y="951" font-size="24" fill="#303a36">real money, so deeper</text>
+  <text x="1085" y="989" font-size="24" fill="#303a36">analysis can be justified</text>
 
   
-  <circle cx="95" cy="942" r="8" fill="#207448" />
-  <text x="125" y="950" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="125" dy="0">At GPU-cluster scale one percent of goodput is worth real money, so deeper analysis</tspan>
-    <tspan x="125" dy="34">can be justified</tspan>
-  </text>
+  <rect x="50" y="1180" width="1500" height="85" rx="12" fill="#207448" />
+  <text x="800" y="1233" text-anchor="middle" font-size="30" font-weight="bold" fill="#ffffff">Explaining 12% of a 3x rise is not an explanation</text>
 
-  
-  <rect x="40" y="1080" width="1520" height="85" rx="14" fill="#207448" />
-  <text x="800" y="1133" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Explaining 12% of a 3x rise is not an explanation</text>
 </svg>

@@ -1,220 +1,222 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>What Ansible is not: a cleaning crew, not a thermostat, and no state file</title>
-  <desc>Visual comparison showing Ansible's on-demand execution model against continuous reconciliation loops and state file provisioning engines.</desc>
+  <desc>A visual comparison explaining Ansible's execution model versus continuous agent reconciliation loops and state-file engines, covering push vs pull, procedural execution, and best-practice rules.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    <marker id="m-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129"/>
+    <marker id="m-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#db8129" />
     </marker>
+    <marker id="m-slate" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#303a36" />
+    </marker>
+    <filter id="shadow" x="-4%" y="-3%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">What Ansible is not: a cleaning crew,</tspan>
-    <tspan x="800" dy="56">not a thermostat, and no state file</tspan>
+  <text x="800" y="74" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    What Ansible is not: a cleaning crew, not a thermostat, and no state file
   </text>
 
   
+  
+  
 
   
-  <g id="tool-thermostat">
-    <rect x="40" y="150" width="486" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="50" y="130" width="470" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <g transform="translate(235, 160)">
+    
+    <circle cx="50" cy="45" r="34" fill="none" stroke="#207448" stroke-width="5" stroke-dasharray="160 40" />
+    <path d="M 85 45 L 85 35 L 97 45 L 85 55 Z" fill="#207448" />
+    
+    <circle cx="50" cy="45" r="22" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <line x1="50" y1="45" x2="62" y2="33" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="50" cy="45" r="4" fill="#207448" />
+  </g>
+
+  
+  <text x="285" y="295" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="285" dy="0">Thermostat: a continuous</tspan>
+    <tspan x="285" dy="36">reconciliation loop keeps checking</tspan>
+    <tspan x="285" dy="36">and correcting on its own</tspan>
+  </text>
+
+  
+  <line x1="85" y1="420" x2="485" y2="420" stroke="#cbdcd0" stroke-width="2" />
+
+  
+  <rect x="75" y="450" width="420" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="285" y="498" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="285" dy="0">Puppet, Chef, Salt</tspan>
+    <tspan x="285" dy="36">(agent pulls from a server)</tspan>
+  </text>
+
+
+  
+  <rect x="565" y="130" width="470" height="490" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="4" filter="url(#shadow)" />
+
+  
+  <g transform="translate(750, 155)">
+    
+    <rect x="-35" y="0" width="170" height="78" rx="12" fill="#fff1e3" stroke="#db8129" stroke-width="2" />
+    
+    <path d="M 0 52 L 20 22 L 35 22 L 35 60 L 0 60 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 20 22 L 15 12 L 30 12" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    
+    <path d="M 45 42 L 85 42" stroke="#db8129" stroke-width="4" marker-end="url(#m-orange)" />
+  </g>
+
+  
+  <text x="800" y="295" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    Ansible: acts when you run it
+  </text>
+
+  
+  <line x1="600" y1="360" x2="1000" y2="360" stroke="#f6cead" stroke-width="2" />
+
+  
+  <rect x="585" y="390" width="430" height="205" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="800" y="440" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="800" dy="0">like a cleaning crew that</tspan>
+    <tspan x="800" dy="38">arrives when called; triggers:</tspan>
+    <tspan x="800" dy="38">you, a scheduler,</tspan>
+    <tspan x="800" dy="38">ansible-pull or AAP</tspan>
+  </text>
+
+
+  
+  <rect x="1080" y="130" width="470" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+  
+  <g transform="translate(1265, 160)">
+    <rect x="15" y="6" width="60" height="74" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="28" x2="62" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="42" x2="62" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="56" x2="48" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="1315" y="295" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1315" dy="0">Terraform: provisioning</tspan>
+    <tspan x="1315" dy="36">engine with a state file</tspan>
+  </text>
+
+  
+  <line x1="1115" y1="390" x2="1515" y2="390" stroke="#cbdcd0" stroke-width="2" />
+
+  
+  <rect x="1105" y="420" width="420" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1315" y="465" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1315" dy="0">Ansible has no state file and</tspan>
+    <tspan x="1315" dy="38">learns the state of a host by</tspan>
+    <tspan x="1315" dy="38">inspecting it on every run</tspan>
+  </text>
+
+
+  
+  
+  
+  <g transform="translate(50, 660)" filter="url(#shadow)">
+    <rect x="0" y="0" width="1500" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
     
-    <g transform="translate(283, 205)">
-      
-      <path d="M -35,-15 A 42 42 0 0 1 35,-15" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
-      <path d="M 35,15 A 42 42 0 0 1 -35,15" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
-      
-      <circle cx="0" cy="0" r="24" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <line x1="0" y1="-24" x2="0" y2="-17" stroke="#207448" stroke-width="2.5"/>
-      <line x1="17" y1="-17" x2="12" y2="-12" stroke="#207448" stroke-width="2.5"/>
-      <line x1="24" y1="0" x2="17" y2="0" stroke="#207448" stroke-width="2.5"/>
-      <line x1="-24" y1="0" x2="-17" y2="0" stroke="#207448" stroke-width="2.5"/>
-      <line x1="-17" y1="-17" x2="-12" y2="-12" stroke="#207448" stroke-width="2.5"/>
-      <circle cx="0" cy="0" r="4" fill="#207448"/>
-      <line x1="0" y1="0" x2="10" y2="-10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <g transform="translate(35, 30)">
+      <circle cx="35" cy="70" r="30" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <path d="M 22 70 L 48 70 M 38 60 L 48 70 L 38 80" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
     </g>
 
     
-    <text x="64" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="64" dy="0">Thermostat: a continuous</tspan>
-      <tspan x="64" dy="36">reconciliation loop keeps</tspan>
-      <tspan x="64" dy="36">checking and correcting</tspan>
-      <tspan x="64" dy="36">on its own</tspan>
-    </text>
-
-    
-    <rect x="64" y="420" width="438" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text x="80" y="456" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="80" dy="0">Puppet, Chef, Salt</tspan>
-      <tspan x="80" dy="32">(agent pulls from a server)</tspan>
+    <text x="125" y="58" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="125" dy="0">push: the control node decides when work happens, easier to reason about during</tspan>
+      <tspan x="125" dy="38">an incident because you know exactly when the change was sent; pull: each machine</tspan>
+      <tspan x="125" dy="38">decides when to ask, better at keeping thousands of machines converging without a keyboard</tspan>
     </text>
   </g>
 
+
   
-  <g id="tool-ansible">
-    <rect x="556" y="150" width="488" height="380" rx="16" fill="#fdf8f3" stroke="#db8129" stroke-width="3.5"/>
+  
+  
+  <g transform="translate(50, 890)" filter="url(#shadow)">
+    <rect x="0" y="0" width="1500" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
     
-    
-    <g transform="translate(800, 205)">
-      
-      <line x1="-65" y1="0" x2="-40" y2="0" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
-      
-      <path d="M -25,-25 A 38 38 0 1 1 25,-25" fill="none" stroke="#db8129" stroke-width="3.5"/>
-      <path d="M 25,-25 L 35,-15" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
-      
-      <circle cx="0" cy="5" r="22" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-      <path d="M -8,14 L 8,14 L 5,3 L -5,3 Z" fill="none" stroke="#db8129" stroke-width="2.5"/>
-      <line x1="0" y1="3" x2="0" y2="-9" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
-      <line x1="-12" y1="-2" x2="-18" y2="-8" stroke="#db8129" stroke-width="2" stroke-linecap="round"/>
-      <line x1="12" y1="-2" x2="18" y2="-8" stroke="#db8129" stroke-width="2" stroke-linecap="round"/>
+    <g transform="translate(35, 25)">
+      <rect x="10" y="15" width="48" height="96" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="22" y1="38" x2="46" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="22" y1="62" x2="46" y2="62" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="22" y1="86" x2="46" y2="86" stroke="#207448" stroke-width="4" stroke-linecap="round" />
     </g>
 
     
-    <text x="580" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
-      <tspan x="580" dy="0">Ansible: acts when you</tspan>
-      <tspan x="580" dy="36">run it</tspan>
-    </text>
-
-    
-    <rect x="580" y="360" width="440" height="146" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
-    <text x="596" y="394" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="596" dy="0">like a cleaning crew that</tspan>
-      <tspan x="596" dy="32">arrives when called;</tspan>
-      <tspan x="596" dy="32">triggers: you, a scheduler,</tspan>
-      <tspan x="596" dy="32"><tspan font-family="ui-monospace, monospace">ansible-pull</tspan> or AAP</tspan>
+    <text x="125" y="68" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="125" dy="0">playbook is procedural: tasks top to bottom like a recipe card;</tspan>
+      <tspan x="125" dy="44">Terraform is closer to a parts list with arrows, order from dependencies</tspan>
     </text>
   </g>
 
+
   
-  <g id="tool-terraform">
-    <rect x="1074" y="150" width="486" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+
+  
+  <g transform="translate(50, 1100)" filter="url(#shadow)">
+    <rect x="0" y="0" width="790" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
     
-    <g transform="translate(1317, 205)">
-      
-      <path d="M -36,-15 A 42 42 0 0 1 36,-15" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
-      <path d="M 36,15 A 42 42 0 0 1 -36,15" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
-      
-      <rect x="-16" y="-20" width="32" height="40" rx="4" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <line x1="-10" y1="-10" x2="10" y2="-10" stroke="#207448" stroke-width="2"/>
-      <line x1="-10" y1="-2" x2="10" y2="-2" stroke="#207448" stroke-width="2"/>
-      <line x1="-10" y1="6" x2="6" y2="6" stroke="#207448" stroke-width="2"/>
-      <line x1="-10" y1="14" x2="2" y2="14" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(30, 30)">
+      <circle cx="28" cy="28" r="22" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
     </g>
 
     
-    <text x="1098" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="1098" dy="0">Terraform: provisioning</tspan>
-      <tspan x="1098" dy="36">engine with a state file</tspan>
-    </text>
-
-    
-    <rect x="1098" y="375" width="438" height="131" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text x="1114" y="412" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1114" dy="0">Ansible has no state file and</tspan>
-      <tspan x="1114" dy="34">learns the state of a host by</tspan>
-      <tspan x="1114" dy="34">inspecting it on every run</tspan>
+    <text x="100" y="66" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="100" dy="0">keep complex programming logic out of</tspan>
+      <tspan x="100" dy="42">playbooks and push it into modules;</tspan>
+      <tspan x="100" dy="42">a playbook should read like a list</tspan>
+      <tspan x="100" dy="42">of desired facts</tspan>
     </text>
   </g>
 
   
-  <g id="strip-push-versus-pull">
-    <rect x="40" y="560" width="1520" height="165" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(870, 1100)" filter="url(#shadow)">
+    <rect x="0" y="0" width="680" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
     
     
-    <g transform="translate(95, 642)">
-      <circle cx="-16" cy="0" r="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <circle cx="24" cy="-22" r="9" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-      <circle cx="24" cy="22" r="9" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-      
-      <path d="M 0,-6 L 14,-16" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
-      
-      <path d="M 14,16 L 0,6" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <g transform="translate(30, 30)">
+      <rect x="6" y="8" width="46" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 20 28 L 38 28 M 30 20 L 30 38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 29 52 L 29 78 L 48 78" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#m-green)" />
     </g>
 
     
-    <text x="160" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="160" dy="0">push: the control node decides when work happens, easier to reason about during an incident</tspan>
-      <tspan x="160" dy="34">because you know exactly when the change was sent;</tspan>
-      <tspan x="160" dy="34">pull: each machine decides when to ask, better at keeping thousands of machines</tspan>
-      <tspan x="160" dy="34">converging without a keyboard</tspan>
+    <text x="105" y="76" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="105" dy="0">ansible-pull pulls and runs</tspan>
+      <tspan x="105" dy="44">playbooks from a Git repository</tspan>
+      <tspan x="105" dy="44">on each node</tspan>
     </text>
   </g>
 
-  
-  <g id="strip-ordering">
-    <rect x="40" y="755" width="1520" height="115" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    
-    <g transform="translate(95, 812)">
-      <rect x="-20" y="-24" width="40" height="48" rx="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <line x1="-12" y1="-14" x2="12" y2="-14" stroke="#207448" stroke-width="2"/>
-      <line x1="-12" y1="-4" x2="12" y2="-4" stroke="#207448" stroke-width="2"/>
-      <line x1="-12" y1="6" x2="4" y2="6" stroke="#207448" stroke-width="2"/>
-      <line x1="-12" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="2"/>
-    </g>
 
-    
-    <text x="160" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="160" dy="0">playbook is procedural: tasks top to bottom like a recipe card;</tspan>
-      <tspan x="160" dy="35">Terraform is closer to a parts list with arrows, order from dependencies</tspan>
+  
+  
+  
+  <g transform="translate(50, 1360)" filter="url(#shadow)">
+    <rect x="0" y="0" width="1500" height="80" rx="14" fill="#207448" />
+    <text x="750" y="50" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">
+      Ansible acts when called
     </text>
   </g>
 
-  
-  
-  
-  <g id="container-rule">
-    <rect x="40" y="900" width="880" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    
-    <g transform="translate(95, 977)">
-      <rect x="-24" y="-24" width="48" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <path d="M -14,-4 L -6,-12 L -6,4 Z" fill="#207448"/>
-      <path d="M 14,-4 L 6,-12 L 6,4 Z" fill="#207448"/>
-      <line x1="-10" y1="12" x2="10" y2="12" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-    </g>
-
-    
-    <text x="160" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="160" dy="0">keep complex programming logic out of playbooks</tspan>
-      <tspan x="160" dy="35">and push it into modules; a playbook should read</tspan>
-      <tspan x="160" dy="35">like a list of desired facts</tspan>
-    </text>
-  </g>
-
-  
-  <g id="container-pull-option">
-    <rect x="950" y="900" width="610" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    
-    <g transform="translate(1005, 977)">
-      <circle cx="-14" cy="14" r="7" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <circle cx="-14" cy="-14" r="7" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <circle cx="16" cy="-4" r="7" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <line x1="-14" y1="-7" x2="-14" y2="7" stroke="#207448" stroke-width="3"/>
-      <path d="M -14,7 C -14,-4 4,-4 9,-4" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-    </g>
-
-    
-    <text x="1070" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1070" dy="0"><tspan font-family="ui-monospace, monospace">ansible-pull</tspan> pulls and runs</tspan>
-      <tspan x="1070" dy="35">playbooks from a Git repository</tspan>
-      <tspan x="1070" dy="35">on each node</tspan>
-    </text>
-  </g>
-
-  
-  <g id="bottom-bar">
-    <rect x="40" y="1085" width="1520" height="70" rx="12" fill="#207448"/>
-    <text x="800" y="1131" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Ansible acts when called</text>
-  </g>
 </svg>

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1320" viewBox="0 0 1600 1320">
   <title>The worker-pool template: who waits for whom, and how shutdown works</title>
-  <desc>Visual explanation of the asyncio worker-pool template covering producer, bounded queue, worker tasks, signal handling, and sequential shutdown steps.</desc>
+  <desc>Visual architecture of an asyncio worker pool showing producer, bounded queue, worker execution, cancellation, and graceful shutdown sequence.</desc>
 
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -9,131 +9,157 @@
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1320" fill="#f5f8f5" />
 
   
-  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The worker-pool template:</text>
-  <text x="60" y="125" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">who waits for whom, and how shutdown works</text>
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">The worker-pool template:</text>
+  <text x="800" y="102" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">who waits for whom, and how shutdown works</text>
 
   
-  <rect x="40" y="155" width="1520" height="780" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  
-  <text x="70" y="198" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">run_pool(items, handler, concurrency=50, queue_size=500)</text>
+  <rect x="360" y="125" width="880" height="52" rx="26" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="160" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">run_pool(items, handler, concurrency=50, queue_size=500)</text>
 
   
+  <rect x="50" y="200" width="1500" height="92" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
   
-  
-  <rect x="60" y="225" width="410" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(85, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="8" width="48" height="40" rx="6" />
-    <path d="M 16 28 L 24 20 L 32 28" />
-    <path d="M 24 20 L 24 38" />
-    <circle cx="12" cy="0" r="3" fill="#207448" />
-    <circle cx="24" cy="0" r="3" fill="#207448" />
-    <circle cx="36" cy="0" r="3" fill="#207448" />
+  <g transform="translate(75, 220)" stroke="#db8129" stroke-width="3.5" fill="none">
+    <path d="M 26 6 A 20 20 0 0 0 26 46" />
+    <path d="M 20 14 A 12 12 0 0 0 20 38" />
+    <circle cx="12" cy="26" r="4" fill="#db8129" />
+    <path d="M 34 2 L 44 26 L 36 26 L 42 50" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-  <text x="85" y="385" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" xml:space="preserve">for it in items:</text>
-  <text x="85" y="425" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" xml:space="preserve">  await q.put(it)</text>
+  <text x="145" y="238" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">loop.add_signal_handler(SIGINT and SIGTERM, stop.set);</text>
+  <text x="145" y="272" font-family="sans-serif" font-size="24" fill="#303a36">the producer checks stop.is_set() and breaks</text>
 
   
-  <rect x="60" y="555" width="410" height="355" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+
   
-  <g transform="translate(85, 575)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 24 4 L 46 12 L 46 28 C 46 42 24 50 24 50 C 24 50 2 42 2 28 L 2 12 Z" />
-    <path d="M 24 16 L 24 30" />
-    <circle cx="24" cy="38" r="2.5" fill="#db8129" />
+  <rect x="50" y="315" width="360" height="460" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 340)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="4" y="4" width="44" height="44" rx="8" />
+    <path d="M 16 26 L 36 26 M 28 18 L 36 26 L 28 34" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-  <text x="85" y="675" font-family="monospace" font-size="24" fill="#303a36">loop.add_signal_handler(</text>
-  <text x="85" y="715" font-family="monospace" font-size="24" fill="#303a36">  SIGINT and SIGTERM,</text>
-  <text x="85" y="755" font-family="monospace" font-size="24" fill="#303a36">  stop.set);</text>
-  <text x="85" y="815" font-family="sans-serif" font-size="24" fill="#303a36">the producer checks</text>
-  <text x="85" y="855" font-family="sans-serif" font-size="24" fill="#303a36">stop.is_set() and breaks</text>
+  
+  <rect x="70" y="415" width="320" height="340" rx="8" fill="#ffffff" stroke="#c8d6cd" stroke-width="1.5" />
+  <text x="95" y="475" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">for it in items:</tspan>
+    <tspan x="95" dy="42">  await q.put(it)</tspan>
+  </text>
 
   
+  <line x1="410" y1="545" x2="445" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <rect x="510" y="225" width="530" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="450" y="315" width="395" height="460" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(535, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <ellipse cx="24" cy="12" rx="20" ry="8" />
-    <path d="M 4 12 L 4 38 C 4 44 12 48 24 48 C 36 48 44 44 44 38 L 44 12" />
-    <path d="M 4 25 C 4 31 12 35 24 35 C 36 35 44 31 44 25" />
+  <g transform="translate(480, 340)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="4" y="10" width="44" height="32" rx="4" />
+    <line x1="18" y1="10" x2="18" y2="42" />
+    <line x1="32" y1="10" x2="32" y2="42" />
   </g>
-  <text x="535" y="360" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">asyncio.Queue(maxsize=queue_size)</text>
-  <text x="535" y="415" font-family="sans-serif" font-size="24" fill="#303a36">bounded: producer awaits</text>
-  <text x="535" y="455" font-family="sans-serif" font-size="24" fill="#303a36">when workers lag</text>
+  
+  <rect x="470" y="415" width="355" height="340" rx="8" fill="#ffffff" stroke="#c8d6cd" stroke-width="1.5" />
+  <text x="495" y="465" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="495" dy="0">asyncio.Queue(</tspan>
+    <tspan x="495" dy="36">  maxsize=</tspan>
+    <tspan x="495" dy="36">  queue_size)</tspan>
+  </text>
+  <text x="495" y="600" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="495" dy="0" font-weight="bold">bounded:</tspan>
+    <tspan x="495" dy="38">producer awaits</tspan>
+    <tspan x="495" dy="38">when workers lag</tspan>
+  </text>
 
   
-  <rect x="510" y="555" width="530" height="355" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="845" y1="545" x2="880" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
   
-  <g transform="translate(535, 575)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="20" cy="20" r="10" />
-    <path d="M 20 4 L 20 8 M 20 32 L 20 36 M 4 20 L 8 20 M 32 20 L 36 20 M 8 8 L 12 12 M 28 28 L 32 32 M 8 32 L 12 28 M 28 12 L 32 8" />
-    <circle cx="36" cy="36" r="6" />
-    <path d="M 36 26 L 36 28 M 36 44 L 36 46 M 26 36 L 28 36 M 44 36 L 46 36" />
+  <rect x="885" y="315" width="665" height="460" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(915, 340)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="16" cy="18" r="8" />
+    <path d="M 6 38 C 6 30 11 28 16 28 C 21 28 26 30 26 38" />
+    <circle cx="36" cy="18" r="8" />
+    <path d="M 26 38 C 26 30 31 28 36 28 C 41 28 46 30 46 38" />
   </g>
-  <text x="535" y="655" font-family="monospace" font-size="24" fill="#303a36">worker(name, q, results, handler):</text>
-  <text x="535" y="687" font-family="monospace" font-size="24" fill="#303a36">  item = await q.get();</text>
-  <text x="535" y="719" font-family="monospace" font-size="24" fill="#303a36">  results.append(await asyncio.</text>
-  <text x="535" y="751" font-family="monospace" font-size="24" fill="#303a36">    wait_for(handler(item), timeout=30));</text>
-  <text x="535" y="783" font-family="monospace" font-size="24" fill="#303a36">  except CancelledError: raise;</text>
-  <text x="535" y="815" font-family="monospace" font-size="24" fill="#303a36">  except Exception: log.warning</text>
-  <text x="535" y="847" font-family="monospace" font-size="24" fill="#303a36">    and results.append(exc);</text>
-  <text x="535" y="879" font-family="monospace" font-size="24" fill="#303a36">  finally q.task_done()</text>
+  
+  <rect x="905" y="405" width="625" height="350" rx="8" fill="#ffffff" stroke="#c8d6cd" stroke-width="1.5" />
+  <text x="925" y="438" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">worker(name, q, results, handler):</tspan>
+    <tspan x="925" dy="31">  item = await q.get();</tspan>
+    <tspan x="925" dy="31">  results.append(</tspan>
+    <tspan x="925" dy="31">    await asyncio.wait_for(</tspan>
+    <tspan x="925" dy="31">      handler(item), timeout=30));</tspan>
+    <tspan x="925" dy="31">  except CancelledError: raise;</tspan>
+    <tspan x="925" dy="31">  except Exception:</tspan>
+    <tspan x="925" dy="31">    log.warning and</tspan>
+    <tspan x="925" dy="31">    results.append(exc);</tspan>
+    <tspan x="925" dy="31">  finally q.task_done()</tspan>
+  </text>
 
   
-  
-  
-  <rect x="1080" y="225" width="460" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1120" cy="265" r="24" fill="#207448" />
-  <text x="1120" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-  <text x="1160" y="260" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">await q.join()</text>
-  <text x="1160" y="295" font-family="sans-serif" font-size="24" fill="#303a36">waits until all queued</text>
-  <text x="1160" y="325" font-family="sans-serif" font-size="24" fill="#303a36">items are processed</text>
 
   
-  <rect x="1080" y="405" width="460" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1120" cy="445" r="24" fill="#207448" />
-  <text x="1120" y="453" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-  <text x="1160" y="455" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">finally:</text>
-  <text x="1160" y="495" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">  for w in workers: w.cancel()</text>
+  <rect x="50" y="805" width="315" height="215" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="85" cy="840" r="22" fill="#207448" />
+  <text x="85" y="848" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="75" y="895" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">await q.join()</text>
+  <text x="75" y="935" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">waits until all</tspan>
+    <tspan x="75" dy="34">queued items</tspan>
+    <tspan x="75" dy="34">are processed</tspan>
+  </text>
 
   
-  <rect x="1080" y="585" width="460" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1120" cy="625" r="24" fill="#207448" />
-  <text x="1120" y="633" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-  <text x="1160" y="625" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">await asyncio.gather(</text>
-  <text x="1160" y="660" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">  *workers,</text>
-  <text x="1160" y="695" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">  return_exceptions=True)</text>
+  <line x1="365" y1="912" x2="405" y2="912" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <rect x="1080" y="765" width="460" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1120" cy="805" r="24" fill="#207448" />
-  <text x="1120" y="813" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
-  <text x="1160" y="840" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">return results</text>
+  <rect x="410" y="805" width="310" height="215" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="445" cy="840" r="22" fill="#207448" />
+  <text x="445" y="848" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="435" y="900" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="435" dy="0" font-weight="bold">finally:</tspan>
+    <tspan x="435" dy="38">for w in workers:</tspan>
+    <tspan x="435" dy="38">  w.cancel()</tspan>
+  </text>
 
   
-  
-  
-  <path d="M 470 375 L 502 375" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="720" y1="912" x2="760" y2="912" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <path d="M 1310 360 L 1310 397" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <rect x="765" y="805" width="430" height="215" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="800" cy="840" r="22" fill="#207448" />
+  <text x="800" y="848" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="790" y="895" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="790" dy="0">await asyncio.gather(</tspan>
+    <tspan x="790" dy="38">  *workers,</tspan>
+    <tspan x="790" dy="38">  return_exceptions=True)</tspan>
+  </text>
 
   
-  <path d="M 1310 540 L 1310 577" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1195" y1="912" x2="1235" y2="912" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <path d="M 1310 720 L 1310 757" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <rect x="1240" y="805" width="310" height="215" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1275" cy="840" r="22" fill="#207448" />
+  <text x="1275" y="848" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1270" y="930" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">return results</text>
 
   
-  <rect x="40" y="955" width="1520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <text x="800" y="1002" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">bounded memory, bounded concurrency, per-item timeouts, error isolation,</text>
-  <text x="800" y="1042" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">clean cancellation on signals; tune concurrency and queue_size to what your targets can take</text>
+  <rect x="50" y="1045" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 1085)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 24 4 L 44 12 C 44 32 24 44 24 44 C 24 44 4 32 4 12 Z" />
+    <path d="M 14 22 L 20 28 L 34 16" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="145" y="1090" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">bounded memory, bounded concurrency, per-item timeouts, error isolation,</tspan>
+    <tspan x="145" dy="34">clean cancellation on signals; tune concurrency and queue_size</tspan>
+    <tspan x="145" dy="34">to what your targets can take</tspan>
+  </text>
 
   
-  <rect x="40" y="1090" width="1520" height="65" rx="10" fill="#207448" />
-  <text x="800" y="1133" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A fleet loop you can trust</text>
+  <rect x="50" y="1205" width="1500" height="80" rx="10" fill="#207448" />
+  <text x="800" y="1255" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A fleet loop you can trust</text>
 </svg>

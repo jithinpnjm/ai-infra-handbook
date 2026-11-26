@@ -1,91 +1,139 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Real versus effective UID</title>
-  <desc>Visual comparison of real UID and effective UID behaviors for normal programs versus setuid programs owned by root.</desc>
+  <desc>Visual comparison of real UID and effective UID during execution of normal versus setuid programs.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.05" />
+    </filter>
+  </defs>
 
   
-  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
 
   
-  <text x="60" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Real versus effective UID</text>
+  <text x="80" y="75" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#207448">Real versus effective UID</text>
 
   
   <g id="row1">
-    <rect x="60" y="115" width="1480" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    
-    <g transform="translate(90, 137)">
-      <rect x="2" y="2" width="52" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-      <line x1="2" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="4"/>
-      <circle cx="12" cy="10" r="3" fill="#207448"/>
-      <circle cx="22" cy="10" r="3" fill="#207448"/>
-    </g>
+    <rect x="80" y="115" width="1440" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
 
     
-    <text x="170" y="174" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Row 1: you run a normal program</text>
+    <rect x="110" y="145" width="560" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <rect x="140" y="195" width="60" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="140" y1="210" x2="200" y2="210" stroke="#207448" stroke-width="3" />
+    <circle cx="155" cy="202" r="3" fill="#207448" />
+    <circle cx="168" cy="202" r="3" fill="#207448" />
+    <polyline points="155,225 165,232 155,240" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="225" y="250" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">you run a normal program</text>
 
     
-    <rect x="170" y="215" width="620" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="480" y="286" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">ruid = you</text>
+    <line x1="670" y1="235" x2="745" y2="235" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
     
-    <rect x="830" y="215" width="670" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1165" y="286" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">euid = you</text>
+    <rect x="760" y="145" width="730" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="790" y="175" width="320" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="835" cy="225" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 810 265 A 25 25 0 0 1 860 265" fill="none" stroke="#207448" stroke-width="3.5" />
+    <text x="880" y="245" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">ruid = you</text>
+
+    
+    <rect x="1140" y="175" width="320" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1185" cy="225" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 1160 265 A 25 25 0 0 1 1210 265" fill="none" stroke="#207448" stroke-width="3.5" />
+    <text x="1230" y="245" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">euid = you</text>
   </g>
 
   
   <g id="row2">
-    <rect x="60" y="405" width="1480" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="80" y="385" width="1440" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
 
     
-    <g transform="translate(90, 427)">
-      <path d="M 28 4 L 50 14 L 50 32 C 50 46 28 54 28 54 C 28 54 6 46 6 32 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
-      <circle cx="28" cy="24" r="5" fill="none" stroke="#207448" stroke-width="3"/>
-      <line x1="28" y1="29" x2="28" y2="38" stroke="#207448" stroke-width="3"/>
-    </g>
+    <rect x="110" y="415" width="560" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <rect x="140" y="490" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 152 490 L 152 474 A 16 16 0 0 1 184 474 L 184 490" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="168" cy="510" r="4" fill="#207448" />
+    <path d="M 168 514 L 168 524" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="220" y="495" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      <tspan x="220" dy="0">you run a setuid program</tspan>
+      <tspan x="220" dy="38">owned by root</tspan>
+    </text>
 
     
-    <text x="170" y="464" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Row 2: you run a setuid program owned by root</text>
+    <line x1="670" y1="510" x2="745" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
     
-    <rect x="170" y="505" width="620" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="480" y="576" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">ruid stays yours</text>
+    <rect x="760" y="415" width="730" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
 
     
-    <rect x="830" y="505" width="670" height="120" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-    <text x="1165" y="576" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">euid becomes the file owner's</text>
+    <rect x="785" y="445" width="300" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="825" cy="495" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 803 530 A 22 22 0 0 1 847 530" fill="none" stroke="#207448" stroke-width="3.5" />
+    
+    <text x="865" y="498" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448">
+      <tspan x="865" dy="0">ruid stays</tspan>
+      <tspan x="865" dy="32">yours</tspan>
+    </text>
+
+    
+    <rect x="1105" y="445" width="365" height="130" rx="8" fill="#fff4e8" stroke="#db8129" stroke-width="2.5" />
+    
+    <path d="M 1145 470 L 1165 460 L 1185 470 L 1185 500 C 1185 520 1165 532 1165 532 C 1165 532 1145 520 1145 500 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+    
+    <text x="1205" y="498" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#db8129">
+      <tspan x="1205" dy="0">euid becomes the</tspan>
+      <tspan x="1205" dy="32">file owner's</tspan>
+    </text>
   </g>
 
   
   <g id="legend">
-    <rect x="60" y="695" width="1480" height="355" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="80" y="665" width="1440" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
 
     
-    <g transform="translate(90, 717)">
-      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-      <line x1="16" y1="18" x2="40" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-      <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-      <line x1="16" y1="38" x2="30" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    </g>
+    <rect x="110" y="695" width="1380" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="160" cy="737" r="16" fill="#207448" />
+    <path d="M 152 737 L 168 737 M 160 729 L 160 745" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <text x="200" y="747" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">ruid is who started the process and who may signal it (the owner)</text>
 
     
-    <text x="170" y="754" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Legend</text>
+    <rect x="110" y="795" width="1380" height="85" rx="10" fill="#fff4e8" stroke="#db8129" stroke-width="1.5" />
+    
+    <circle cx="160" cy="837" r="16" fill="#db8129" />
+    <path d="M 154 837 L 166 837 M 160 831 L 160 843" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <text x="200" y="847" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">euid is the identity used for permission checks (the actor)</text>
 
     
-    <circle cx="180" cy="803" r="8" fill="#207448"/>
-    <text x="206" y="812" font-family="sans-serif" font-size="26" fill="#303a36">euid is the identity used for permission checks (the actor)</text>
-
+    <rect x="110" y="895" width="1380" height="85" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
     
-    <circle cx="180" cy="863" r="8" fill="#207448"/>
-    <text x="206" y="872" font-family="sans-serif" font-size="26" fill="#303a36">ruid is who started the process and who may signal it (the owner)</text>
+    <circle cx="160" cy="937" r="16" fill="#207448" />
+    <polyline points="154,933 166,933 166,943" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <polyline points="163,940 166,943 169,940" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="200" y="947" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">saved UID lets euid switch back</text>
+  </g>
 
+  
+  <g id="command-snippet">
+    <rect x="80" y="1035" width="1440" height="100" rx="12" fill="#303a36" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
     
-    <circle cx="180" cy="923" r="8" fill="#207448"/>
-    <text x="206" y="932" font-family="sans-serif" font-size="26" fill="#303a36">saved UID lets euid switch back</text>
-
+    <text x="120" y="1096" font-family="monospace" font-size="30px" font-weight="bold" fill="#db8129">$</text>
     
-    <g transform="translate(170, 965)">
-      <rect x="0" y="0" width="570" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-      <text x="24" y="38" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ps -eo pid,euser,ruser,comm</text>
-    </g>
+    <text x="160" y="1096" font-family="monospace" font-size="28px" font-weight="bold" fill="#f5f8f5">ps -eo pid,euser,ruser,comm</text>
   </g>
 </svg>

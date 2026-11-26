@@ -1,185 +1,153 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>One task against web1: what happens, and what is left behind</title>
-  <desc>Sequence diagram illustrating Ansible task execution lifecycle between the control node and web1 target host.</desc>
+  <desc>Sequence of execution between the Ansible control node and web1 target host during a single task run.</desc>
 
   <defs>
-    <marker id="arrowhead-right" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto">
-      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448" />
-    </marker>
-    <marker id="arrowhead-left" viewBox="0 0 16 16" refX="1" refY="8" markerWidth="16" markerHeight="16" orient="auto">
-      <path d="M 15 2 L 1 8 L 15 14 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
 
   
-  <text x="800" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">One task against web1: what happens, and what is left behind</text>
+  <text x="50" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">One task against web1: what happens, and what is left behind</text>
 
   
-  <rect x="50" y="75" width="510" height="950" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="50" y="75" width="510" height="65" rx="12" fill="#e8f1ea" />
-  <rect x="50" y="125" width="510" height="15" fill="#e8f1ea" />
+  <rect x="1090" y="95" width="460" height="1265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="1115" y="115" width="410" height="70" rx="8" fill="#207448"/>
+  
+  <rect x="1135" y="130" width="40" height="40" rx="6" fill="none" stroke="#f5f8f5" stroke-width="3"/>
+  <path d="M 1145 144 L 1153 150 L 1145 156" fill="none" stroke="#f5f8f5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="1157" y1="158" x2="1167" y2="158" stroke="#f5f8f5" stroke-width="3" stroke-linecap="round"/>
+  <text x="1190" y="159" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Target Environment</text>
 
   
-  <g transform="translate(75, 82)">
-    <rect x="8" y="6" width="34" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3" />
-    <line x1="2" y1="36" x2="48" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="25" cy="18" r="6" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 25 9 L 25 12 M 25 24 L 25 27 M 16 18 L 19 18 M 31 18 L 34 18" stroke="#207448" stroke-width="2.5" />
-  </g>
-  <text x="145" y="119" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">control node</text>
+  <g font-size="24" fill="#303a36">
+    <text x="1120" y="235" font-family="sans-serif" font-weight="bold" fill="#207448">Python on targets:</text>
+    <text x="1120" y="275" font-family="monospace">ansible_python_interpreter,</text>
+    <text x="1120" y="315" font-family="sans-serif">auto-discovery of</text>
+    <text x="1120" y="355" font-family="monospace">/usr/bin/python3;</text>
 
-  
-  <rect x="575" y="75" width="510" height="950" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="575" y="75" width="510" height="65" rx="12" fill="#e8f1ea" />
-  <rect x="575" y="125" width="510" height="15" fill="#e8f1ea" />
+    
+    <rect x="1110" y="395" width="420" height="235" rx="8" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+    <text x="1128" y="435" font-family="sans-serif">minimal images without</text>
+    <text x="1128" y="475" font-family="sans-serif">Python need <tspan font-family="monospace">raw</tspan> or</text>
+    <text x="1128" y="515" font-family="monospace">ansible.builtin.script</text>
+    <text x="1128" y="555" font-family="sans-serif">to bootstrap, or</text>
+    <text x="1128" y="595" font-family="monospace">gather_facts false;</text>
 
-  
-  <g transform="translate(600, 82)">
-    <rect x="4" y="6" width="42" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="12" cy="13" r="2" fill="#207448" />
-    <line x1="22" y1="13" x2="38" y2="13" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-    <rect x="4" y="24" width="42" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="12" cy="31" r="2" fill="#207448" />
-    <line x1="22" y1="31" x2="38" y2="31" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-  </g>
-  <text x="670" y="119" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">web1</text>
-
-  
-  <line x1="105" y1="140" x2="105" y2="155" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="105" y1="285" x2="105" y2="300" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="105" y1="560" x2="105" y2="670" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="105" y1="700" x2="105" y2="760" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="105" y1="785" x2="105" y2="925" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-
-  <line x1="1050" y1="140" x2="1050" y2="670" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="1050" y1="700" x2="1050" y2="760" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="1050" y1="785" x2="1050" y2="800" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-  <line x1="1050" y1="960" x2="1050" y2="1025" stroke="#207448" stroke-dasharray="6,6" stroke-width="2" />
-
-  
-  <rect x="70" y="155" width="470" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="108" cy="195" r="24" fill="#207448" />
-  <text x="108" y="204" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  <text x="145" y="190" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">control node reads the</tspan>
-    <tspan x="145" dy="28">playbook and the</tspan>
-    <tspan x="145" dy="28">inventory and fills in</tspan>
-    <tspan x="145" dy="28">the variables</tspan>
-  </text>
-
-  
-  <rect x="70" y="300" width="470" height="260" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="108" cy="340" r="24" fill="#207448" />
-  <text x="108" y="349" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  <text x="145" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">Jinja2 templating: task</tspan>
-    <tspan x="145" dy="27">arguments are evaluated on</tspan>
-    <tspan x="145" dy="27">the control node before</tspan>
-    <tspan x="145" dy="27">anything is sent, so the</tspan>
-    <tspan x="145" dy="27">target never needs Jinja</tspan>
-    <tspan x="145" dy="27">and a broken template</tspan>
-    <tspan x="145" dy="27">fails on your laptop</tspan>
-    <tspan x="145" dy="27">before any machine</tspan>
-    <tspan x="145" dy="27">is touched</tspan>
-  </text>
-
-  
-  <rect x="190" y="575" width="755" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="150" cy="621" r="24" fill="#207448" />
-  <text x="150" y="630" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  <text x="210" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="210" dy="0">opens an SSH connection to web1</tspan>
-    <tspan x="210" dy="28">(or WinRM or PSRP for Windows, or local, or</tspan>
-    <tspan x="210" dy="28">API calls for network devices and clouds)</tspan>
-  </text>
-  <line x1="105" y1="680" x2="1035" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-right)" />
-
-  
-  <rect x="235" y="700" width="665" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="195" cy="729" r="24" fill="#207448" />
-  <text x="195" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
-  <text x="255" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">copies the module across to a temporary path</text>
-  <line x1="105" y1="770" x2="1035" y2="770" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-right)" />
-
-  
-  <rect x="595" y="795" width="470" height="175" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="633" cy="835" r="24" fill="#207448" />
-  <text x="633" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
-  <text x="670" y="828" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="670" dy="0">module runs on web1 with that</tspan>
-    <tspan x="670" dy="27">machine's Python, looks at</tspan>
-    <tspan x="670" dy="27">the package database and</tspan>
-    <tspan x="670" dy="27">decides whether anything</tspan>
-    <tspan x="670" dy="27">needs to change</tspan>
-  </text>
-
-  
-  <rect x="235" y="805" width="345" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="550" cy="835" r="24" fill="#207448" />
-  <text x="550" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
-  <text x="250" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="250" dy="0">prints a short JSON answer</tspan>
-    <tspan x="250" dy="26">such as changed false</tspan>
-  </text>
-  <line x1="1035" y1="880" x2="120" y2="880" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-left)" />
-
-  
-  <rect x="70" y="895" width="470" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <circle cx="108" cy="935" r="24" fill="#207448" />
-  <text x="108" y="944" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
-  <text x="145" y="928" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">control node reads it, removes</tspan>
-    <tspan x="145" dy="27">the temporary files and</tspan>
-    <tspan x="145" dy="27">moves to the next task</tspan>
-  </text>
-
-  
-  <rect x="1100" y="75" width="460" height="950" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <rect x="1100" y="75" width="460" height="65" rx="12" fill="#d8e8dc" />
-  <rect x="1100" y="125" width="460" height="15" fill="#d8e8dc" />
-
-  
-  <g transform="translate(1120, 82)">
-    <path d="M 10 18 Q 10 8 24 8 L 30 8 Q 40 8 40 18 L 40 26 Q 40 32 32 32 L 20 32 Q 10 32 10 24 Z" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="18" cy="14" r="2" fill="#207448" />
-    <path d="M 38 28 Q 38 38 24 38 L 18 38 Q 8 38 8 28 L 8 20 Q 8 14 16 14 L 28 14 Q 38 14 38 22 Z" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="30" cy="32" r="2" fill="#207448" />
+    
+    <rect x="1110" y="655" width="420" height="275" rx="8" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+    <text x="1128" y="695" font-family="sans-serif">network devices run</text>
+    <text x="1128" y="735" font-family="sans-serif">modules on the control</text>
+    <text x="1128" y="775" font-family="sans-serif">node through connection</text>
+    <text x="1128" y="815" font-family="monospace">local,</text>
+    <text x="1128" y="855" font-family="monospace">network_cli</text>
+    <text x="1128" y="895" font-family="sans-serif">or <tspan font-family="monospace">httpapi</tspan></text>
   </g>
 
   
-  <text x="1125" y="180" font-size="24" fill="#303a36">
-    <tspan x="1125" dy="0" font-family="system-ui, -apple-system, sans-serif">Python on targets:</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">ansible_python_interpreter,</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">auto-discovery of</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">/usr/bin/python3;</tspan>
-    <tspan x="1355" dy="0" font-family="system-ui, -apple-system, sans-serif">minimal</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">images without Python need</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">raw</tspan>
-    <tspan x="1175" dy="0" font-family="system-ui, -apple-system, sans-serif">or</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">ansible.builtin.script</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">to bootstrap, or</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">gather_facts false;</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">network devices run</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">modules on the control</tspan>
-    <tspan x="1125" dy="38" font-family="system-ui, -apple-system, sans-serif">node through connection</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">local,</tspan>
-    <tspan x="1205" dy="0" font-family="monospace">network_cli</tspan>
-    <tspan x="1360" dy="0" font-family="system-ui, -apple-system, sans-serif">or</tspan>
-    <tspan x="1125" dy="38" font-family="monospace">httpapi</tspan>
+  <rect x="30" y="95" width="180" height="60" rx="8" fill="#207448"/>
+  <text x="120" y="137" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">control node</text>
+
+  
+  <rect x="880" y="95" width="180" height="60" rx="8" fill="#207448"/>
+  <text x="970" y="137" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">web1</text>
+
+  
+  <line x1="120" y1="155" x2="120" y2="1215" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="970" y1="155" x2="970" y2="1215" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+
+  
+  <circle cx="120" cy="215" r="24" fill="#207448"/>
+  <text x="120" y="223" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <rect x="170" y="165" width="560" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="195" y="208" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">control node reads the playbook and the</tspan>
+    <tspan x="195" dy="36">inventory and fills in the variables</tspan>
   </text>
 
   
-  <rect x="50" y="1040" width="1510" height="65" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
-  <g transform="translate(68, 1048)">
-    <path d="M 24 4 L 40 10 L 40 24 Q 40 38 24 44 Q 8 38 8 24 L 8 10 Z" fill="none" stroke="#db8129" stroke-width="3.5" />
-    <path d="M 16 23 L 22 29 L 32 17" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
-  <text x="825" y="1081" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">nothing was installed on web1 for Ansible to work, and nothing was left behind after the run</text>
+  <circle cx="120" cy="405" r="24" fill="#207448"/>
+  <text x="120" y="413" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <rect x="170" y="295" width="670" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="195" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">Jinja2 templating: task arguments are</tspan>
+    <tspan x="195" dy="34">evaluated on the control node before</tspan>
+    <tspan x="195" dy="34">anything is sent, so the target never</tspan>
+    <tspan x="195" dy="34">needs Jinja and a broken template</tspan>
+    <tspan x="195" dy="34">fails on your laptop before any</tspan>
+    <tspan x="195" dy="34">machine is touched</tspan>
+  </text>
 
   
-  <rect x="50" y="1120" width="1510" height="60" rx="10" fill="#207448" />
-  <text x="805" y="1159" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">The control node plans, the target only runs the small module</text>
+  <circle cx="120" cy="615" r="24" fill="#207448"/>
+  <text x="120" y="623" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <line x1="144" y1="615" x2="190" y2="615" stroke="#207448" stroke-width="3"/>
+  <line x1="900" y1="615" x2="966" y2="615" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  
+  <rect x="190" y="545" width="710" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="215" y="585" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">opens an SSH connection to web1</text>
+  <text x="215" y="627" font-family="sans-serif" font-size="24" fill="#506059">
+    <tspan x="215" dy="0">or WinRM or PSRP for Windows, or local,</tspan>
+    <tspan x="215" dy="34">or API calls for network devices and clouds</tspan>
+  </text>
+
+  
+  <circle cx="120" cy="745" r="24" fill="#207448"/>
+  <text x="120" y="753" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <line x1="144" y1="745" x2="220" y2="745" stroke="#207448" stroke-width="3"/>
+  <line x1="860" y1="745" x2="966" y2="745" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="220" y="710" width="640" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="540" y="754" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">copies the module across to a temporary path</text>
+
+  
+  <circle cx="970" cy="880" r="24" fill="#207448"/>
+  <text x="970" y="888" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <rect x="270" y="805" width="660" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="295" y="848" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="295" dy="0">module runs on web1 with that</tspan>
+    <tspan x="295" dy="36">machine's Python, looks at the package</tspan>
+    <tspan x="295" dy="36">database and decides whether</tspan>
+    <tspan x="295" dy="36">anything needs to change</tspan>
+  </text>
+
+  
+  <circle cx="970" cy="1035" r="24" fill="#207448"/>
+  <text x="970" y="1043" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+  <line x1="946" y1="1035" x2="840" y2="1035" stroke="#207448" stroke-width="3"/>
+  <line x1="240" y1="1035" x2="128" y2="1035" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="240" y="995" width="600" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="540" y="1032" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="540" dy="0">prints a short JSON answer</tspan>
+    <tspan x="540" dy="34">such as <tspan font-family="monospace">changed false</tspan></tspan>
+  </text>
+
+  
+  <circle cx="120" cy="1155" r="24" fill="#207448"/>
+  <text x="120" y="1163" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+  <rect x="170" y="1100" width="620" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="195" y="1142" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">control node reads it, removes the</tspan>
+    <tspan x="195" dy="36">temporary files and moves to the next task</tspan>
+  </text>
+
+  
+  <rect x="50" y="1245" width="1010" height="115" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="95" cy="1302" r="26" fill="none" stroke="#db8129" stroke-width="3.5"/>
+  <path d="M 83 1302 L 92 1312 L 109 1292" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="145" y="1292" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+    <tspan x="145" dy="0">nothing was installed on web1 for Ansible to work,</tspan>
+    <tspan x="145" dy="36">and nothing was left behind after the run</tspan>
+  </text>
+
+  
+  <rect x="40" y="1390" width="1520" height="75" rx="10" fill="#207448"/>
+  <text x="800" y="1438" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">The control node plans, the target only runs the small module</text>
 </svg>

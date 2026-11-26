@@ -1,233 +1,187 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Playbook mistakes that show up on the second run</title>
-  <desc>Grouped table visualising Ansible playbook mistakes that only surface during the second run, categorised by readability, module choice, unplanned change, silenced problems, idempotence, check mode, blast radius, and timeouts.</desc>
+  <desc>A grouped guide detailing common Ansible playbook mistakes, why they fail on second runs, and how to fix them.</desc>
 
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
-
-  
-  <text x="800" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Playbook mistakes that show up on the second run</text>
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
 
   
-  <g>
-    <rect x="40" y="74" width="1520" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="800" y="111" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">the first run usually succeeds because everything is new; the second run is where hidden problems show up as a stream of changes that should not be there</text>
-  </g>
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Playbook mistakes that show up on the second run</text>
 
   
-  <g>
-    <rect x="40" y="144" width="350" height="40" rx="6" fill="#207448"/>
-    <text x="215" y="173" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Group</text>
-
-    <rect x="402" y="144" width="800" height="40" rx="6" fill="#207448"/>
-    <text x="802" y="173" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Mistakes</text>
-
-    <rect x="1214" y="144" width="346" height="40" rx="6" fill="#207448"/>
-    <text x="1387" y="173" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Fix</text>
-  </g>
+  <rect x="40" y="85" width="1520" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="120" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">the first run usually succeeds because everything is new; the second run is where</tspan>
+    <tspan x="800" dy="32">hidden problems show up as a stream of changes that should not be there</tspan>
+  </text>
 
   
-  <g>
-    <rect x="40" y="192" width="350" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <rect x="66" y="208" width="34" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="74" y1="222" x2="92" y2="222" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="74" y1="232" x2="92" y2="232" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="74" y1="242" x2="86" y2="242" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="118" y="243" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Readability</text>
+  <rect x="40" y="190" width="310" height="50" rx="6" fill="#207448"/>
+  <text x="60" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Group</text>
 
-    <rect x="402" y="192" width="800" height="80" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="226" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">missing task names; names that describe commands</tspan>
-      <tspan x="426" dy="28">instead of desired state</tspan>
+  <rect x="365" y="190" width="850" height="50" rx="6" fill="#207448"/>
+  <text x="385" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Mistakes</text>
+
+  <rect x="1230" y="190" width="330" height="50" rx="6" fill="#207448"/>
+  <text x="1250" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Fix</text>
+
+  
+  
+  <g transform="translate(0, 255)">
+    <rect x="40" y="0" width="310" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="65" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Readability</text>
+
+    <rect x="365" y="0" width="850" height="115" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">missing task names; names that describe commands</tspan>
+      <tspan x="385" dy="34">instead of desired state</tspan>
     </text>
 
-    <rect x="1214" y="192" width="346" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="226" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1234" dy="0">name every task as</tspan>
-      <tspan x="1234" dy="28">Ensure X is Y</tspan>
+    <rect x="1230" y="0" width="330" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="48" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">name every task as</tspan>
+      <tspan x="1245" dy="34">Ensure X is Y</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="279" width="350" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <path d="M 83 313 L 101 323 L 83 333 L 65 323 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 65 323 L 65 345 L 83 355 L 83 333 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 83 333 L 83 355 L 101 345 L 101 323 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <text x="118" y="325" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="118" dy="0">Module choice</tspan>
-      <tspan x="118" dy="34">and honesty</tspan>
+  
+  <g transform="translate(0, 385)">
+    <rect x="40" y="0" width="310" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+      <tspan x="60" dy="0">Module choice and</tspan>
+      <tspan x="60" dy="34">honesty</tspan>
     </text>
 
-    <rect x="402" y="279" width="800" height="104" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="325" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">shell or command for things a module does; no</tspan>
-      <tspan x="426" dy="28">changed_when so the recap lies; ignoring rc</tspan>
+    <rect x="365" y="0" width="850" height="135" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">shell or command for things a module does;</tspan>
+      <tspan x="385" dy="34">no changed_when so the recap lies;</tspan>
+      <tspan x="385" dy="34">ignoring rc</tspan>
     </text>
 
-    <rect x="1214" y="279" width="346" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="325" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1234" dy="0">module first,</tspan>
-      <tspan x="1234" dy="28">changed_when and failed_when</tspan>
+    <rect x="1230" y="0" width="330" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">module first,</tspan>
+      <tspan x="1245" dy="34">changed_when and</tspan>
+      <tspan x="1245" dy="34">failed_when</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="390" width="350" height="128" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <path d="M 83 428 L 103 468 L 63 468 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <line x1="83" y1="442" x2="83" y2="453" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="83" cy="461" r="2" fill="#207448"/>
-    <text x="118" y="448" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="118" dy="0">Unplanned</tspan>
-      <tspan x="118" dy="34">change</tspan>
+  
+  <g transform="translate(0, 535)">
+    <rect x="40" y="0" width="310" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="80" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Unplanned change</text>
+
+    <rect x="365" y="0" width="850" height="150" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">state: latest in routine runs causes upgrades with no</tspan>
+      <tspan x="385" dy="34">change request or test; unpinned driver versions pull in a</tspan>
+      <tspan x="385" dy="34">driver the training stack has never seen</tspan>
     </text>
 
-    <rect x="402" y="390" width="800" height="128" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="426" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">state: latest in routine runs causes upgrades with</tspan>
-      <tspan x="426" dy="26">no change request or test; unpinned driver</tspan>
-      <tspan x="426" dy="26">versions pull in a driver the training stack</tspan>
-      <tspan x="426" dy="26">has never seen</tspan>
-    </text>
-
-    <rect x="1214" y="390" width="346" height="128" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="450" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1234" dy="0">present with</tspan>
-      <tspan x="1234" dy="28">pinned versions</tspan>
+    <rect x="1230" y="0" width="330" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">present with pinned</tspan>
+      <tspan x="1245" dy="34">versions</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="525" width="350" height="104" rx="6" fill="#fff6ee" stroke="#db8129" stroke-width="2"/>
-    
-    <path d="M 73 577 C 73 561 93 561 93 577 L 97 581 L 69 581 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
-    <line x1="83" y1="557" x2="83" y2="561" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
-    <path d="M 80 581 A 3 3 0 0 0 86 581" fill="none" stroke="#db8129" stroke-width="3"/>
-    <line x1="64" y1="587" x2="102" y2="551" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="118" y="571" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
-      <tspan x="118" dy="0">Silenced</tspan>
-      <tspan x="118" dy="34">problems</tspan>
+  
+  <g transform="translate(0, 700)">
+    <rect x="40" y="0" width="310" height="150" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+    <text x="60" y="80" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Silenced problems</text>
+
+    <rect x="365" y="0" width="850" height="150" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2"/>
+    <text x="385" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">ignore_errors: true sprinkled through a playbook is taping</tspan>
+      <tspan x="385" dy="34">over a smoke alarm; the recap looks green while the</tspan>
+      <tspan x="385" dy="34">problem grows</tspan>
     </text>
 
-    <rect x="402" y="525" width="800" height="104" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
-    <text x="426" y="560" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">ignore_errors: true sprinkled through a playbook is</tspan>
-      <tspan x="426" dy="28">taping over a smoke alarm; the recap looks green</tspan>
-      <tspan x="426" dy="28">while the problem grows</tspan>
-    </text>
-
-    <rect x="1214" y="525" width="346" height="104" rx="6" fill="#fff6ee" stroke="#db8129" stroke-width="2"/>
-    <text x="1234" y="571" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-      <tspan x="1234" dy="0">handle errors</tspan>
-      <tspan x="1234" dy="28">explicitly</tspan>
+    <rect x="1230" y="0" width="330" height="150" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1245" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1245" dy="0">handle errors</tspan>
+      <tspan x="1245" dy="34">explicitly</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="636" width="350" height="128" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <path d="M 68 694 A 18 18 0 0 1 97 683" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <polyline points="91,677 99,683 91,691" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M 98 706 A 18 18 0 0 1 69 717" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <polyline points="75,723 67,717 75,709" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <text x="118" y="694" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="118" dy="0">Not</tspan>
-      <tspan x="118" dy="34">idempotent</tspan>
+  
+  <g transform="translate(0, 865)">
+    <rect x="40" y="0" width="310" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="90" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Not idempotent</text>
+
+    <rect x="365" y="0" width="850" height="165" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="38" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">templates with timestamps or random values;</tspan>
+      <tspan x="385" dy="32">handler storms; lineinfile with a loose regex</tspan>
+      <tspan x="385" dy="32">rewriting unintended lines; editing files that</tspan>
+      <tspan x="385" dy="32">should be fully templated or drop-ins</tspan>
     </text>
 
-    <rect x="402" y="636" width="800" height="128" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="672" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">templates with timestamps or random values; handler</tspan>
-      <tspan x="426" dy="26">storms; lineinfile with a loose regex rewriting</tspan>
-      <tspan x="426" dy="26">unintended lines; editing files that should be</tspan>
-      <tspan x="426" dy="26">fully templated or drop-ins</tspan>
-    </text>
-
-    <rect x="1214" y="636" width="346" height="128" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="694" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1234" dy="0">stable templates,</tspan>
-      <tspan x="1234" dy="28">tight regexes</tspan>
+    <rect x="1230" y="0" width="330" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="70" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">stable templates,</tspan>
+      <tspan x="1245" dy="34">tight regexes</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="771" width="350" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <path d="M 83 787 L 99 794 C 99 812 83 823 83 827 C 83 823 67 812 67 794 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <polyline points="75,807 80,812 91,801" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="118" y="822" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Check mode</text>
+  
+  <g transform="translate(0, 1045)">
+    <rect x="40" y="0" width="310" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="58" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Check mode</text>
 
-    <rect x="402" y="771" width="800" height="80" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="805" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">assuming it is a perfect prediction; leaking secrets</tspan>
-      <tspan x="426" dy="28">through --diff</tspan>
+    <rect x="365" y="0" width="850" height="100" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">assuming it is a perfect prediction; leaking secrets</tspan>
+      <tspan x="385" dy="34">through --diff</tspan>
     </text>
 
-    <rect x="1214" y="771" width="346" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="820" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">diff: false, canary</text>
+    <rect x="1230" y="0" width="330" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="58" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">diff: false, canary</text>
   </g>
 
   
-  <g>
-    <rect x="40" y="858" width="350" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <circle cx="83" cy="898" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <circle cx="83" cy="898" r="8" fill="none" stroke="#207448" stroke-width="3"/>
-    <circle cx="83" cy="898" r="2.5" fill="#207448"/>
-    <line x1="83" y1="874" x2="83" y2="880" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="83" y1="916" x2="83" y2="922" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="59" y1="898" x2="65" y2="898" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="101" y1="898" x2="107" y2="898" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="118" y="909" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Blast radius</text>
+  
+  <g transform="translate(0, 1160)">
+    <rect x="40" y="0" width="310" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="60" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Blast radius</text>
 
-    <rect x="402" y="858" width="800" height="80" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="892" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">running against all with no --limit or serial and no</tspan>
-      <tspan x="426" dy="28">canary; tags as the safety mechanism</tspan>
+    <rect x="365" y="0" width="850" height="105" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">running against all with no --limit or serial and no canary;</tspan>
+      <tspan x="385" dy="34">tags as the safety mechanism</tspan>
     </text>
 
-    <rect x="1214" y="858" width="346" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="907" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">serial, limit</text>
+    <rect x="1230" y="0" width="330" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="60" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">serial, limit</text>
   </g>
 
   
-  <g>
-    <rect x="40" y="945" width="350" height="146" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <circle cx="83" cy="1018" r="19" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <polyline points="83,1006 83,1018 94,1018" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="79" y1="994" x2="87" y2="994" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="83" y1="994" x2="83" y2="999" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="118" y="1009" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="118" dy="0">Modes and</tspan>
-      <tspan x="118" dy="34">timeouts</tspan>
+  
+  <g transform="translate(0, 1280)">
+    <rect x="40" y="0" width="310" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="75" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Modes and timeouts</text>
+
+    <rect x="365" y="0" width="850" height="135" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="38" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">unquoted modes (YAML octal pitfalls): quote 0644;</tspan>
+      <tspan x="385" dy="32">long-running tasks without async or timeouts: SSH timeouts can</tspan>
+      <tspan x="385" dy="32">kill firmware updates; relying on task order across plays without</tspan>
+      <tspan x="385" dy="32">verifying dependencies</tspan>
     </text>
 
-    <rect x="402" y="945" width="800" height="146" rx="6" fill="#ffffff" stroke="#cfe0d4" stroke-width="1.5"/>
-    <text x="426" y="977" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">unquoted modes (YAML octal pitfalls): quote 0644;</tspan>
-      <tspan x="426" dy="25">long-running tasks without async or timeouts:</tspan>
-      <tspan x="426" dy="25">SSH timeouts can kill firmware updates;</tspan>
-      <tspan x="426" dy="25">relying on task order across plays without</tspan>
-      <tspan x="426" dy="25">verifying dependencies</tspan>
-    </text>
-
-    <rect x="1214" y="945" width="346" height="146" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1234" y="1010" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1234" dy="0">quote modes,</tspan>
-      <tspan x="1234" dy="28">async, verify</tspan>
+    <rect x="1230" y="0" width="330" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="55" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">quote modes, async,</tspan>
+      <tspan x="1245" dy="34">verify</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="1108" width="1520" height="56" rx="8" fill="#207448"/>
-    <text x="800" y="1145" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Keep the second run in mind</text>
-  </g>
+  <rect x="40" y="1430" width="1520" height="50" rx="8" fill="#207448"/>
+  <text x="800" y="1464" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Keep the second run in mind</text>
 </svg>

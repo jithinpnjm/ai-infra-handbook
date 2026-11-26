@@ -1,305 +1,155 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1300" width="1600" height="1300">
   <title>Where a pod sits in the cgroup tree depends on its QoS class</title>
-  <desc>Cgroup tree visualization comparing Guaranteed, Burstable, and BestEffort pod placement under kubepods.slice.</desc>
+  <desc>Diagram showing the Linux cgroup hierarchy under kubepods.slice for Guaranteed, Burstable, and BestEffort QoS classes.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#718279" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1180" fill="#f5f8f5" />
+  <rect width="1600" height="1300" fill="#f5f8f5" />
 
   
-  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Where a pod sits in the cgroup tree depends on its QoS class</text>
+  <text x="800" y="65" font-family="sans-serif" font-size="42" font-weight="bold" fill="#303a36" text-anchor="middle">Where a pod sits in the cgroup tree depends on its QoS class</text>
 
   
-  
-  <path d="M 800 185 L 800 210" fill="none" stroke="#207448" stroke-width="3" />
-  
-  <path d="M 240 210 L 1395 210" fill="none" stroke="#207448" stroke-width="3" />
-  
-  <path d="M 240 210 L 240 230" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 800 210 L 800 230" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 1395 210 L 1395 230" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  
-  <path d="M 800 390 L 800 415" fill="none" stroke="#207448" stroke-width="3" />
-  
-  <path d="M 280 415 L 1320 415" fill="none" stroke="#207448" stroke-width="3" />
-  
-  <path d="M 280 415 L 280 440" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 800 415 L 800 440" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <path d="M 1320 415 L 1320 440" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <g id="root-box">
-    
-    <path d="M 570 110 L 570 96 L 680 96 L 696 110 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    
-    <rect x="550" y="110" width="500" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
-    
-    <g transform="translate(572, 120)">
-      <path d="M 4 10 L 18 10 L 24 16 L 46 16 A 4 4 0 0 1 50 20 L 50 42 A 4 4 0 0 1 46 46 L 4 46 A 4 4 0 0 1 0 42 L 0 14 A 4 4 0 0 1 4 10 Z" fill="none" stroke="#207448" stroke-width="3.5" />
-      <line x1="16" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-      <line x1="16" y1="36" x2="28" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-    
-    <text x="645" y="158" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">/sys/fs/cgroup</text>
+  <g id="root">
+    <path d="M 610 125 L 670 125 L 685 137 L 990 137 L 990 195 L 610 195 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <text x="800" y="172" font-family="monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">/sys/fs/cgroup</text>
   </g>
 
   
-  <g id="system-slice-box">
-    
-    <path d="M 70 230 L 70 216 L 180 216 L 195 230 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <rect x="50" y="230" width="380" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    
-    <g transform="translate(68, 246)">
-      <circle cx="24" cy="24" r="10" fill="none" stroke="#207448" stroke-width="3.5" />
-      <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    
-    <text x="132" y="278" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">system.slice</text>
-    
-    <text x="70" y="318" font-family="sans-serif" font-size="24px" fill="#303a36">
-      <tspan x="70" dy="0">OS services, including</tspan>
-      <tspan x="70" dy="30" font-family="monospace">kubelet.service</tspan>
-      <tspan font-family="sans-serif"> and </tspan>
-      <tspan font-family="monospace">containerd.service</tspan>
-    </text>
+  <path d="M 800 195 L 800 230" fill="none" stroke="#718279" stroke-width="3" />
+  <path d="M 280 230 L 1400 230" fill="none" stroke="#718279" stroke-width="3" />
+  <path d="M 280 230 L 280 262" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
+  <path d="M 880 230 L 880 260" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <path d="M 1400 230 L 1400 262" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
+
+  
+  <g id="system-slice">
+    <path d="M 70 265 L 140 265 L 155 277 L 490 277 L 490 435 L 70 435 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="280" y="310" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">system.slice</text>
+    <text x="280" y="347" font-family="sans-serif" font-size="24" fill="#55625c" text-anchor="middle">OS services, including</text>
+    <text x="280" y="380" font-family="monospace" font-size="24" fill="#55625c" text-anchor="middle">kubelet.service and</text>
+    <text x="280" y="413" font-family="monospace" font-size="24" fill="#55625c" text-anchor="middle">containerd.service</text>
   </g>
 
   
-  <g id="kubepods-slice-box">
-    
-    <path d="M 480 230 L 480 214 L 620 214 L 638 230 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    
-    <rect x="460" y="230" width="750" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
-    
-    <g transform="translate(482, 245)">
-      <rect x="4" y="4" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="28" y="4" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="4" y="28" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="28" y="28" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-    </g>
-    
-    <text x="548" y="280" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">kubepods.slice</text>
-    
-    <text x="485" y="325" font-family="sans-serif" font-size="24px" fill="#303a36">
-      <tspan x="485" dy="0">all pods; </tspan>
-      <tspan font-family="monospace">memory.max</tspan>
-      <tspan> equals node allocatable for pods</tspan>
-    </text>
+  <g id="kubepods-slice">
+    <path d="M 540 265 L 630 265 L 645 277 L 1220 277 L 1220 435 L 540 435 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <text x="880" y="318" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">kubepods.slice</text>
+    <text x="880" y="362" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">all pods; memory.max equals</text>
+    <text x="880" y="398" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">node allocatable for pods</text>
   </g>
 
   
-  <g id="user-slice-box">
-    
-    <path d="M 1260 230 L 1260 216 L 1370 216 L 1385 230 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <rect x="1240" y="230" width="310" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    
-    <g transform="translate(1265, 270)">
-      <circle cx="20" cy="14" r="9" fill="none" stroke="#207448" stroke-width="3.5" />
-      <path d="M 4 42 C 4 30 11 26 20 26 C 29 26 36 30 36 42" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    
-    <text x="1320" y="318" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">user.slice</text>
+  <g id="user-slice">
+    <path d="M 1270 265 L 1330 265 L 1345 277 L 1530 277 L 1530 435 L 1270 435 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="1400" y="358" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">user.slice</text>
   </g>
 
   
-  <g id="column-1">
-    
-    <rect x="50" y="440" width="460" height="530" rx="10" fill="#f2f7f4" stroke="#207448" stroke-width="3.5" />
+  <path d="M 880 435 L 880 465" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 290 465 L 1310 465" fill="none" stroke="#718279" stroke-width="3" />
+  <path d="M 290 465 L 290 495" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 800 465 L 800 572" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
+  <path d="M 1310 465 L 1310 572" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
 
-    
-    <g id="col1-pod-box">
-      
-      <path d="M 95 470 L 95 456 L 220 456 L 235 470 Z" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
-      
-      <rect x="75" y="470" width="410" height="215" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
-
-      
-      <g transform="translate(95, 488)">
-        <polygon points="22,2 40,12 40,34 22,44 4,34 4,12" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
-        <circle cx="22" cy="23" r="6" fill="none" stroke="#db8129" stroke-width="3" />
-      </g>
-
-      
-      <text x="150" y="522" font-family="monospace" font-size="25px" font-weight="bold" fill="#db8129">kubepods-pod uid slice</text>
-
-      
-      <text x="95" y="566" font-family="sans-serif" font-size="24px" fill="#303a36">Guaranteed pods sit directly here</text>
-
-      
-      <rect x="90" y="592" width="380" height="74" rx="6" fill="#fff5ec" stroke="#db8129" stroke-width="2" />
-      <text x="104" y="622" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">
-        <tspan x="104" dy="0">the path tells you the QoS</tspan>
-        <tspan x="104" dy="30">class at a glance</tspan>
-      </text>
-    </g>
-
-    
-    <path d="M 280 685 L 280 735" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g id="col1-container-box">
-      
-      <path d="M 95 735 L 95 722 L 200 722 L 214 735 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      <rect x="75" y="735" width="410" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-
-      
-      <g transform="translate(95, 755)">
-        <path d="M 22 4 L 40 14 L 22 24 L 4 14 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-        <path d="M 4 14 L 4 34 L 22 44 L 22 24" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-        <path d="M 40 14 L 40 34 L 22 44" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-      </g>
-
-      
-      <text x="150" y="788" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">container</text>
-
-      
-      <text x="95" y="845" font-family="monospace" font-size="25px" fill="#303a36">
-        <tspan x="95" dy="0">cri-containerd</tspan>
-        <tspan x="95" dy="35">id scope</tspan>
-      </text>
-    </g>
+  
+  
+  <g id="col1-note">
+    <rect x="80" y="495" width="420" height="66" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+    <text x="290" y="523" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">the path tells you the</text>
+    <text x="290" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">QoS class at a glance</text>
+    <path d="M 290 561 L 290 574" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
   </g>
 
   
-  <g id="column-2">
+  <g id="col1-pod">
+    <path d="M 70 580 L 140 580 L 155 592 L 510 592 L 510 740 L 70 740 Z" fill="#ffffff" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
     
-    <rect x="570" y="440" width="460" height="530" rx="10" fill="#ffffff" stroke="#9aa5a0" stroke-width="2" />
-
-    
-    <g id="col2-slice-box">
-      <path d="M 615 470 L 615 456 L 730 456 L 744 470 Z" fill="#f0f3f1" stroke="#9aa5a0" stroke-width="1.5" />
-      <rect x="595" y="470" width="410" height="120" rx="8" fill="#fbfdfb" stroke="#9aa5a0" stroke-width="2" />
-      
-      <g transform="translate(615, 492)">
-        <path d="M 4 8 L 16 8 L 22 14 L 38 14 A 3 3 0 0 1 41 17 L 41 35 A 3 3 0 0 1 38 38 L 4 38 A 3 3 0 0 1 1 35 L 1 11 A 3 3 0 0 1 4 8 Z" fill="none" stroke="#207448" stroke-width="3" />
-      </g>
-      
-      <text x="670" y="522" font-family="monospace" font-size="25px" font-weight="bold" fill="#303a36">
-        <tspan x="670" dy="0">kubepods-</tspan>
-        <tspan x="670" dy="34">burstable.slice</tspan>
-      </text>
-    </g>
-
-    
-    <path d="M 800 590 L 800 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g id="col2-pod-box">
-      <path d="M 615 625 L 615 612 L 720 612 L 734 625 Z" fill="#f0f3f1" stroke="#9aa5a0" stroke-width="1.5" />
-      <rect x="595" y="625" width="410" height="130" rx="8" fill="#fbfdfb" stroke="#9aa5a0" stroke-width="2" />
-      
-      <g transform="translate(615, 646)">
-        <polygon points="20,2 36,11 36,31 20,40 4,31 4,11" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-        <circle cx="20" cy="21" r="5" fill="none" stroke="#207448" stroke-width="2.5" />
-      </g>
-      
-      <text x="668" y="675" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
-        <tspan x="668" dy="0">kubepods-burstable-</tspan>
-        <tspan x="668" dy="34">pod uid slice</tspan>
-      </text>
-    </g>
-
-    
-    <path d="M 800 755 L 800 790" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g id="col2-container-box">
-      <rect x="595" y="790" width="410" height="150" rx="8" fill="#fafcfa" stroke="#9aa5a0" stroke-width="3" stroke-dasharray="8,6" />
-      
-      <g transform="translate(620, 840)">
-        <path d="M 22 4 L 40 14 L 22 24 L 4 14 Z" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-        <path d="M 4 14 L 4 34 L 22 44 L 22 24" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-        <path d="M 40 14 L 40 34 L 22 44" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-      </g>
-      
-      <text x="680" y="872" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">container</text>
-    </g>
+    <rect x="90" y="604" width="400" height="48" rx="6" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
+    <text x="290" y="637" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">kubepods-pod uid slice</text>
+    <text x="290" y="695" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Guaranteed pods sit directly here</text>
   </g>
 
   
-  <g id="column-3">
-    
-    <rect x="1090" y="440" width="460" height="530" rx="10" fill="#ffffff" stroke="#9aa5a0" stroke-width="2" />
+  <path d="M 290 740 L 290 840" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
 
-    
-    <g id="col3-slice-box">
-      <path d="M 1135 470 L 1135 456 L 1250 456 L 1264 470 Z" fill="#f0f3f1" stroke="#9aa5a0" stroke-width="1.5" />
-      <rect x="1115" y="470" width="410" height="120" rx="8" fill="#fbfdfb" stroke="#9aa5a0" stroke-width="2" />
-      
-      <g transform="translate(1135, 492)">
-        <path d="M 4 8 L 16 8 L 22 14 L 38 14 A 3 3 0 0 1 41 17 L 41 35 A 3 3 0 0 1 38 38 L 4 38 A 3 3 0 0 1 1 35 L 1 11 A 3 3 0 0 1 4 8 Z" fill="none" stroke="#207448" stroke-width="3" />
-      </g>
-      
-      <text x="1190" y="522" font-family="monospace" font-size="25px" font-weight="bold" fill="#303a36">
-        <tspan x="1190" dy="0">kubepods-</tspan>
-        <tspan x="1190" dy="34">besteffort.slice</tspan>
-      </text>
-    </g>
-
-    
-    <path d="M 1320 590 L 1320 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g id="col3-pod-box">
-      <path d="M 1135 625 L 1135 612 L 1240 612 L 1254 625 Z" fill="#f0f3f1" stroke="#9aa5a0" stroke-width="1.5" />
-      <rect x="1115" y="625" width="410" height="130" rx="8" fill="#fbfdfb" stroke="#9aa5a0" stroke-width="2" />
-      
-      <g transform="translate(1135, 646)">
-        <polygon points="20,2 36,11 36,31 20,40 4,31 4,11" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-        <circle cx="20" cy="21" r="5" fill="none" stroke="#207448" stroke-width="2.5" />
-      </g>
-      
-      <text x="1185" y="675" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
-        <tspan x="1185" dy="0">kubepods-besteffort-</tspan>
-        <tspan x="1185" dy="34">pod uid slice</tspan>
-      </text>
-    </g>
-
-    
-    <path d="M 1320 755 L 1320 790" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g id="col3-container-box">
-      <rect x="1115" y="790" width="410" height="150" rx="8" fill="#fafcfa" stroke="#9aa5a0" stroke-width="3" stroke-dasharray="8,6" />
-      
-      <g transform="translate(1140, 840)">
-        <path d="M 22 4 L 40 14 L 22 24 L 4 14 Z" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-        <path d="M 4 14 L 4 34 L 22 44 L 22 24" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-        <path d="M 40 14 L 40 34 L 22 44" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3" stroke-linejoin="round" />
-      </g>
-      
-      <text x="1200" y="872" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">container</text>
-    </g>
+  
+  <g id="col1-container">
+    <rect x="70" y="850" width="440" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    <rect x="180" y="872" width="220" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="290" y="902" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">container</text>
+    <text x="290" y="965" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">cri-containerd id scope</text>
   </g>
 
   
-  <g id="side-note">
-    <rect x="50" y="995" width="1500" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <g transform="translate(70, 1007)">
-      <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="20" y1="18" x2="20" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <circle cx="20" cy="12" r="2" fill="#207448" />
-    </g>
-    <text x="120" y="1037" font-family="sans-serif" font-size="24px" fill="#303a36">
-      <tspan font-family="monospace">cgroupsPerQOS true</tspan>
-      <tspan> builds these slices, and the kubelet sets </tspan>
-      <tspan font-family="monospace">cpu.weight</tspan>
-      <tspan> from requests.</tspan>
-    </text>
+  
+  <g id="col2-top">
+    <path d="M 580 580 L 650 580 L 665 592 L 1020 592 L 1020 685 L 580 685 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="800" y="642" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">kubepods-burstable.slice</text>
+  </g>
+
+  
+  <path d="M 800 685 L 800 732" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
+
+  
+  <g id="col2-pod">
+    <path d="M 580 740 L 650 740 L 665 752 L 1020 752 L 1020 850 L 580 850 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="800" y="790" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">kubepods-burstable-</text>
+    <text x="800" y="825" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">pod uid slice</text>
+  </g>
+
+  
+  <path d="M 800 850 L 800 892" fill="none" stroke="#718279" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arrow-grey)" />
+
+  
+  <g id="col2-container">
+    <rect x="580" y="900" width="440" height="110" rx="10" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-dasharray="8,8" />
+    <text x="800" y="964" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">container</text>
+  </g>
+
+  
+  
+  <g id="col3-top">
+    <path d="M 1090 580 L 1160 580 L 1175 592 L 1530 592 L 1530 685 L 1090 685 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="1310" y="642" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">kubepods-besteffort.slice</text>
+  </g>
+
+  
+  <path d="M 1310 685 L 1310 732" fill="none" stroke="#718279" stroke-width="3" marker-end="url(#arrow-grey)" />
+
+  
+  <g id="col3-pod">
+    <path d="M 1090 740 L 1160 740 L 1175 752 L 1530 752 L 1530 850 L 1090 850 Z" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="1310" y="790" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">kubepods-besteffort-</text>
+    <text x="1310" y="825" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">pod uid slice</text>
+  </g>
+
+  
+  <path d="M 1310 850 L 1310 892" fill="none" stroke="#718279" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arrow-grey)" />
+
+  
+  <g id="col3-container">
+    <rect x="1090" y="900" width="440" height="110" rx="10" fill="#ffffff" stroke="#9eaba2" stroke-width="2.5" stroke-dasharray="8,8" />
+    <text x="1310" y="964" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">container</text>
+  </g>
+
+  
+  <g id="bottom-side-note">
+    <rect x="70" y="1055" width="1460" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="1099" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">cgroupsPerQOS true builds these slices, and the kubelet sets cpu.weight from requests.</text>
   </g>
 
   
   <g id="takeaway-bar">
-    <rect x="50" y="1080" width="1500" height="70" rx="10" fill="#207448" />
-    <text x="800" y="1125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">the path to a pod's cgroup shows its QoS class immediately.</text>
+    <rect x="70" y="1155" width="1460" height="70" rx="10" fill="#207448" />
+    <text x="800" y="1199" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">the path to a pod's cgroup shows its QoS class immediately.</text>
   </g>
 </svg>

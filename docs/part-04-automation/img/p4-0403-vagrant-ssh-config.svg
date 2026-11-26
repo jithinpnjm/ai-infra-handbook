@@ -1,177 +1,184 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1850" width="1600" height="1850">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
   <title>From vagrant ssh-config to the Ansible inventory</title>
-  <desc>Visual mapping from Vagrant SSH configuration parameters to Ansible inventory host and variable definitions.</desc>
+  <desc>Infographic mapping Vagrant ssh-config parameters to Ansible inventory hosts and variables.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title-text { font-family: sans-serif; font-size: 44px; font-weight: bold; fill: #207448; }
+      .strip-box { fill: #e8f1ea; stroke: #207448; stroke-width: 2; rx: 8px; }
+      .panel-box { fill: #ffffff; stroke: #207448; stroke-width: 2.5; rx: 10px; }
+      .header-text { font-family: monospace; font-size: 30px; font-weight: bold; fill: #207448; }
+      .body-mono { font-family: monospace; font-size: 24px; fill: #303a36; }
+      .body-sans { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .note-box { fill: #fff8f0; stroke: #db8129; stroke-width: 2.5; rx: 8px; }
+      .note-text { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .bottom-bar { fill: #207448; rx: 8px; }
+      .bottom-bar-text { font-family: sans-serif; font-size: 28px; font-weight: bold; fill: #ffffff; }
+      .map-arrow { fill: none; stroke: #207448; stroke-width: 3; }
+      .item-box { fill: #f9fbf9; stroke: #a3c4b1; stroke-width: 1.5; rx: 6px; }
+      .icon-stroke { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1850" fill="#f5f8f5" />
+  <rect width="1600" height="1450" class="bg" />
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">From vagrant ssh-config to the Ansible inventory</text>
+  <text x="800" y="65" text-anchor="middle" class="title-text">From vagrant ssh-config to the Ansible inventory</text>
 
   
-  <g transform="translate(40, 110)">
-    <rect x="0" y="0" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 95)">
+    <rect width="1480" height="110" class="strip-box" />
     
-    <rect x="30" y="47" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 45 65 L 57 75 L 45 85 M 63 85 L 75 85" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="25" y="27" width="56" height="56" rx="6" class="icon-stroke" />
+    <path d="M 38 48 L 50 55 L 38 62 M 54 65 L 68 65" class="icon-stroke" stroke-width="3" />
     
-    <text x="110" y="55" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="110" dy="0">vagrant init ubuntu/focal64 &amp;&amp; vagrant up: imports the base box</tspan>
-      <tspan x="110" dy="34">(a base image copied into a fresh VM), attaches a NAT adapter</tspan>
-      <tspan x="110" dy="34">forwarding host port 2222 to guest port 22, and mounts the current directory at /vagrant</tspan>
+    <text x="105" y="44" class="body-mono">
+      <tspan x="105" dy="0" font-weight="bold">vagrant init ubuntu/focal64 &amp;&amp; vagrant up:</tspan>
+      <tspan class="body-sans"> imports the base box (a base image copied into a fresh VM),</tspan>
+      <tspan x="105" dy="32" class="body-sans">attaches a NAT adapter forwarding host port 2222 to guest port 22, and mounts the current directory at /vagrant</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 280)">
-    <rect x="0" y="0" width="1520" height="76" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(60, 225)">
+    <rect width="1480" height="60" class="note-box" />
     
-    <circle cx="50" cy="38" r="24" fill="none" stroke="#db8129" stroke-width="4" />
-    <line x1="50" y1="24" x2="50" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-    <circle cx="50" cy="51" r="2.5" fill="#db8129" />
-    <text x="96" y="47" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Ansible connects with the standard OpenSSH client, not with vagrant ssh</text>
-  </g>
-
-  
-  <g transform="translate(40, 380)">
-    <rect x="0" y="0" width="600" height="600" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <rect x="30" y="25" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="30" y1="45" x2="86" y2="45" stroke="#207448" stroke-width="3" />
-    <circle cx="42" cy="35" r="3" fill="#207448" />
-    <circle cx="54" cy="35" r="3" fill="#207448" />
-    <text x="104" y="63" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">vagrant ssh-config output</text>
-
-    
-    <g transform="translate(30, 105)">
-      <rect x="0" y="0" width="540" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="24" y="52" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Port 2222</text>
-    </g>
-
-    
-    <g transform="translate(30, 225)">
-      <rect x="0" y="0" width="540" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="24" y="52" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">HostName 127.0.0.1</text>
-    </g>
-
-    
-    <g transform="translate(30, 345)">
-      <rect x="0" y="0" width="540" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="24" y="52" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">User vagrant</text>
-    </g>
-
-    
-    <g transform="translate(30, 465)">
-      <rect x="0" y="0" width="540" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="20" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
-        <tspan x="20" dy="0">IdentityFile</tspan>
-        <tspan x="20" dy="34">.vagrant/machines/default/virtualbox/private_key</tspan>
-      </text>
-    </g>
-  </g>
-
-  
-  <g transform="translate(800, 380)">
-    <rect x="0" y="0" width="760" height="600" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <rect x="30" y="25" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="44" y1="41" x2="72" y2="41" stroke="#207448" stroke-width="3" />
-    <line x1="44" y1="53" x2="72" y2="53" stroke="#207448" stroke-width="3" />
-    <line x1="44" y1="65" x2="62" y2="65" stroke="#207448" stroke-width="3" />
-    <text x="104" y="63" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">inventory/vagrant.ini</text>
-
-    
-    <g transform="translate(30, 105)">
-      <rect x="0" y="0" width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="24" y="52" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[webservers] testserver ansible_port=2222</text>
-    </g>
-
-    
-    <g transform="translate(30, 225)">
-      <rect x="0" y="0" width="700" height="345" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="24" y="48" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
-        <tspan x="24" dy="0">[webservers:vars]</tspan>
-        
-        
-        <tspan x="24" dy="72">ansible_host=127.0.0.1,</tspan>
-        
-        
-        <tspan x="24" dy="120">ansible_user=vagrant,</tspan>
-        
-        
-        <tspan x="24" dy="60">ansible_private_key_file=.vagrant/machines/default/virtualbox/private_key</tspan>
-      </text>
-    </g>
+    <circle cx="50" cy="30" r="18" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 50 25 L 50 38 M 50 18 L 50 20" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <text x="85" y="38" class="note-text">Ansible connects with the standard OpenSSH client, not with vagrant ssh</text>
   </g>
 
   
   
-  <path d="M 610 527.5 L 820 527.5" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <path d="M 610 647.5 L 710 647.5 L 710 715 L 820 715" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <path d="M 610 767.5 L 740 767.5 L 740 835 L 820 835" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <path d="M 610 917.5 L 710 917.5 L 710 895 L 820 895" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <g transform="translate(40, 1010)">
-    <rect x="0" y="0" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 310)">
+    <rect width="660" height="420" class="panel-box" />
     
-    <circle cx="58" cy="75" r="20" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 58 45 L 58 55 M 58 95 L 58 105 M 28 75 L 38 75 M 78 75 L 88 75 M 37 54 L 44 61 M 72 89 L 79 96 M 37 96 L 44 89 M 72 61 L 79 54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <rect x="30" y="25" width="40" height="50" rx="4" class="icon-stroke" />
+    <line x1="42" y1="40" x2="58" y2="40" class="icon-stroke" stroke-width="3" />
+    <line x1="42" y1="52" x2="58" y2="52" class="icon-stroke" stroke-width="3" />
+    <text x="85" y="58" class="header-text">vagrant ssh-config output</text>
+
     
-    <text x="110" y="55" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="110" dy="0">a Vagrantfile is Ruby:</tspan>
-      <tspan x="110" dy="34">forwarded_port host 8080 guest 80,</tspan>
-      <tspan x="110" dy="34">private_network ip 192.168.33.10, ssh.forward_agent = true</tspan>
+    <rect x="25" y="95" width="610" height="58" class="item-box" />
+    <text x="45" y="132" class="body-mono">Port 2222</text>
+
+    
+    <rect x="25" y="165" width="610" height="58" class="item-box" />
+    <text x="45" y="202" class="body-mono">HostName 127.0.0.1</text>
+
+    
+    <rect x="25" y="235" width="610" height="58" class="item-box" />
+    <text x="45" y="272" class="body-mono">User vagrant</text>
+
+    
+    <rect x="25" y="305" width="610" height="95" class="item-box" />
+    <text x="45" y="340" class="body-mono">
+      <tspan x="45" dy="0">IdentityFile</tspan>
+      <tspan x="45" dy="32">.vagrant/machines/default/virtualbox/private_key</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 1180)">
-    <rect x="0" y="0" width="1520" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(880, 310)">
+    <rect width="660" height="420" class="panel-box" />
     
-    <rect x="30" y="77" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="30" y1="97" x2="86" y2="97" stroke="#207448" stroke-width="3" />
-    <circle cx="44" cy="87" r="3" fill="#207448" />
-    <circle cx="56" cy="87" r="3" fill="#207448" />
-    <line x1="44" y1="115" x2="72" y2="115" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="30" y="25" width="44" height="22" rx="4" class="icon-stroke" />
+    <rect x="30" y="53" width="44" height="22" rx="4" class="icon-stroke" />
+    <circle cx="62" cy="36" r="3" fill="#207448" />
+    <circle cx="62" cy="64" r="3" fill="#207448" />
+    <text x="90" y="58" class="header-text">inventory/vagrant.ini</text>
 
-    <text x="110" y="50" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="110" dy="0">config.vm.provision ansible runs Ansible from the host;</tspan>
-      <tspan x="110" dy="35">ansible_local installs and runs it inside the guest (helps when the host is Windows without WSL2);</tspan>
-      <tspan x="110" dy="35">vagrant provision, vagrant reload --provision, vagrant up --no-provision;</tspan>
-      <tspan x="110" dy="35">vagrant destroy -f</tspan>
+    
+    <rect x="25" y="95" width="610" height="58" class="item-box" />
+    <text x="45" y="132" class="body-mono">[webservers] testserver ansible_port=2222</text>
+
+    
+    <rect x="25" y="165" width="610" height="235" class="item-box" />
+    <text x="45" y="202" class="body-mono">
+      <tspan x="45" dy="0">[webservers:vars]</tspan>
+      <tspan x="45" dy="40">ansible_host=127.0.0.1,</tspan>
+      <tspan x="45" dy="40">ansible_user=vagrant,</tspan>
+      <tspan x="45" dy="40">ansible_private_key_file=</tspan>
+      <tspan x="45" dy="32">.vagrant/machines/default/virtualbox/private_key</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 1410)">
-    <rect x="0" y="0" width="1520" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <rect x="34" y="70" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 44 70 L 44 54 C 44 43 72 43 72 54 L 72 70" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="58" cy="88" r="4" fill="#207448" />
+  
+  <line x1="695" y1="434" x2="900" y2="434" class="map-arrow" marker-end="url(#arrowhead)" />
 
-    <text x="110" y="55" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="110" dy="0">since Vagrant 1.7 each VM gets a unique private key instead of the shared insecure_private_key;</tspan>
-      <tspan x="110" dy="36">with the old shared key anyone holding one VM's key could log into every VM</tspan>
+  
+  <line x1="695" y1="504" x2="900" y2="542" class="map-arrow" marker-end="url(#arrowhead)" />
+
+  
+  <line x1="695" y1="574" x2="900" y2="582" class="map-arrow" marker-end="url(#arrowhead)" />
+
+  
+  <line x1="695" y1="675" x2="900" y2="650" class="map-arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(60, 755)">
+    <rect width="1480" height="95" class="strip-box" />
+    
+    <rect x="25" y="20" width="56" height="55" rx="6" class="icon-stroke" />
+    <line x1="25" y1="36" x2="81" y2="36" class="icon-stroke" stroke-width="2" />
+    <circle cx="36" cy="28" r="3" fill="#207448" />
+    <circle cx="46" cy="28" r="3" fill="#207448" />
+    <text x="105" y="44" class="body-sans">
+      <tspan x="105" dy="0" font-weight="bold">a Vagrantfile is Ruby:</tspan>
+      <tspan class="body-mono"> forwarded_port host 8080 guest 80,</tspan>
+    </text>
+    <text x="105" y="80" class="body-mono">
+      <tspan>private_network ip 192.168.33.10, ssh.forward_agent = true</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 1600)">
-    <rect x="0" y="0" width="1520" height="80" rx="12" fill="#207448" />
-    <text x="760" y="50" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A lab is cheap to throw away, so throw it away often</text>
+  <g transform="translate(60, 875)">
+    <rect width="1480" height="210" class="strip-box" />
+    
+    <circle cx="53" cy="55" r="16" class="icon-stroke" />
+    <path d="M 53 32 L 53 40 M 53 70 L 53 78 M 30 55 L 38 55 M 68 55 L 76 55 M 37 39 L 43 45 M 63 65 L 69 71 M 37 71 L 43 65 M 63 39 L 69 45" class="icon-stroke" stroke-width="3" />
+    <text x="105" y="44" class="body-sans">
+      <tspan x="105" dy="0" class="body-mono">config.vm.provision ansible</tspan>
+      <tspan class="body-sans"> runs Ansible from the host;</tspan>
+    </text>
+    <text x="105" y="80" class="body-sans">
+      <tspan class="body-mono">ansible_local</tspan>
+      <tspan> installs and runs it inside the guest (helps when the host is Windows without WSL2);</tspan>
+    </text>
+    <text x="105" y="132" class="body-mono">
+      <tspan font-weight="bold">vagrant provision</tspan>, <tspan font-weight="bold">vagrant reload --provision</tspan>, <tspan font-weight="bold">vagrant up --no-provision</tspan>;
+    </text>
+    <text x="105" y="174" class="body-mono" font-weight="bold">
+      <tspan>vagrant destroy -f</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1110)">
+    <rect width="1480" height="110" class="strip-box" />
+    
+    <rect x="28" y="42" width="50" height="42" rx="5" class="icon-stroke" />
+    <path d="M 38 42 L 38 30 C 38 20 68 20 68 30 L 68 42" class="icon-stroke" />
+    <circle cx="53" cy="62" r="4" fill="#207448" />
+    <text x="105" y="46" class="body-sans">
+      <tspan x="105" dy="0">since Vagrant 1.7 each VM gets a unique private key instead of the shared insecure_private_key;</tspan>
+      <tspan x="105" dy="36">with the old shared key anyone holding one VM's key could log into every VM</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1245)">
+    <rect width="1480" height="70" class="bottom-bar" />
+    
+    <path d="M 45 25 L 65 25 M 50 25 L 50 18 L 60 18 L 60 25 M 47 25 L 50 54 L 60 54 L 63 25" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="85" y="45" class="bottom-bar-text">A lab is cheap to throw away, so throw it away often</text>
   </g>
 </svg>

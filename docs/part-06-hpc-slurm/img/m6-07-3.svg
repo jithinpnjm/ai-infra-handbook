@@ -1,226 +1,182 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960" style="background:#f5f8f5; font-family:system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <title>What lives where</title>
-  <desc>Architecture infographic illustrating Slurm deployment topology across clients and nodes, controller HA pair, and accounting tier.</desc>
+  <desc>Architecture infographic illustrating Slurm deployment components: clients, compute nodes, controller HA pair with shared storage, and the accounting tier.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
-    </marker>
-    <marker id="arrow-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#5c6f66" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
     </marker>
 
     
-    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143324" flood-opacity="0.08" />
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1e3a29" flood-opacity="0.08" />
     </filter>
   </defs>
 
   
-  <rect width="1600" height="1120" fill="#f5f8f5" />
-
-  
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What lives where</text>
+  <text x="800" y="68" text-anchor="middle" font-size="44" font-weight="bold" fill="#1e3a29" letter-spacing="-0.5">What lives where</text>
 
   
   
   
-  <g id="subgraph-clients">
-    <rect x="40" y="110" width="460" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <text x="70" y="155" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Clients and nodes</text>
+  <rect x="50" y="115" width="410" height="770" rx="20" fill="#e8f1ea" stroke="#c2dac6" stroke-width="2.5" />
+  <text x="255" y="162" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448">Clients and nodes</text>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="200" width="350" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-submit" filter="url(#card-shadow)">
-      <rect x="65" y="190" width="410" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(242, 215)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="0" y="0" width="56" height="46" rx="6" />
-        <line x1="0" y1="14" x2="56" y2="14" />
-        <circle cx="10" cy="7" r="2" fill="#207448" />
-        <circle cx="18" cy="7" r="2" fill="#207448" />
-        <polyline points="12,24 20,30 12,36" />
-        <line x1="24" y1="36" x2="36" y2="36" />
-      </g>
-      
-      <text x="270" y="325" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">login nodes:</text>
-      <text x="270" y="380" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">sbatch, srun</text>
-    </g>
-
+    <rect x="100" y="222" width="38" height="30" rx="5" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 108 232 L 115 237 L 108 242 M 118 244 L 128 244" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
     
-    <g id="node-nodes" filter="url(#card-shadow)">
-      <rect x="65" y="650" width="410" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(242, 675)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="10" y="10" width="36" height="36" rx="4" />
-        <rect x="18" y="18" width="20" height="20" fill="#e8f1ea" />
-        <line x1="18" y1="2" x2="18" y2="10" />
-        <line x1="28" y1="2" x2="28" y2="10" />
-        <line x1="38" y1="2" x2="38" y2="10" />
-        <line x1="18" y1="46" x2="18" y2="54" />
-        <line x1="28" y1="46" x2="28" y2="54" />
-        <line x1="38" y1="46" x2="38" y2="54" />
-        <line x1="2" y1="18" x2="10" y2="18" />
-        <line x1="2" y1="28" x2="10" y2="28" />
-        <line x1="2" y1="38" x2="10" y2="38" />
-        <line x1="46" y1="18" x2="54" y2="18" />
-        <line x1="46" y1="28" x2="54" y2="28" />
-        <line x1="46" y1="38" x2="54" y2="38" />
-      </g>
-      
-      <text x="270" y="785" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">slurmd</text>
-      <text x="270" y="840" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">on compute nodes</text>
-    </g>
+    <text x="152" y="246" font-size="25" font-weight="bold" fill="#303a36">login nodes:</text>
+    <text x="152" y="286" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">sbatch, srun</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="615" width="350" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="100" y="640" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="108" y="648" width="18" height="18" rx="2" fill="#207448" opacity="0.2" />
+    <path d="M 107 635 L 107 640 M 117 635 L 117 640 M 127 635 L 127 640 M 107 674 L 107 679 M 117 674 L 117 679 M 127 674 L 127 679 M 95 647 L 100 647 M 95 657 L 100 657 M 95 667 L 100 667 M 134 647 L 139 647 M 134 657 L 139 657 M 134 667 L 139 667" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="150" y="658" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">slurmd</text>
+    <text x="150" y="698" font-size="25" font-weight="bold" fill="#303a36">on compute nodes</text>
   </g>
 
   
   
   
-  <g id="subgraph-ha">
-    <rect x="560" y="110" width="480" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <text x="590" y="155" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Controller HA pair</text>
+  <rect x="520" y="115" width="530" height="770" rx="20" fill="#e8f1ea" stroke="#c2dac6" stroke-width="2.5" />
+  <text x="785" y="162" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448">Controller HA pair</text>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="560" y="200" width="360" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-p" filter="url(#card-shadow)">
-      <rect x="585" y="190" width="430" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
-      
-      <g transform="translate(772, 210)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="28" cy="28" r="12" fill="#fdf6ee" />
-        <path d="M28,6 L28,12 M28,44 L28,50 M6,28 L12,28 M44,28 L50,28 M12.5,12.5 L16.7,16.7 M39.3,39.3 L43.5,43.5 M12.5,43.5 L16.7,39.3 M39.3,16.7 L43.5,12.5" />
-      </g>
-      
-      <text x="800" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">slurmctld primary</text>
-    </g>
+    <rect x="582" y="228" width="34" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="592" cy="240" r="2.5" fill="#207448" />
+    <path d="M 602 240 L 610 240" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="630" y="252" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">slurmctld</text>
+    <text x="630" y="292" font-size="26" font-weight="bold" fill="#303a36">primary</text>
+  </g>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="560" y="415" width="360" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-ss" filter="url(#card-shadow)">
-      <rect x="585" y="480" width="430" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(772, 498)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 6 12 C 6 6, 50 6, 50 12 C 50 18, 6 18, 6 12 Z" fill="#e8f1ea" />
-        <path d="M 6 12 L 6 42 C 6 48, 50 48, 50 42 L 50 12" />
-        <path d="M 6 22 C 6 28, 50 28, 50 22" />
-        <path d="M 6 32 C 6 38, 50 38, 50 32" />
-      </g>
-      
-      <text x="800" y="595" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Shared StateSaveLocation</text>
-      <text x="800" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">NFS or clustered FS</text>
-    </g>
+    <path d="M 582 444 C 582 438 599 438 599 438 C 599 438 616 438 616 444 L 616 462 C 616 468 599 468 599 468 C 599 468 582 468 582 462 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 582 444 C 582 450 599 450 599 450 C 599 450 616 450 616 444" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 582 453 C 582 459 599 459 599 459 C 599 459 616 459 616 453" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="740" y="462" text-anchor="middle" font-size="25" font-weight="bold" fill="#303a36">Shared StateSaveLocation</text>
+    <text x="740" y="502" text-anchor="middle" font-size="24" fill="#4d5c56">NFS or clustered FS</text>
+  </g>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="560" y="615" width="360" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-b" filter="url(#card-shadow)">
-      <rect x="585" y="770" width="430" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(772, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 28 8 L 48 16 L 48 32 C 48 44, 28 52, 28 52 C 28 52, 8 44, 8 32 L 8 16 Z" fill="#e8f1ea" />
-        <circle cx="28" cy="28" r="6" />
-      </g>
-      
-      <text x="800" y="905" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">slurmctld backup (standby)</text>
-    </g>
+    <rect x="582" y="643" width="34" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="592" cy="655" r="2.5" fill="#207448" />
+    <path d="M 602 655 L 610 655" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="630" y="658" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">slurmctld</text>
+    <text x="630" y="698" font-size="24" font-weight="bold" fill="#4d5c56">backup (standby)</text>
   </g>
 
   
   
   
-  <g id="subgraph-acct">
-    <rect x="1100" y="110" width="460" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <text x="1130" y="155" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accounting tier</text>
+  <rect x="1110" y="115" width="440" height="770" rx="20" fill="#e8f1ea" stroke="#c2dac6" stroke-width="2.5" />
+  <text x="1330" y="162" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448">Accounting tier</text>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="1135" y="200" width="185" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-dbd1" filter="url(#card-shadow)">
-      <rect x="1125" y="190" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(1302, 210)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="44" height="40" rx="6" />
-        <circle cx="28" cy="28" r="8" fill="#e8f1ea" />
-        <line x1="28" y1="12" x2="28" y2="16" />
-        <line x1="28" y1="40" x2="28" y2="44" />
-        <line x1="12" y1="28" x2="16" y2="28" />
-        <line x1="40" y1="28" x2="44" y2="28" />
-      </g>
-      
-      <text x="1330" y="325" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">slurmdbd</text>
-    </g>
+    <circle cx="1227" cy="245" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="1227" cy="245" r="5" fill="#207448" />
+    <text x="1227" y="305" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="25" font-weight="bold" fill="#207448">slurmdbd</text>
+  </g>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="1340" y="200" width="185" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4" />
     
-    <g id="node-dbc" filter="url(#card-shadow)">
-      <rect x="1125" y="480" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(1302, 498)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 6 12 C 6 6, 50 6, 50 12 C 50 18, 6 18, 6 12 Z" fill="#e8f1ea" />
-        <path d="M 6 12 L 6 42 C 6 48, 50 48, 50 42 L 50 12" />
-        <path d="M 6 22 C 6 28, 50 28, 50 22" />
-        <path d="M 6 32 C 6 38, 50 38, 50 32" />
-      </g>
-      
-      <text x="1330" y="595" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">MariaDB with</text>
-      <text x="1330" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">replication or Galera</text>
-    </g>
+    <circle cx="1432" cy="235" r="12" fill="none" stroke="#4d5c56" stroke-width="2.5" stroke-dasharray="4,3" />
+    <text x="1432" y="275" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">slurmdbd</text>
+    <text x="1432" y="304" text-anchor="middle" font-size="24" fill="#303a36">standby</text>
+    <text x="1432" y="330" text-anchor="middle" font-size="24" fill="#5c7067">(optional)</text>
+  </g>
 
+  
+  <g filter="url(#shadow)">
+    <rect x="1135" y="590" width="390" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
     
-    <g id="node-dbd2" filter="url(#card-shadow)">
-      <rect x="1125" y="770" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(1302, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="44" height="40" rx="6" stroke-dasharray="4 3" />
-        <circle cx="28" cy="28" r="8" fill="#e8f1ea" />
-        <line x1="28" y1="12" x2="28" y2="16" />
-        <line x1="28" y1="40" x2="28" y2="44" />
-      </g>
-      
-      <text x="1330" y="885" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">slurmdbd</text>
-      <text x="1330" y="930" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">standby (optional)</text>
-    </g>
+    <path d="M 1160 635 C 1160 628 1180 628 1180 628 C 1180 628 1200 628 1200 635 L 1200 665 C 1200 672 1180 672 1180 672 C 1180 672 1160 672 1160 665 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1160 635 C 1160 642 1180 642 1180 642 C 1180 642 1200 642 1200 635" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1160 647 C 1160 654 1180 654 1180 654 C 1180 654 1200 654 1200 647" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1160 658 C 1160 665 1180 665 1180 665 C 1180 665 1200 665 1200 658" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="1340" y="635" text-anchor="middle" font-size="28" font-weight="bold" fill="#303a36">MariaDB</text>
+    <text x="1340" y="675" text-anchor="middle" font-size="24" fill="#303a36">with replication</text>
+    <text x="1340" y="708" text-anchor="middle" font-size="24" fill="#303a36">or Galera</text>
   </g>
 
   
   
   
 
-  
-  <path d="M 475 270 L 577 270" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+   P -->
+  <path d="M 430 240 L 550 240" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+   P (routes in open channel between clients and HA) -->
+  <path d="M 430 640 L 485 640 L 485 285 L 550 285" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+   SS -->
+  <path d="M 740 330 L 740 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+   SS -->
+  <path d="M 740 615 L 740 555" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <path d="M 475 740 L 515 740 L 515 320 L 577 320" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)" />
-
+  <path d="M 920 650 L 980 650 L 980 270 L 930 270" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="7,5" stroke-linejoin="round" marker-end="url(#arrow-green)" />
   
-  <path d="M 800 400 L 800 472" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 750 770 L 750 408" fill="none" stroke="#5c6f66" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-grey)" />
-  <g transform="translate(620, 715)">
-    <rect x="0" y="0" width="120" height="34" rx="6" fill="#f5f8f5" stroke="#5c6f66" stroke-width="1.5" />
-    <text x="60" y="24" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">heartbeat</text>
+  <g>
+    <rect x="918" y="445" width="124" height="42" rx="21" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="980" y="474" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448">heartbeat</text>
   </g>
 
   
-  <path d="M 850 770 L 850 698" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
+  <path d="M 150 330 L 150 795 L 640 795 L 640 755" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="7,5" stroke-linejoin="round" marker-end="url(#arrow-orange)" />
   
-  <path d="M 475 450 L 535 450 L 535 830 L 577 830" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8 6" stroke-linejoin="round" marker-end="url(#arrow-orange)" />
-  <g transform="translate(485, 495)">
-    <rect x="0" y="0" width="100" height="34" rx="6" fill="#fdf6ee" stroke="#db8129" stroke-width="1.5" />
-    <text x="50" y="24" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">failover</text>
+  <g>
+    <rect x="330" y="774" width="120" height="42" rx="21" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="390" y="803" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129">failover</text>
   </g>
 
   
-  <path d="M 475 890 L 577 890" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-orange)" />
-  <g transform="translate(485, 905)">
-    <rect x="0" y="0" width="100" height="34" rx="6" fill="#fdf6ee" stroke="#db8129" stroke-width="1.5" />
-    <text x="50" y="24" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">failover</text>
+  <path d="M 430 690 L 550 690" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="7,5" marker-end="url(#arrow-orange)" />
+  
+  <g>
+    <rect x="435" y="669" width="110" height="42" rx="21" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="490" y="698" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129">failover</text>
   </g>
 
-  
-  <path d="M 1015 295 L 1117 295" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+   DBD1 -->
+  <path d="M 920 240 L 1125 240" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
-  
-  <path d="M 1330 400 L 1330 472" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+   DBC -->
+  <path d="M 1227 350 L 1227 580" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
-  
-  <path d="M 1330 770 L 1330 698" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+   DBC -->
+  <path d="M 1432 350 L 1432 580" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
 </svg>

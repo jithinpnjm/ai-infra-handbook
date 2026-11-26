@@ -1,178 +1,166 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
   <title>Drop-ins add to list keys, so clear ExecStart before you replace it</title>
-  <desc>Visual infographic explaining systemd drop-in configuration behavior for list-valued keys such as ExecStart.</desc>
+  <desc>Visual explanation of systemd drop-in behavior for list-valued keys such as ExecStart, comparing incorrect and correct override configurations.</desc>
+
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
-
-  
-  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="800" dy="0">Drop-ins add to list keys,</tspan>
-    <tspan x="800" dy="56">so clear ExecStart before you replace it</tspan>
+  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Drop-ins add to list keys,</tspan>
+    <tspan x="625" dy="0">so clear ExecStart before you replace it</tspan>
   </text>
 
   
-  <g id="left-vendor-unit">
+  <g id="vendor-unit-card">
+    <rect x="40" y="130" width="410" height="645" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <rect x="40" y="145" width="490" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
     
-    <g transform="translate(65, 172)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="28" cy="28" r="14" />
-      <path d="M28 4 L28 10 M28 46 L28 52 M4 28 L10 28 M46 28 L52 28 M11 11 L15 15 M41 41 L45 45 M11 45 L15 41 M41 11 L45 15" />
+    <g transform="translate(65, 155)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="12"/>
+      <path d="M28,6 L28,12 M28,44 L28,50 M6,28 L12,28 M44,28 L50,28 M12.5,12.5 L16.7,16.7 M39.3,39.3 L43.5,43.5 M12.5,43.5 L16.7,39.3 M39.3,16.7 L43.5,12.5"/>
     </g>
 
     
-    <text x="135" y="196" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="135" dy="0">/usr/lib/systemd/system/</tspan>
-      <tspan x="135" dy="32">containerd.service</tspan>
+    <text font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="65" y="250">/usr/lib/systemd/system/</tspan>
+      <tspan x="65" y="284">containerd.service</tspan>
     </text>
 
     
-    <rect x="60" y="265" width="450" height="580" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-
+    <rect x="65" y="325" width="360" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <text x="85" y="325" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">
-      [Service]
-    </text>
-
-    
-    <rect x="75" y="360" width="420" height="60" rx="8" fill="#f5f8f5" stroke="#c8dcd0" stroke-width="1.5" />
-    <text x="85" y="400" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-      ExecStart=/usr/bin/containerd
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="85" y="385">[Service]</tspan>
+      <tspan x="85" y="445">ExecStart=</tspan>
+      <tspan x="85" y="480">/usr/bin/containerd</tspan>
     </text>
   </g>
 
   
-  <g id="middle-drop-in-directory">
-    
-    <rect x="560" y="145" width="630" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="drop-in-directory-container">
+    <rect x="475" y="130" width="720" height="645" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
     
-    <g transform="translate(585, 172)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M6 14 L22 14 L28 20 L50 20 A4 4 0 0 1 54 24 L54 44 A4 4 0 0 1 50 48 L6 48 A4 4 0 0 1 2 44 L2 18 A4 4 0 0 1 6 14 Z" />
+    <g transform="translate(500, 155)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M6,14 L22,14 L28,22 L50,22 L50,48 L6,48 Z"/>
     </g>
 
     
-    <text x="655" y="196" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="655" dy="0">/etc/systemd/system/</tspan>
-      <tspan x="655" dy="32">containerd.service.d/</tspan>
+    <text font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="570" y="180">/etc/systemd/system/</tspan>
+      <tspan x="570" y="212">containerd.service.d/</tspan>
     </text>
 
     
-    <g id="card-wrong">
-      <rect x="580" y="250" width="590" height="280" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-
+    <g id="wrong-override-card">
+      <rect x="495" y="235" width="680" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
       
-      <text x="605" y="286" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-        <tspan x="605" dy="0">Wrong: override.conf with only</tspan>
-        <tspan x="605" dy="32">ExecStart=/usr/bin/containerd</tspan>
-        <tspan x="605" dy="32">--config /etc/containerd/gpu-config.toml</tspan>
+      <text font-size="24" fill="#303a36">
+        <tspan x="515" y="272" font-family="sans-serif" font-weight="bold">Wrong: override.conf with only</tspan>
+        <tspan x="515" y="306" font-family="monospace">ExecStart=/usr/bin/containerd</tspan>
+        <tspan x="515" y="340" font-family="monospace">--config /etc/containerd/gpu-config.toml</tspan>
       </text>
 
       
-      <rect x="600" y="375" width="550" height="135" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+      <rect x="515" y="365" width="640" height="102" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
       
-      <rect x="620" y="392" width="240" height="10" rx="5" fill="#db8129" fill-opacity="0.3" />
-      <rect x="620" y="410" width="460" height="10" rx="5" fill="#db8129" fill-opacity="0.3" />
       
-      <text x="620" y="455" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-        <tspan x="620" dy="0">list-valued key: the assignment ADDS,</tspan>
-        <tspan x="620" dy="32">so systemd sees two commands</tspan>
+      <line x1="535" y1="388" x2="635" y2="388" stroke="#db8129" stroke-width="6" stroke-linecap="round"/>
+      <line x1="645" y1="388" x2="745" y2="388" stroke="#db8129" stroke-width="6" stroke-linecap="round"/>
+
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="535" y="424">list-valued key: the assignment ADDS,</tspan>
+        <tspan x="535" y="454">so systemd sees two commands</tspan>
       </text>
     </g>
 
     
-    <g id="card-right">
-      <rect x="580" y="550" width="590" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
+    <g id="right-override-card">
+      <rect x="495" y="505" width="680" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
       
-      <text x="605" y="584" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-        <tspan x="605" dy="0">Right: override.conf with an empty line</tspan>
-        <tspan x="605" dy="32">ExecStart= first, then</tspan>
-        <tspan x="605" dy="32">ExecStart=/usr/bin/containerd</tspan>
-        <tspan x="605" dy="32">--config /etc/containerd/gpu-config.toml</tspan>
+      <text font-size="24" fill="#303a36">
+        <tspan x="515" y="540" font-family="sans-serif" font-weight="bold">Right: override.conf with an empty line</tspan>
+        <tspan x="515" y="574" font-family="monospace">ExecStart= first, then</tspan>
+        <tspan x="515" y="608" font-family="monospace">ExecStart=/usr/bin/containerd</tspan>
+        <tspan x="515" y="642" font-family="monospace">--config /etc/containerd/gpu-config.toml</tspan>
       </text>
 
       
-      <rect x="600" y="705" width="550" height="125" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+      <rect x="515" y="665" width="640" height="74" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
       
-      <rect x="620" y="725" width="460" height="10" rx="5" fill="#207448" fill-opacity="0.3" />
       
-      <text x="620" y="775" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <line x1="535" y1="685" x2="635" y2="685" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+
+      <text x="535" y="718" font-family="sans-serif" font-size="24" fill="#303a36">
         an empty assignment resets the list
       </text>
     </g>
   </g>
 
   
-  <g id="right-side-notes">
-    
-    <rect x="1220" y="145" width="340" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="side-notes-panel">
+    <rect x="1215" y="130" width="345" height="645" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
     
-    <g transform="translate(1362, 172)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M12 6 L34 6 L44 16 L44 50 A4 4 0 0 1 40 54 L12 54 A4 4 0 0 1 8 50 L8 10 A4 4 0 0 1 12 6 Z" />
-      <path d="M34 6 L34 16 L44 16" />
-      <line x1="16" y1="28" x2="36" y2="28" />
-      <line x1="16" y1="38" x2="36" y2="38" />
+    <g transform="translate(1240, 155)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M10,6 L36,6 L46,16 L46,50 L10,50 Z"/>
+      <path d="M36,6 L36,16 L46,16"/>
+      <line x1="18" y1="28" x2="38" y2="28"/>
+      <line x1="18" y1="38" x2="38" y2="38"/>
     </g>
 
     
-    <rect x="1240" y="250" width="300" height="260" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-    <text x="1260" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1260" dy="0">Files are applied</tspan>
-      <tspan x="1260" dy="34">in lexical order:</tspan>
-      <tspan x="1260" dy="38" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">10-limits.conf,</tspan>
-      <tspan x="1260" dy="34" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">then 50-gpu.conf</tspan>
+    <rect x="1235" y="235" width="305" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-size="24" fill="#303a36">
+      <tspan x="1255" y="275" font-family="sans-serif">Files are applied in</tspan>
+      <tspan x="1255" y="309" font-family="sans-serif">lexical order:</tspan>
+      <tspan x="1255" y="350" font-family="monospace">10-limits.conf,</tspan>
+      <tspan x="1255" y="384" font-family="monospace">then 50-gpu.conf</tspan>
     </text>
 
     
-    <rect x="1240" y="535" width="300" height="320" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-    <text x="1260" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1260" dy="0">List-valued keys</tspan>
-      <tspan x="1260" dy="34">that add:</tspan>
-      <tspan x="1260" dy="38" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ExecStartPre=,</tspan>
-      <tspan x="1260" dy="34" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">Environment=,</tspan>
-      <tspan x="1260" dy="34" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">After=</tspan>
+    <rect x="1235" y="490" width="305" height="265" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-size="24" fill="#303a36">
+      <tspan x="1255" y="530" font-family="sans-serif">List-valued keys</tspan>
+      <tspan x="1255" y="564" font-family="sans-serif">that add:</tspan>
+      <tspan x="1255" y="605" font-family="monospace">ExecStartPre=,</tspan>
+      <tspan x="1255" y="642" font-family="monospace">Environment=,</tspan>
+      <tspan x="1255" y="679" font-family="monospace">After=</tspan>
     </text>
   </g>
 
   
-  <g id="bottom-strip-commands">
-    <rect x="40" y="905" width="1520" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
+  <g id="check-commands-strip">
     
-    <g transform="translate(65, 952)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="22" cy="22" r="14" />
-      <line x1="32" y1="32" x2="48" y2="48" />
+    <g transform="translate(40, 792)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="32" height="24" rx="4"/>
+      <path d="M6,7 L12,12 L6,17 M16,17 L24,17"/>
     </g>
 
     
-    <rect x="140" y="930" width="320" height="100" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-    <text x="160" y="990" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <rect x="40" y="825" width="360" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="880" font-family="monospace" font-size="24" fill="#303a36">
       systemctl cat NAME
     </text>
 
     
-    <rect x="480" y="930" width="460" height="100" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-    <text x="500" y="972" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="500" dy="0">systemctl show NAME</tspan>
-      <tspan x="500" dy="34">-p ExecStart</tspan>
+    <rect x="425" y="825" width="525" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="445" y="880" font-family="monospace" font-size="24" fill="#303a36">
+      systemctl show NAME -p ExecStart
     </text>
 
     
-    <rect x="960" y="930" width="580" height="100" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-    <text x="980" y="972" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="980" dy="0">systemd-analyze verify</tspan>
-      <tspan x="980" dy="34">/etc/systemd/system/NAME.service</tspan>
+    <rect x="975" y="825" width="585" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="995" y="863">systemd-analyze verify</tspan>
+      <tspan x="995" y="897">/etc/systemd/system/NAME.service</tspan>
     </text>
   </g>
 
   
-  <g id="bottom-takeaway-bar">
-    <rect x="40" y="1080" width="1520" height="75" rx="12" fill="#207448" />
-    <text x="800" y="1127" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+  <g id="takeaway-bar">
+    <rect x="40" y="945" width="1520" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="992" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
       Before you touch a vendor unit, check whether a drop-in can make the same change
     </text>
   </g>

@@ -1,331 +1,237 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>A slow tool: which profiler answers which question</title>
-  <desc>Technical infographic mapping profiling symptoms to tools and commands, with an investigation ladder.</desc>
+  <desc>Visual comparison guide matching Python profiling tools to specific performance symptoms and an investigation ladder.</desc>
 
   <defs>
-    
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
-    </marker>
-    
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    <marker id="ladder-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
 
   
-  <text x="50" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A slow tool: which profiler answers which question</text>
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">A slow tool: which profiler answers which question</text>
 
   
+  <rect x="50" y="95" width="1500" height="325" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <rect x="50" y="95" width="1500" height="48" rx="14" fill="#db8129"/>
   
-  
-  <rect x="40" y="100" width="1040" height="1010" rx="12" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
+  <rect x="50" y="125" width="1500" height="18" fill="#db8129"/>
+  <text x="75" y="130" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Investigation ladder</text>
 
   
-  <rect x="55" y="115" width="245" height="50" rx="8" fill="#e8f1ea" />
-  <text x="177" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Symptom</text>
-
-  
-  <line x1="300" y1="140" x2="320" y2="140" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  <rect x="325" y="115" width="245" height="50" rx="8" fill="#e8f1ea" />
-  <text x="447" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Tool</text>
-
-  
-  <line x1="570" y1="140" x2="590" y2="140" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  <rect x="595" y="115" width="470" height="50" rx="8" fill="#e8f1ea" />
-  <text x="830" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">How</text>
-
-  
-  
-  
-  <rect x="55" y="177" width="1010" height="152" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
-  
-  
-  
-  <g transform="translate(68, 192)">
-    <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-    <rect x="18" y="18" width="20" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2" />
-    <line x1="16" y1="3" x2="16" y2="8" stroke="#207448" stroke-width="2.5" />
-    <line x1="28" y1="3" x2="28" y2="8" stroke="#207448" stroke-width="2.5" />
-    <line x1="40" y1="3" x2="40" y2="8" stroke="#207448" stroke-width="2.5" />
-    <line x1="16" y1="48" x2="16" y2="53" stroke="#207448" stroke-width="2.5" />
-    <line x1="28" y1="48" x2="28" y2="53" stroke="#207448" stroke-width="2.5" />
-    <line x1="40" y1="48" x2="40" y2="53" stroke="#207448" stroke-width="2.5" />
-    <line x1="3" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="2.5" />
-    <line x1="3" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="2.5" />
-    <line x1="3" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="2.5" />
-    <line x1="48" y1="16" x2="53" y2="16" stroke="#207448" stroke-width="2.5" />
-    <line x1="48" y1="28" x2="53" y2="28" stroke="#207448" stroke-width="2.5" />
-    <line x1="48" y1="40" x2="53" y2="40" stroke="#207448" stroke-width="2.5" />
-  </g>
-  <text x="70" y="282" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU busy</text>
-
-  
-  <line x1="310" y1="187" x2="310" y2="319" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="187" x2="580" y2="319" stroke="#e8f1ea" stroke-width="2" />
-
-  
-  <text x="325" y="240" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="325" dy="0">cProfile, pstats,</tspan>
-    <tspan x="325" dy="32">snakeviz</tspan>
+  <rect x="70" y="160" width="256" height="240" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="106" cy="196" r="18" fill="#db8129"/>
+  <text x="106" y="204" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="90" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="90" dy="0">confirm the</tspan>
+    <tspan x="90" dy="32">symptom with</tspan>
+    <tspan x="90" dy="32">timings</tspan>
   </text>
 
   
-  <text x="595" y="210" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="595" dy="0">python -m cProfile -o</tspan>
-    <tspan x="595" dy="28">out.prof script.py, then</tspan>
-    <tspan x="595" dy="28">python -m pstats out.prof</tspan>
-    <tspan x="595" dy="28">sorted by cumulative time;</tspan>
-    <tspan x="595" dy="28">snakeviz for a graphical view</tspan>
+  <line x1="332" y1="280" x2="356" y2="280" stroke="#db8129" stroke-width="4" marker-end="url(#ladder-arrow)"/>
+
+  
+  <rect x="362" y="160" width="256" height="240" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="398" cy="196" r="18" fill="#db8129"/>
+  <text x="398" y="204" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="382" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="382" dy="0">is the API slow</tspan>
+    <tspan x="382" dy="34">or your tool?</tspan>
   </text>
 
   
-  
-  
-  <rect x="55" y="337" width="1010" height="130" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
+  <line x1="624" y1="280" x2="648" y2="280" stroke="#db8129" stroke-width="4" marker-end="url(#ladder-arrow)"/>
 
   
-  
-  <g transform="translate(68, 350)">
-    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="28" cy="28" r="6" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="135" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="135" dy="0">Running</tspan>
-    <tspan x="135" dy="34">process</tspan>
+  <rect x="654" y="160" width="256" height="240" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="690" cy="196" r="18" fill="#db8129"/>
+  <text x="690" y="204" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="674" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="674" dy="0">profile with</tspan>
+    <tspan x="674" dy="32">py-spy on the</tspan>
+    <tspan x="674" dy="32">live process</tspan>
   </text>
 
   
-  <line x1="310" y1="347" x2="310" y2="457" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="347" x2="580" y2="457" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="916" y1="280" x2="940" y2="280" stroke="#db8129" stroke-width="4" marker-end="url(#ladder-arrow)"/>
 
   
-  <text x="325" y="407" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">py-spy</text>
-
-  
-  <text x="595" y="372" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="595" dy="0">py-spy top -p PID, py-spy</tspan>
-    <tspan x="595" dy="28">record -o flame.svg -p PID;</tspan>
-    <tspan x="595" dy="28">no code change but needs</tspan>
-    <tspan x="595" dy="28">ptrace permission</tspan>
+  <rect x="946" y="160" width="256" height="240" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="982" cy="196" r="18" fill="#db8129"/>
+  <text x="982" y="204" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="966" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="966" dy="0">check resource</tspan>
+    <tspan x="966" dy="30">limits: CPU</tspan>
+    <tspan x="966" dy="30">throttling in a</tspan>
+    <tspan x="966" dy="30">container shows</tspan>
+    <tspan x="966" dy="30">up as latency</tspan>
   </text>
 
   
-  
-  
-  <rect x="55" y="475" width="1010" height="100" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
+  <line x1="1208" y1="280" x2="1232" y2="280" stroke="#db8129" stroke-width="4" marker-end="url(#ladder-arrow)"/>
 
   
-  
-  <g transform="translate(68, 497)">
-    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="3" />
-    <polyline points="28,14 28,28 39,28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
-  <text x="135" y="518" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="135" dy="0">Line-level and</tspan>
-    <tspan x="135" dy="34">wall-clock</tspan>
+  <rect x="1238" y="160" width="256" height="240" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1274" cy="196" r="18" fill="#db8129"/>
+  <text x="1274" y="204" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="1258" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1258" dy="0">fix the specific</tspan>
+    <tspan x="1258" dy="32">bottleneck and</tspan>
+    <tspan x="1258" dy="32">verify with the</tspan>
+    <tspan x="1258" dy="32">same measurement</tspan>
   </text>
 
   
-  <line x1="310" y1="485" x2="310" y2="565" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="485" x2="580" y2="565" stroke="#e8f1ea" stroke-width="2" />
+  <rect x="50" y="445" width="340" height="50" rx="8" fill="#207448"/>
+  <text x="220" y="480" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Symptom</text>
+
+  <rect x="405" y="445" width="360" height="50" rx="8" fill="#207448"/>
+  <text x="585" y="480" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Tool</text>
+
+  <rect x="780" y="445" width="770" height="50" rx="8" fill="#207448"/>
+  <text x="1165" y="480" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">How</text>
 
   
-  <text x="325" y="520" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="325" dy="0">scalene,</tspan>
-    <tspan x="325" dy="32">pyinstrument</tspan>
+  <rect x="50" y="508" width="340" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="68" y="555" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="80" y1="550" x2="80" y2="555" stroke="#207448" stroke-width="3"/>
+  <line x1="91" y1="550" x2="91" y2="555" stroke="#207448" stroke-width="3"/>
+  <line x1="102" y1="550" x2="102" y2="555" stroke="#207448" stroke-width="3"/>
+  <line x1="80" y1="601" x2="80" y2="606" stroke="#207448" stroke-width="3"/>
+  <line x1="91" y1="601" x2="91" y2="606" stroke="#207448" stroke-width="3"/>
+  <line x1="102" y1="601" x2="102" y2="606" stroke="#207448" stroke-width="3"/>
+  <rect x="80" y="567" width="22" height="22" fill="#207448"/>
+  <text x="130" y="587" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">CPU busy</text>
+
+  <rect x="405" y="508" width="360" height="142" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="568" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="425" dy="0">cProfile, pstats,</tspan>
+    <tspan x="425" dy="32">snakeviz</tspan>
+  </text>
+
+  <rect x="780" y="508" width="770" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="542" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">python -m cProfile -o out.prof script.py,</tspan>
+    <tspan x="802" dy="28">then python -m pstats out.prof</tspan>
+    <tspan x="802" dy="28">sorted by cumulative time;</tspan>
+    <tspan x="802" dy="28" font-family="sans-serif">snakeviz for a graphical view</tspan>
   </text>
 
   
+  <rect x="50" y="662" width="340" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
   
-  
-  <rect x="55" y="583" width="1010" height="225" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
+  <circle cx="91" cy="727" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="91" cy="727" r="7" fill="#207448"/>
+  <path d="M91 704 L91 710 M91 744 L91 750 M68 727 L74 727 M108 727 L114 727 M75 711 L79 715 M103 739 L107 743 M75 743 L79 739 M103 715 L107 711" stroke="#207448" stroke-width="3"/>
+  <text x="130" y="735" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Running process</text>
 
-  
-  
-  <g transform="translate(68, 620)">
-    <rect x="6" y="14" width="44" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-    <rect x="12" y="20" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="2" />
-    <rect x="24" y="20" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="2" />
-    <rect x="36" y="20" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="2" />
-    <line x1="12" y1="42" x2="12" y2="47" stroke="#207448" stroke-width="2.5" />
-    <line x1="20" y1="42" x2="20" y2="47" stroke="#207448" stroke-width="2.5" />
-    <line x1="28" y1="42" x2="28" y2="47" stroke="#207448" stroke-width="2.5" />
-    <line x1="36" y1="42" x2="36" y2="47" stroke="#207448" stroke-width="2.5" />
-    <line x1="44" y1="42" x2="44" y2="47" stroke="#207448" stroke-width="2.5" />
-  </g>
-  <text x="135" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="135" dy="0">Memory</tspan>
-    <tspan x="135" dy="34">keeps growing</tspan>
+  <rect x="405" y="662" width="360" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="736" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">py-spy</text>
+
+  <rect x="780" y="662" width="770" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="704" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">py-spy top -p PID,</tspan>
+    <tspan x="802" dy="30">py-spy record -o flame.svg -p PID;</tspan>
+    <tspan x="802" dy="30" font-family="sans-serif">no code change but needs ptrace permission</tspan>
   </text>
 
   
-  <line x1="310" y1="593" x2="310" y2="798" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="593" x2="580" y2="798" stroke="#e8f1ea" stroke-width="2" />
-
+  <rect x="50" y="804" width="340" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
   
-  <text x="325" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="325" dy="0">tracemalloc first;</tspan>
-    <tspan x="325" dy="32">memray and objgraph</tspan>
-    <tspan x="325" dy="32">for reference chains</tspan>
+  <rect x="70" y="836" width="44" height="50" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="78" y1="849" x2="104" y2="849" stroke="#207448" stroke-width="3"/>
+  <line x1="78" y1="861" x2="98" y2="861" stroke="#207448" stroke-width="3"/>
+  <line x1="78" y1="873" x2="106" y2="873" stroke="#207448" stroke-width="3"/>
+  <text x="130" y="853" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">Line-level and</tspan>
+    <tspan x="130" dy="32">wall-clock</tspan>
+  </text>
+
+  <rect x="405" y="804" width="360" height="116" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="853" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="425" dy="0">scalene,</tspan>
+    <tspan x="425" dy="32">pyinstrument</tspan>
+  </text>
+
+  <rect x="780" y="804" width="770" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="853" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">sampling per line: scalene shows which lines</tspan>
+    <tspan x="802" dy="32">cost time, memory and copy volume</tspan>
   </text>
 
   
-  <text x="595" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="595" dy="0">take snapshots, compare,</tspan>
-    <tspan x="595" dy="28">print top allocation sites;</tspan>
-    <tspan x="595" dy="28">usual leaks: unbounded dicts</tspan>
-    <tspan x="595" dy="28">and lists, caches without</tspan>
-    <tspan x="595" dy="28">eviction, retained exceptions</tspan>
-    <tspan x="595" dy="28">and tracebacks, ever-growing</tspan>
-    <tspan x="595" dy="28">metric label sets</tspan>
+  <rect x="50" y="932" width="340" height="174" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="70" y="988" width="46" height="58" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="70" y1="1006" x2="116" y2="1006" stroke="#207448" stroke-width="2.5"/>
+  <line x1="70" y1="1024" x2="116" y2="1024" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="82" cy="997" r="3" fill="#207448"/>
+  <circle cx="82" cy="1015" r="3" fill="#207448"/>
+  <circle cx="82" cy="1033" r="3" fill="#207448"/>
+  <text x="130" y="1006" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">Memory keeps</tspan>
+    <tspan x="130" dy="32">growing</tspan>
+  </text>
+
+  <rect x="405" y="932" width="360" height="174" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="425" dy="0">tracemalloc first;</tspan>
+    <tspan x="425" dy="32">memray and objgraph</tspan>
+    <tspan x="425" dy="32">for reference chains</tspan>
+  </text>
+
+  <rect x="780" y="932" width="770" height="174" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="974" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">take snapshots, compare, print top allocation sites;</tspan>
+    <tspan x="802" dy="30">usual leaks: unbounded dicts and lists, caches without</tspan>
+    <tspan x="802" dy="30">eviction, retained exceptions and tracebacks,</tspan>
+    <tspan x="802" dy="30">ever-growing metric label sets</tspan>
   </text>
 
   
+  <rect x="50" y="1118" width="340" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
   
-  
-  <rect x="55" y="816" width="1010" height="136" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
+  <rect x="70" y="1150" width="46" height="50" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M80 1170 L102 1170 M96 1164 L102 1170 L96 1176" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M106 1184 L84 1184 M90 1178 L84 1184 L90 1190" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="130" y="1185" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">I/O slow</text>
 
-  
-  
-  <g transform="translate(68, 856)">
-    <ellipse cx="28" cy="12" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3" />
-    <path d="M 8 12 L 8 28 A 20 7 0 0 0 48 28 L 48 12" fill="none" stroke="#207448" stroke-width="3" />
-    <path d="M 8 28 L 8 44 A 20 7 0 0 0 48 44 L 48 28" fill="none" stroke="#207448" stroke-width="3" />
-  </g>
-  <text x="135" y="894" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">I/O slow</text>
+  <rect x="405" y="1118" width="360" height="116" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="1166" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="425" dy="0">chain of serial</tspan>
+    <tspan x="425" dy="32">network calls</tspan>
+  </text>
 
-  
-  <line x1="310" y1="826" x2="310" y2="942" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="826" x2="580" y2="942" stroke="#e8f1ea" stroke-width="2" />
-
-  
-  <text x="325" y="870" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="325" dy="0">chain of serial</tspan>
-    <tspan x="325" dy="32">network calls</tspan>
+  <rect x="780" y="1118" width="770" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="1166" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">bounded concurrency, reuse connections, batch;</tspan>
+    <tspan x="802" dy="32">measure first by logging the time of each phase</tspan>
   </text>
 
   
-  <text x="595" y="850" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="595" dy="0">bounded concurrency, reuse</tspan>
-    <tspan x="595" dy="28">connections, batch; measure</tspan>
-    <tspan x="595" dy="28">first by logging the time</tspan>
-    <tspan x="595" dy="28">of each phase</tspan>
+  <rect x="50" y="1246" width="340" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <circle cx="93" cy="1304" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="93" y1="1304" x2="93" y2="1292" stroke="#207448" stroke-width="3"/>
+  <line x1="93" y1="1304" x2="103" y2="1304" stroke="#207448" stroke-width="3"/>
+  <line x1="93" y1="1284" x2="93" y2="1280" stroke="#207448" stroke-width="3"/>
+  <text x="130" y="1312" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Slow startup</text>
+
+  <rect x="405" y="1246" width="360" height="116" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="1312" font-family="monospace" font-size="24" fill="#303a36">python -X importtime</text>
+
+  <rect x="780" y="1246" width="770" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="802" y="1294" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="802" dy="0">lazy-import heavy modules such as pandas inside</tspan>
+    <tspan x="802" dy="32">the function; avoid work at import time</tspan>
   </text>
 
   
-  
-  
-  <rect x="55" y="960" width="1010" height="136" rx="8" fill="#fcfdfc" stroke="#d5dfd7" stroke-width="1.5" />
-
-  
-  
-  <g transform="translate(68, 1000)">
-    <path d="M 28 6 C 36 14 42 26 42 38 L 14 38 C 14 26 20 14 28 6 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-    <path d="M 14 28 L 6 36 L 14 38 M 42 28 L 50 36 L 42 38" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-    <circle cx="28" cy="22" r="4" fill="none" stroke="#207448" stroke-width="2" />
-    <path d="M 22 42 L 28 49 L 34 42" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-  </g>
-  <text x="135" y="1025" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="135" dy="0">Slow</tspan>
-    <tspan x="135" dy="34">startup</tspan>
-  </text>
-
-  
-  <line x1="310" y1="970" x2="310" y2="1086" stroke="#e8f1ea" stroke-width="2" />
-  <line x1="580" y1="970" x2="580" y2="1086" stroke="#e8f1ea" stroke-width="2" />
-
-  
-  <text x="325" y="1030" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">python -X importtime</text>
-
-  
-  <text x="595" y="995" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="595" dy="0">lazy-import heavy modules</tspan>
-    <tspan x="595" dy="28">such as pandas inside the</tspan>
-    <tspan x="595" dy="28">function; avoid work at</tspan>
-    <tspan x="595" dy="28">import time</tspan>
-  </text>
-
-  
-  
-  
-  <rect x="1120" y="100" width="440" height="1010" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
-
-  
-  <rect x="1120" y="100" width="440" height="56" rx="12" fill="#db8129" />
-  <rect x="1120" y="140" width="440" height="16" fill="#db8129" />
-  <text x="1340" y="139" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Investigation ladder</text>
-
-  
-  <rect x="1140" y="176" width="400" height="130" rx="8" fill="#fdfaf7" stroke="#edd7c0" stroke-width="1.5" />
-  <circle cx="1178" cy="241" r="24" fill="#db8129" />
-  <text x="1178" y="249" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  <text x="1218" y="230" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1218" dy="0">confirm the symptom</tspan>
-    <tspan x="1218" dy="32">with timings</tspan>
-  </text>
-
-  
-  <line x1="1340" y1="308" x2="1340" y2="346" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-  
-  <rect x="1140" y="350" width="400" height="130" rx="8" fill="#fdfaf7" stroke="#edd7c0" stroke-width="1.5" />
-  <circle cx="1178" cy="415" r="24" fill="#db8129" />
-  <text x="1178" y="423" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  <text x="1218" y="404" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1218" dy="0">is the API slow</tspan>
-    <tspan x="1218" dy="32">or your tool?</tspan>
-  </text>
-
-  
-  <line x1="1340" y1="482" x2="1340" y2="520" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-  
-  <rect x="1140" y="524" width="400" height="130" rx="8" fill="#fdfaf7" stroke="#edd7c0" stroke-width="1.5" />
-  <circle cx="1178" cy="589" r="24" fill="#db8129" />
-  <text x="1178" y="597" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  <text x="1218" y="578" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1218" dy="0">profile with py-spy</tspan>
-    <tspan x="1218" dy="32">on the live process</tspan>
-  </text>
-
-  
-  <line x1="1340" y1="656" x2="1340" y2="694" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-  
-  <rect x="1140" y="698" width="400" height="175" rx="8" fill="#fdfaf7" stroke="#edd7c0" stroke-width="1.5" />
-  <circle cx="1178" cy="785" r="24" fill="#db8129" />
-  <text x="1178" y="793" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
-  <text x="1218" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1218" dy="0">check resource limits:</tspan>
-    <tspan x="1218" dy="32">CPU throttling in a</tspan>
-    <tspan x="1218" dy="32">container shows up</tspan>
-    <tspan x="1218" dy="32">as latency</tspan>
-  </text>
-
-  
-  <line x1="1340" y1="875" x2="1340" y2="913" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-  
-  <rect x="1140" y="917" width="400" height="175" rx="8" fill="#fdfaf7" stroke="#edd7c0" stroke-width="1.5" />
-  <circle cx="1178" cy="1004" r="24" fill="#db8129" />
-  <text x="1178" y="1012" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
-  <text x="1218" y="961" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1218" dy="0">fix the specific</tspan>
-    <tspan x="1218" dy="32">bottleneck and verify</tspan>
-    <tspan x="1218" dy="32">with the same</tspan>
-    <tspan x="1218" dy="32">measurement</tspan>
-  </text>
-
-  
-  
-  
-  <rect x="40" y="1130" width="1520" height="50" rx="8" fill="#207448" />
-  <text x="800" y="1164" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Each tool answers one question</text>
+  <rect x="50" y="1395" width="1500" height="64" rx="10" fill="#207448"/>
+  <text x="800" y="1438" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Each tool answers one question</text>
 </svg>

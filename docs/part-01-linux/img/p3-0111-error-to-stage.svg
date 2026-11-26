@@ -1,295 +1,308 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
   <title>Which startup stage produced this error message</title>
-  <desc>Horizontal pipeline of six execution startup stages mapped to characteristic error messages and first-check diagnostics.</desc>
+  <desc>Visual infographic mapping Linux startup pipeline stages to their respective error messages and diagnostic commands.</desc>
 
   <defs>
     
-    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5" />
+  <rect width="1600" height="1320" fill="#f5f8f5" />
 
   
-  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Which startup stage produced this error message</text>
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Which startup stage produced this error message</text>
 
   
   
-  
+  <line x1="160" y1="175" x2="1440" y2="175" stroke="#207448" stroke-width="4" stroke-dasharray="8 6" />
 
   
-  <rect x="40" y="85" width="196" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <circle cx="70" cy="117" r="22" fill="#207448" />
-  <text x="70" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  
-  <g transform="translate(132, 97)">
-    <rect x="0" y="0" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 10 13 L 18 19 L 10 25 M 22 25 L 34 25" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <g id="stage1">
+    <rect x="40" y="85" width="225" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="70" cy="118" r="22" fill="#207448" />
+    <text x="70" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <rect x="195" y="100" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 203 112 L 211 117 L 203 122 M 215 124 L 227 124" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="55" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">shell fork and</text>
+    <text x="55" y="206" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">execve</text>
   </g>
-  
-  <text x="56" y="175" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="56" dy="0">shell fork</tspan>
-    <tspan x="56" dy="30">and execve</tspan>
-  </text>
 
   
-  <line x1="236" y1="190" x2="256" y2="190" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="265" y1="175" x2="295" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="258" y="85" width="224" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <circle cx="288" cy="117" r="22" fill="#207448" />
-  <text x="288" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  
-  <g transform="translate(378, 97)">
-    <path d="M 4 0 L 26 0 L 38 12 L 38 38 L 4 38 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    <path d="M 26 0 L 26 12 L 38 12" fill="none" stroke="#207448" stroke-width="3" />
-    <line x1="12" y1="20" x2="28" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    <line x1="12" y1="28" x2="24" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <g id="stage2">
+    <rect x="300" y="85" width="225" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="330" cy="118" r="22" fill="#207448" />
+    <text x="330" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <circle cx="485" cy="117" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 485 97 L 485 103 M 485 131 L 485 137 M 465 117 L 471 117 M 499 117 L 505 117 M 471 103 L 475 107 M 495 127 L 499 131 M 471 131 L 475 127 M 495 107 L 499 103" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="315" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kernel checks the</text>
+    <text x="315" y="192" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">file and picks a</text>
+    <text x="315" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">format handler</text>
   </g>
-  
-  <text x="274" y="166" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="274" dy="0">kernel checks</tspan>
-    <tspan x="274" dy="28">the file and picks</tspan>
-    <tspan x="274" dy="28">a format handler</tspan>
-  </text>
 
   
-  <line x1="482" y1="190" x2="502" y2="190" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="525" y1="175" x2="555" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="504" y="85" width="196" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <circle cx="534" cy="117" r="22" fill="#207448" />
-  <text x="534" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  
-  <g transform="translate(616, 97)">
-    <rect x="0" y="2" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3" />
-    <rect x="0" y="15" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3" />
-    <rect x="0" y="28" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+  <g id="stage3">
+    <rect x="560" y="85" width="225" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="590" cy="118" r="22" fill="#207448" />
+    <text x="590" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <path d="M 720 106 L 744 114 L 720 122 L 696 114 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 696 120 L 720 128 L 744 120" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 696 126 L 720 134 L 744 126" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <text x="575" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ELF loader maps</text>
+    <text x="575" y="192" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">LOAD segments,</text>
+    <text x="575" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">builds the stack</text>
   </g>
-  
-  <text x="518" y="166" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="518" dy="0">ELF loader maps</tspan>
-    <tspan x="518" dy="28">LOAD segments,</tspan>
-    <tspan x="518" dy="28">builds the stack</tspan>
-  </text>
 
   
-  <line x1="700" y1="190" x2="720" y2="190" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="785" y1="175" x2="815" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="722" y="85" width="246" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <circle cx="752" cy="117" r="22" fill="#207448" />
-  <text x="752" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
-  
-  <g transform="translate(876, 97)">
-    <circle cx="10" cy="19" r="8" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="34" cy="19" r="8" fill="none" stroke="#207448" stroke-width="3" />
-    <line x1="18" y1="19" x2="26" y2="19" stroke="#207448" stroke-width="4" />
+  <g id="stage4">
+    <rect x="820" y="85" width="225" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="850" cy="118" r="22" fill="#207448" />
+    <text x="850" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M 978 126 A 9 9 0 0 1 978 110 L 988 102 A 9 9 0 0 1 1002 116 L 996 122" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 984 116 L 968 128 A 9 9 0 0 0 982 142 L 992 134" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="835" y="156" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">PT_INTERP: kernel</text>
+    <text x="835" y="184" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">maps ld.so,</text>
+    <text x="835" y="212" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">execution starts</text>
+    <text x="835" y="240" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">in dynamic linker</text>
   </g>
-  
-  <text x="738" y="160" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="738" dy="0" font-family="monospace">PT_INTERP:</tspan>
-    <tspan x="738" dy="26">kernel maps ld.so,</tspan>
-    <tspan x="738" dy="26">execution starts in</tspan>
-    <tspan x="738" dy="26">the dynamic linker</tspan>
-  </text>
 
   
-  <line x1="968" y1="190" x2="988" y2="190" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1045" y1="175" x2="1075" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="990" y="85" width="246" height="210" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
-  
-  <circle cx="1020" cy="117" r="22" fill="#db8129" />
-  <text x="1020" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
-  
-  <g transform="translate(1142, 97)">
-    <rect x="2" y="2" width="20" height="18" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
-    <rect x="18" y="16" width="20" height="18" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
-    <path d="M 12 20 L 12 28 L 18 28" fill="none" stroke="#db8129" stroke-width="2" />
+  <g id="stage5">
+    <rect x="1080" y="85" width="235" height="175" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="3.5" />
+    <circle cx="1110" cy="118" r="22" fill="#db8129" />
+    <text x="1110" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <rect x="1245" y="100" width="12" height="32" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="1261" y="96" width="12" height="36" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="1277" y="104" width="12" height="28" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+    <text x="1095" y="156" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ld.so loads</text>
+    <text x="1095" y="184" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">DT_NEEDED libraries,</text>
+    <text x="1095" y="212" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">relocates, runs</text>
+    <text x="1095" y="240" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">constructors</text>
   </g>
-  
-  <text x="1006" y="160" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1006" dy="0">ld.so loads</tspan>
-    <tspan x="1006" dy="26" font-family="monospace">DT_NEEDED</tspan>
-    <tspan x="1006" dy="26">libraries, relocates,</tspan>
-    <tspan x="1006" dy="26">runs constructors</tspan>
-  </text>
 
   
-  <line x1="1236" y1="190" x2="1256" y2="190" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1315" y1="175" x2="1345" y2="175" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="1258" y="85" width="302" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <circle cx="1288" cy="117" r="22" fill="#207448" />
-  <text x="1288" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
-  
-  <g transform="translate(1468, 97)">
-    <rect x="6" y="6" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-    <polygon points="19,16 30,23 19,30" fill="#207448" />
+  <g id="stage6">
+    <rect x="1350" y="85" width="210" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1380" cy="118" r="22" fill="#207448" />
+    <text x="1380" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <rect x="1496" y="100" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <polygon points="1512,110 1528,117 1512,124" fill="#207448" />
+    <text x="1365" y="166" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">_start,</text>
+    <text x="1365" y="196" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">__libc_start_main,</text>
+    <text x="1365" y="226" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">main</text>
   </g>
-  
-  <text x="1274" y="166" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1274" dy="0">_start,</tspan>
-    <tspan x="1274" dy="28">__libc_start_main,</tspan>
-    <tspan x="1274" dy="28">main</tspan>
-  </text>
-
 
   
   
+  <path d="M 282 260 L 282 300 L 222 300 L 222 330" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 932 260 L 932 300 L 610 300 L 610 330" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1197 260 L 1197 300 L 1000 300 L 1000 330" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1455 260 L 1455 300 L 1385 300 L 1385 330" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
   
 
   
-  <rect x="40" y="320" width="360" height="730" rx="12" fill="#ffffff" stroke="#c8dcce" stroke-width="2" />
-  
-  <path d="M 40 332 A 12 12 0 0 1 52 320 L 388 320 A 12 12 0 0 1 400 332 L 400 385 L 40 385 Z" fill="#207448" />
-  <text x="220" y="364" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 1/2</text>
+  <g id="col-stage12">
+    
+    <rect x="40" y="340" width="365" height="920" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="40" y="340" width="365" height="60" rx="12" fill="#207448" />
+    <rect x="40" y="380" width="365" height="20" fill="#207448" />
+    <text x="222" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 1/2</text>
+
+    
+    <g transform="translate(56, 420)">
+      <rect x="0" y="0" width="333" height="290" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Exec format error</text>
+      <text x="18" y="70" font-family="sans-serif" font-size="24" fill="#303a36">(wrong CPU</text>
+      <text x="18" y="102" font-family="sans-serif" font-size="24" fill="#303a36">architecture such as</text>
+      <text x="18" y="134" font-family="monospace" font-size="24" fill="#207448">x86-64</text>
+      <text x="108" y="134" font-family="sans-serif" font-size="24" fill="#303a36">on</text>
+      <text x="146" y="134" font-family="monospace" font-size="24" fill="#207448">aarch64</text>
+      <text x="246" y="134" font-family="sans-serif" font-size="24" fill="#303a36">,</text>
+      <text x="18" y="166" font-family="sans-serif" font-size="24" fill="#303a36">or a script without</text>
+      <text x="18" y="198" font-family="sans-serif" font-size="24" fill="#303a36">shebang)</text>
+    </g>
+
+    
+    <g transform="translate(56, 730)">
+      <rect x="0" y="0" width="333" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">exit 126</text>
+      <text x="18" y="78" font-family="sans-serif" font-size="24" fill="#303a36">found but not executable</text>
+    </g>
+
+    
+    <g transform="translate(56, 860)">
+      <rect x="0" y="0" width="333" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">exit 127</text>
+      <text x="18" y="76" font-family="sans-serif" font-size="24" fill="#303a36">not found</text>
+    </g>
+
+    
+    <g transform="translate(56, 1100)">
+      <rect x="0" y="0" width="333" height="135" rx="8" fill="#207448" />
+      <text x="166" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">First check:</text>
+      <text x="166" y="90" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">file and readelf -h</text>
+    </g>
+  </g>
 
   
-  <rect x="56" y="405" width="328" height="225" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="74" y="440" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="74" dy="0" font-weight="bold">Exec format error</tspan>
-    <tspan x="74" dy="32">(wrong CPU architecture</tspan>
-    <tspan x="74" dy="30">such as x86-64 on</tspan>
-    <tspan x="74" dy="30">aarch64, or a script</tspan>
-    <tspan x="74" dy="30">without shebang)</tspan>
-  </text>
+  <g id="col-stage4">
+    
+    <rect x="425" y="340" width="370" height="920" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="425" y="340" width="370" height="60" rx="12" fill="#207448" />
+    <rect x="425" y="380" width="370" height="20" fill="#207448" />
+    <text x="610" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 4</text>
+
+    
+    <g transform="translate(441, 420)">
+      <rect x="0" y="0" width="338" height="540" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="40" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">bad ELF interpreter /</text>
+      <text x="18" y="74" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">not found for a file</text>
+      <text x="18" y="108" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">that exists</text>
+      <text x="18" y="152" font-family="sans-serif" font-size="24" fill="#303a36">(glibc binary on Alpine</text>
+      <text x="18" y="186" font-family="sans-serif" font-size="24" fill="#303a36">musl:</text>
+      <text x="18" y="226" font-family="monospace" font-size="24" fill="#207448">/lib64/ld-linux-</text>
+      <text x="18" y="258" font-family="monospace" font-size="24" fill="#207448">x86-64.so.2</text>
+      <text x="18" y="296" font-family="sans-serif" font-size="24" fill="#303a36">missing)</text>
+    </g>
+
+    
+    <g transform="translate(441, 1100)">
+      <rect x="0" y="0" width="338" height="135" rx="8" fill="#207448" />
+      <text x="169" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">First check:</text>
+      <text x="169" y="80" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">readelf -l |</text>
+      <text x="169" y="112" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">grep interpreter</text>
+    </g>
+  </g>
 
   
-  <rect x="56" y="646" width="328" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="74" y="688" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="74" dy="0">exit 126 found</tspan>
-    <tspan x="74" dy="32">but not executable</tspan>
-  </text>
+  <g id="col-stage5">
+    
+    <rect x="815" y="340" width="370" height="920" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    
+    
+    <rect x="815" y="340" width="370" height="60" rx="12" fill="#db8129" />
+    <rect x="815" y="380" width="370" height="20" fill="#db8129" />
+    <text x="1000" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 5</text>
+
+    
+    <g transform="translate(831, 420)">
+      <rect x="0" y="0" width="338" height="125" rx="8" fill="#fff0e2" stroke="#db8129" stroke-width="1.5" />
+      <text x="18" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">libcuda.so.1:</text>
+      <text x="18" y="70" font-family="sans-serif" font-size="24" fill="#303a36">cannot open shared</text>
+      <text x="18" y="102" font-family="sans-serif" font-size="24" fill="#303a36">object file</text>
+    </g>
+
+    
+    <g transform="translate(831, 560)">
+      <rect x="0" y="0" width="338" height="145" rx="8" fill="#fff0e2" stroke="#db8129" stroke-width="1.5" />
+      <text x="18" y="38" font-family="sans-serif" font-size="24" fill="#303a36">error while loading</text>
+      <text x="18" y="70" font-family="sans-serif" font-size="24" fill="#303a36">shared libraries:</text>
+      <text x="18" y="108" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">libnccl.so.2</text>
+    </g>
+
+    
+    <g transform="translate(831, 720)">
+      <rect x="0" y="0" width="338" height="125" rx="8" fill="#fff0e2" stroke="#db8129" stroke-width="1.5" />
+      <text x="18" y="38" font-family="sans-serif" font-size="24" fill="#303a36">version</text>
+      <text x="18" y="72" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">GLIBC_2.34</text>
+      <text x="18" y="104" font-family="sans-serif" font-size="24" fill="#303a36">not found</text>
+    </g>
+
+    
+    <g transform="translate(831, 860)">
+      <rect x="0" y="0" width="338" height="125" rx="8" fill="#fff0e2" stroke="#db8129" stroke-width="1.5" />
+      <text x="18" y="38" font-family="sans-serif" font-size="24" fill="#303a36">version</text>
+      <text x="18" y="72" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">GLIBCXX_3.4.30</text>
+      <text x="18" y="104" font-family="sans-serif" font-size="24" fill="#303a36">not found</text>
+    </g>
+
+    
+    <g transform="translate(831, 1070)">
+      <rect x="0" y="0" width="338" height="165" rx="8" fill="#db8129" />
+      <text x="169" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">First check:</text>
+      <text x="169" y="74" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">ldd,</text>
+      <text x="169" y="106" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">ldconfig -p,</text>
+      <text x="169" y="138" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">LD_DEBUG=libs</text>
+    </g>
+  </g>
 
   
-  <rect x="56" y="772" width="328" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="74" y="826" font-family="sans-serif" font-size="24" fill="#303a36">exit 127 not found</text>
+  <g id="col-stage6">
+    
+    <rect x="1205" y="340" width="360" height="920" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="1205" y="340" width="360" height="60" rx="12" fill="#207448" />
+    <rect x="1205" y="380" width="360" height="20" fill="#207448" />
+    <text x="1385" y="382" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 6 and after</text>
 
-  
-  <rect x="56" y="920" width="328" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="84" cy="975" r="14" fill="#207448" />
-  <path d="M 78 975 L 82 979 L 90 971" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="110" y="983" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">file and readelf -h</text>
+    
+    <g transform="translate(1220, 420)">
+      <rect x="0" y="0" width="330" height="235" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CUDA error: no kernel</text>
+      <text x="18" y="70" font-family="sans-serif" font-size="24" fill="#303a36">image is available</text>
+      <text x="18" y="102" font-family="sans-serif" font-size="24" fill="#303a36">for execution on</text>
+      <text x="18" y="134" font-family="sans-serif" font-size="24" fill="#303a36">the device</text>
+    </g>
 
+    
+    <g transform="translate(1220, 675)">
+      <rect x="0" y="0" width="330" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="40" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Illegal instruction</text>
+      <text x="18" y="76" font-family="sans-serif" font-size="24" fill="#303a36">(SIGILL, exit 132)</text>
+    </g>
 
-  
-  <rect x="426" y="320" width="360" height="730" rx="12" fill="#ffffff" stroke="#c8dcce" stroke-width="2" />
-  
-  <path d="M 426 332 A 12 12 0 0 1 438 320 L 774 320 A 12 12 0 0 1 786 332 L 786 385 L 426 385 Z" fill="#207448" />
-  <text x="606" y="364" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 4</text>
+    
+    <g transform="translate(1220, 850)">
+      <rect x="0" y="0" width="330" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="18" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">segfault exit 139</text>
+    </g>
 
-  
-  <rect x="442" y="405" width="328" height="495" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="460" y="445" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="460" dy="0" font-weight="bold">bad ELF interpreter /</tspan>
-    <tspan x="460" dy="34">not found for a file</tspan>
-    <tspan x="460" dy="32">that exists</tspan>
-    <tspan x="460" dy="34">(glibc binary on</tspan>
-    <tspan x="460" dy="32">Alpine musl:</tspan>
-    <tspan x="460" dy="36" font-family="monospace">/lib64/</tspan>
-    <tspan x="460" dy="32" font-family="monospace">ld-linux-x86-64.so.2</tspan>
-    <tspan x="460" dy="34">missing)</tspan>
-  </text>
-
-  
-  <rect x="442" y="920" width="328" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="470" cy="975" r="14" fill="#207448" />
-  <path d="M 464 975 L 468 979 L 476 971" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="496" y="960" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="496" dy="0">readelf -l |</tspan>
-    <tspan x="496" dy="30">grep interpreter</tspan>
-  </text>
-
-
-  
-  <rect x="812" y="320" width="360" height="730" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
-  
-  <path d="M 812 332 A 12 12 0 0 1 824 320 L 1160 320 A 12 12 0 0 1 1172 332 L 1172 385 L 812 385 Z" fill="#db8129" />
-  <text x="992" y="364" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 5</text>
-
-  
-  <rect x="828" y="405" width="328" height="118" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-  <text x="844" y="438" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="844" dy="0" font-family="monospace" font-weight="bold">libcuda.so.1:</tspan>
-    <tspan x="844" dy="30">cannot open shared</tspan>
-    <tspan x="844" dy="28">object file</tspan>
-  </text>
-
-  
-  <rect x="828" y="535" width="328" height="126" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-  <text x="844" y="568" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="844" dy="0">error while loading</tspan>
-    <tspan x="844" dy="30">shared libraries:</tspan>
-    <tspan x="844" dy="30" font-family="monospace">libnccl.so.2</tspan>
-  </text>
-
-  
-  <rect x="828" y="673" width="328" height="106" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-  <text x="844" y="708" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="844" dy="0">version</tspan>
-    <tspan x="844" dy="30" font-family="monospace">GLIBC_2.34 not found</tspan>
-  </text>
-
-  
-  <rect x="828" y="791" width="328" height="110" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-  <text x="844" y="826" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="844" dy="0">version</tspan>
-    <tspan x="844" dy="30" font-family="monospace">GLIBCXX_3.4.30 not found</tspan>
-  </text>
-
-  
-  <rect x="828" y="920" width="328" height="110" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2" />
-  <circle cx="856" cy="975" r="14" fill="#db8129" />
-  <path d="M 850 975 L 854 979 L 862 971" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="882" y="960" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="882" dy="0">ldd, ldconfig -p,</tspan>
-    <tspan x="882" dy="30">LD_DEBUG=libs</tspan>
-  </text>
-
-
-  
-  <rect x="1198" y="320" width="360" height="730" rx="12" fill="#ffffff" stroke="#c8dcce" stroke-width="2" />
-  
-  <path d="M 1198 332 A 12 12 0 0 1 1210 320 L 1546 320 A 12 12 0 0 1 1558 332 L 1558 385 L 1198 385 Z" fill="#207448" />
-  <text x="1378" y="364" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Stage 6 and after</text>
-
-  
-  <rect x="1214" y="405" width="328" height="195" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="1230" y="440" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1230" dy="0" font-weight="bold">CUDA error:</tspan>
-    <tspan x="1230" dy="32">no kernel image is</tspan>
-    <tspan x="1230" dy="30">available for</tspan>
-    <tspan x="1230" dy="30">execution on the</tspan>
-    <tspan x="1230" dy="30">device</tspan>
-  </text>
-
-  
-  <rect x="1214" y="614" width="328" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="1230" y="652" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1230" dy="0">Illegal instruction</tspan>
-    <tspan x="1230" dy="32">(SIGILL, exit 132)</tspan>
-  </text>
-
-  
-  <rect x="1214" y="746" width="328" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-  <text x="1230" y="800" font-family="sans-serif" font-size="24" fill="#303a36">segfault exit 139</text>
-
-  
-  <rect x="1214" y="920" width="328" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1242" cy="975" r="14" fill="#207448" />
-  <path d="M 1236 975 L 1240 979 L 1248 971" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="1268" y="960" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="1268" dy="0">strace -f for the</tspan>
-    <tspan x="1268" dy="30">last failed call</tspan>
-  </text>
+    
+    <g transform="translate(1220, 1100)">
+      <rect x="0" y="0" width="330" height="135" rx="8" fill="#207448" />
+      <text x="165" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">First check:</text>
+      <text x="165" y="80" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">strace -f for the</text>
+      <text x="165" y="112" font-family="monospace" font-size="24" fill="#ffffff" text-anchor="middle">last failed call</text>
+    </g>
+  </g>
 
 </svg>

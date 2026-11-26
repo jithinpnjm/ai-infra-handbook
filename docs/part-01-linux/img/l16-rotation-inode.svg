@@ -1,200 +1,172 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
   <title>Rotation and open log files</title>
-  <desc>Visual explanation of log file rotation, open file descriptors, inode tracking, and rotation fix strategies.</desc>
+  <desc>Infographic explaining Linux log rotation, open file descriptors, inode tracking, and rotation remedies.</desc>
 
-  <rect width="1600" height="1150" fill="#f5f8f5" />
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 0 1 L 12 6 L 0 11 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 0 1 L 12 6 L 0 11 z" fill="#db8129"/>
+    </marker>
+  </defs>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Rotation and open log files</text>
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
 
   
-  <g>
-    <rect x="50" y="110" width="460" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <circle cx="98" cy="158" r="24" fill="#207448" />
-    <text x="98" y="167" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
-    
-    
-    <g transform="translate(420, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="28" cy="14" rx="22" ry="8" />
-      <path d="M6 14v16c0 4.4 9.8 8 22 8s22-3.6 22-8V14" />
-      <path d="M6 30v16c0 4.4 9.8 8 22 8s22-3.6 22-8V30" />
-    </g>
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Rotation and open log files</text>
 
-    <text x="140" y="167" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Initial State</text>
+  
+  <g id="config-chips">
+    <rect x="40" y="98" width="120" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="100" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">daily</text>
 
-    
-    <text x="76" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="76" dy="0">daemon writes to</tspan>
-      <tspan font-family="monospace"> app.log</tspan>
-      <tspan> (</tspan><tspan font-family="monospace">inode A</tspan><tspan>).</tspan>
-    </text>
+    <rect x="175" y="98" width="160" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="255" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">rotate 14</text>
 
-    
-    <rect x="80" y="300" width="400" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="104" y="342" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Process</text>
-    <text x="104" y="376" font-family="monospace" font-size="24" fill="#303a36">daemon (PID)</text>
+    <rect x="350" y="98" width="150" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="425" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">compress</text>
 
-    
-    <path d="M 280 400 L 280 452" stroke="#207448" stroke-width="3" fill="none" />
-    <polygon points="280,466 273,448 287,448" fill="#207448" />
+    <rect x="515" y="98" width="220" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="625" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">delaycompress</text>
 
-    <rect x="80" y="470" width="400" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="104" y="512" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">File &amp; Storage</text>
-    <text x="104" y="552" font-family="monospace" font-size="24" fill="#303a36">name: app.log</text>
-    <text x="104" y="590" font-family="monospace" font-size="24" fill="#303a36">target: inode A</text>
+    <rect x="750" y="98" width="170" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="835" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">missingok</text>
+
+    <rect x="935" y="98" width="180" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1025" y="130" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">notifempty</text>
   </g>
 
   
-  <g>
-    <rect x="570" y="110" width="460" height="570" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+  <g id="step-1">
+    <rect x="40" y="170" width="440" height="700" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <circle cx="618" cy="158" r="24" fill="#207448" />
-    <text x="618" y="167" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    
+    <circle cx="75" cy="212" r="22" fill="#207448"/>
+    <text x="75" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="110" y="221" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Initial State</text>
 
     
-    <g transform="translate(940, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="6" width="36" height="46" rx="4" />
-      <path d="M22 20h12" />
-      <path d="M22 30h12" />
-      <path d="M22 40h8" />
+    <g transform="translate(420, 192)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="14"/>
+      <line x1="20" y1="2" x2="20" y2="8"/>
+      <line x1="20" y1="32" x2="20" y2="38"/>
+      <line x1="2" y1="20" x2="8" y2="20"/>
+      <line x1="32" y1="20" x2="38" y2="20"/>
     </g>
 
-    <text x="660" y="167" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Renamed</text>
-
     
-    <rect x="590" y="210" width="420" height="200" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
-    <text x="606" y="250" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="606" dy="0"><tspan font-family="monospace">logrotate</tspan> renames</tspan>
-      <tspan x="606" dy="36"><tspan font-family="monospace">app.log</tspan> to <tspan font-family="monospace">app.log.1</tspan>;</tspan>
-      <tspan x="606" dy="38" fill="#db8129" font-weight="bold">the daemon still writes to</tspan>
-      <tspan x="606" dy="34" fill="#db8129" font-weight="bold">the same inode, now under</tspan>
-      <tspan x="606" dy="34" fill="#db8129" font-weight="bold">the new name</tspan>
+    <text x="65" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="65" dy="0">daemon writes to</tspan>
+      <tspan x="65" dy="36">app.log (inode A)</tspan>
     </text>
 
     
-    <rect x="590" y="430" width="420" height="190" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
-    <text x="610" y="472" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Open File Descriptor</text>
-    <text x="610" y="514" font-family="monospace" font-size="24" fill="#303a36">FD points to: inode A</text>
-    <text x="610" y="556" font-family="monospace" font-size="24" fill="#303a36">old name: app.log</text>
-    <text x="610" y="594" font-family="monospace" font-size="24" fill="#db8129">new name: app.log.1</text>
-  </g>
+    <g transform="translate(65, 380)">
+      <rect x="0" y="0" width="390" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="25" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Process: Daemon</text>
+      <text x="25" y="84" font-family="monospace" font-size="24" fill="#303a36">Open fd → inode A</text>
 
-  
-  <g>
-    <rect x="1090" y="110" width="460" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <circle cx="1138" cy="158" r="24" fill="#207448" />
-    <text x="1138" y="167" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+      <line x1="195" y1="120" x2="195" y2="185" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-    
-    <g transform="translate(1460, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M28 8L10 16v14c0 14 18 22 18 22s18-8 18-22V16L28 8z" />
-      <path d="M20 28l6 6 12-12" />
-    </g>
-
-    <text x="1180" y="167" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Solutions</text>
-
-    
-    <rect x="1110" y="210" width="420" height="440" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <text x="1126" y="252" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1126" dy="0" font-weight="bold" fill="#207448">Fix: tell the daemon to reopen</tspan>
-      <tspan x="1126" dy="36">with <tspan font-family="monospace">SIGHUP</tspan> (postrotate:</tspan>
-      <tspan x="1126" dy="36" font-family="monospace">systemctl kill -s HUP ...</tspan><tspan>),</tspan>
-      <tspan x="1126" dy="48">or use <tspan font-family="monospace">copytruncate</tspan>, which</tspan>
-      <tspan x="1126" dy="36">copies then truncates in</tspan>
-      <tspan x="1126" dy="36">place and may lose lines in</tspan>
-      <tspan x="1126" dy="36">the copy window.</tspan>
-    </text>
-
-    
-    <rect x="1126" y="475" width="388" height="72" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <text x="1142" y="518" font-family="monospace" font-size="24" fill="#207448">postrotate + SIGHUP</text>
-
-    <rect x="1126" y="560" width="388" height="72" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <text x="1142" y="603" font-family="monospace" font-size="24" fill="#303a36">copytruncate</text>
-  </g>
-
-  
-  
-  <path d="M 510 395 L 560 395" stroke="#207448" stroke-width="4" fill="none" />
-  <polygon points="568,395 550,387 550,403" fill="#207448" />
-
-  
-  <path d="M 1030 395 L 1080 395" stroke="#207448" stroke-width="4" fill="none" />
-  <polygon points="1088,395 1070,387 1070,403" fill="#207448" />
-
-  
-  <g transform="translate(0, 715)">
-    <rect x="50" y="0" width="1500" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <g transform="translate(80, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="10" />
-      <path d="M28 6v6M28 44v6M6 28h6M44 28h6M12 12l5 5M39 39l5 5M12 44l5-5M39 17l5-5" />
-    </g>
-
-    <text x="156" y="56" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Config Directives</text>
-
-    
-    <g transform="translate(80, 80)">
-      
-      <rect x="0" y="0" width="160" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="80" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">daily</text>
-
-      
-      <rect x="180" y="0" width="200" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="280" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">rotate 14</text>
-
-      
-      <rect x="400" y="0" width="190" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="495" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">compress</text>
-
-      
-      <rect x="610" y="0" width="260" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="740" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">delaycompress</text>
-
-      
-      <rect x="890" y="0" width="200" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="990" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">missingok</text>
-
-      
-      <rect x="1110" y="0" width="220" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      <text x="1220" y="34" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">notifempty</text>
+      <rect x="0" y="195" width="390" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="25" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">app.log</text>
+      <text x="25" y="285" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Filesystem entry pointing to:</text>
+      <text x="25" y="320" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[ inode A ] on disk</text>
     </g>
   </g>
 
   
-  <g transform="translate(0, 895)">
-    <rect x="50" y="0" width="1500" height="95" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="step-2">
+    <rect x="510" y="170" width="480" height="700" rx="14" fill="#fffcf7" stroke="#db8129" stroke-width="3"/>
+
     
+    <circle cx="550" cy="212" r="22" fill="#db8129"/>
+    <text x="550" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="585" y="221" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">Rename Problem</text>
+
     
-    <g transform="translate(80, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="44" height="38" rx="6" />
-      <path d="M16 22l6 5-6 5" />
-      <path d="M26 32h12" />
+    <g transform="translate(930, 192)" stroke="#db8129" stroke-width="3" fill="none">
+      <path d="M 6 34 L 20 10 L 34 34 Z"/>
+      <line x1="20" y1="19" x2="20" y2="25"/>
+      <circle cx="20" cy="29" r="1.5" fill="#db8129"/>
     </g>
 
-    <text x="156" y="58" font-family="sans-serif" font-size="26" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">Test with </tspan>
-      <tspan font-family="monospace" fill="#303a36">sudo logrotate -d /etc/logrotate.d/slurm.</tspan>
+    
+    <text x="535" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="535" dy="0">logrotate renames app.log</tspan>
+      <tspan x="535" dy="34">to app.log.1; the daemon</tspan>
+      <tspan x="535" dy="34">still writes to the same inode,</tspan>
+      <tspan x="535" dy="34" fill="#db8129">now under the new name</tspan>
     </text>
+
+    
+    <g transform="translate(535, 430)">
+      <rect x="0" y="0" width="430" height="100" rx="8" fill="#fff4e8" stroke="#db8129" stroke-width="2"/>
+      <text x="25" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">Rename Action</text>
+      <text x="25" y="78" font-family="monospace" font-size="24" fill="#303a36">app.log  →  app.log.1</text>
+
+      <line x1="215" y1="110" x2="215" y2="155" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+      <rect x="0" y="165" width="430" height="135" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <text x="25" y="205" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">app.log.1 (inode A)</text>
+      <text x="25" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Daemon still writes to inode A!</text>
+      <text x="25" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Writes go to rotated file.</text>
+    </g>
   </g>
 
   
-  <g transform="translate(0, 1015)">
-    <rect x="50" y="0" width="1500" height="85" rx="16" fill="#207448" />
+  <g id="step-3">
+    <rect x="1020" y="170" width="540" height="700" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
     
+    <circle cx="1060" cy="212" r="22" fill="#207448"/>
+    <text x="1060" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="1095" y="221" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Solutions</text>
+
     
-    <g transform="translate(80, 15)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="22" />
-      <line x1="28" y1="26" x2="28" y2="38" />
-      <circle cx="28" cy="18" r="2" fill="#ffffff" stroke="none" />
+    <g transform="translate(1500, 192)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 8 20 A 12 12 0 1 1 20 32"/>
+      <polyline points="20 24 20 32 28 32"/>
     </g>
 
-    <text x="156" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
-      Linux tracks the open file, not its name.
-    </text>
+    
+    <g transform="translate(1045, 260)">
+      <rect x="0" y="0" width="490" height="260" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="25" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="25" dy="0">Fix: tell the daemon to reopen</tspan>
+        <tspan x="25" dy="36">with SIGHUP</tspan>
+      </text>
+
+      <rect x="20" y="125" width="450" height="110" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="35" y="165" font-family="monospace" font-size="24" fill="#207448">
+        <tspan x="35" dy="0">(postrotate:</tspan>
+        <tspan x="35" dy="38"> systemctl kill -s HUP ...),</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1045, 545)">
+      <rect x="0" y="0" width="490" height="295" rx="10" fill="#fffcf7" stroke="#db8129" stroke-width="2"/>
+      <text x="25" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="25" dy="0" font-weight="bold">or use copytruncate,</tspan>
+        <tspan x="25" dy="38">which copies then truncates</tspan>
+        <tspan x="25" dy="38">in place and may lose lines</tspan>
+        <tspan x="25" dy="38" font-weight="bold" fill="#db8129">in the copy window.</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="40" y="895" width="1520" height="75" rx="10" fill="#207448"/>
+    <text x="800" y="943" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Linux tracks the open file, not its name.</text>
+  </g>
+
+  
+  <g id="footer-test-cmd">
+    <rect x="40" y="990" width="1520" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="1038" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Test with sudo logrotate -d /etc/logrotate.d/slurm.</text>
   </g>
 </svg>

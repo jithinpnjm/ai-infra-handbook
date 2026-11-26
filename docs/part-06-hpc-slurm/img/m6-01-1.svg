@@ -1,206 +1,190 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
   <title>The stack at a glance</title>
-  <desc>Architecture infographic illustrating the AI infrastructure stack from users down to compute and apps, with management, storage, fabric, and facility subsystems.</desc>
+  <desc>Visual diagram of the system stack from users down to applications, showing management, storage, fabric, and facility subsystems connected to compute nodes.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448"/>
     </marker>
+    <filter id="card-shadow" x="-4%" y="-6%" width="108%" height="116%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="960" fill="#f5f8f5" />
+  <rect width="1600" height="920" fill="#f5f8f5"/>
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The stack at a glance</text>
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The stack at a glance</text>
 
   
+
    L -->
-  <line x1="800" y1="210" x2="800" y2="260" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="800" y1="190" x2="800" y2="233" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
 
    S -->
-  <line x1="800" y1="360" x2="800" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="800" y1="335" x2="800" y2="378" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
 
    C -->
-  <line x1="800" y1="530" x2="800" y2="600" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="800" y1="480" x2="800" y2="533" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
 
    A -->
-  <line x1="800" y1="720" x2="800" y2="780" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="800" y1="715" x2="800" y2="773" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
 
    S -->
-  <line x1="510" y1="455" x2="580" y2="455" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="480" y1="430" x2="538" y2="430" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+   C -->
+  <path d="M 480 460 H 500 V 570 H 518" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
 
    P -->
-  <line x1="290" y1="530" x2="290" y2="600" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="265" y1="490" x2="265" y2="548" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="480" y1="610" x2="520" y2="610" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <line x1="1080" y1="590" x2="1120" y2="590" stroke="#207448" stroke-width="3.5"/>
 
    C -->
-  <path d="M 510 495 H 545 V 565 H 680 V 600" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-   C -->
-  <path d="M 1090 495 H 1055 V 565 H 920 V 600" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="1120" y1="680" x2="1082" y2="680" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
 
   
-  <line x1="510" y1="660" x2="580" y2="660" stroke="#207448" stroke-width="3" />
 
   
-  <line x1="1020" y1="660" x2="1090" y2="660" stroke="#207448" stroke-width="3" />
-
-  
-  <g>
-    <rect x="580" y="110" width="440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-users">
+    <rect x="540" y="100" width="520" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(605, 132)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="20" cy="16" r="10" />
-      <path d="M 6 46 C 6 34 12 28 20 28 C 28 28 34 34 34 46" />
-      <circle cx="38" cy="18" r="7" />
-      <path d="M 36 30 C 42 30 48 35 48 46" />
-    </g>
-    <text x="680" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="680" dy="0">Users</tspan>
-      <tspan x="680" dy="38">and workflows</tspan>
+    <circle cx="576" cy="135" r="13" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 556 163 C 556 151, 596 151, 596 163" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="598" cy="130" r="9" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 588 155 C 592 147, 610 147, 612 157" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="628" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Users and workflows</text>
+  </g>
+
+  
+  <g id="node-login">
+    <rect x="540" y="235" width="520" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <rect x="556" y="260" width="46" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 565 273 L 572 279 L 565 285" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="576" y1="285" x2="585" y2="285" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="625" y="276" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="625" font-size="28" font-weight="bold">Login nodes:</tspan>
+      <tspan x="625" dy="32" font-size="24">SSH, Open OnDemand</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="580" y="260" width="440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-scheduler">
+    <rect x="540" y="380" width="520" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(605, 282)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <rect x="4" y="6" width="48" height="38" rx="6" />
-      <path d="M 14 18 L 22 25 L 14 32" />
-      <line x1="26" y1="32" x2="38" y2="32" />
-    </g>
-    <text x="680" y="300" font-family="sans-serif" fill="#303a36">
-      <tspan x="680" dy="0" font-size="30" font-weight="bold">Login nodes:</tspan>
-      <tspan x="680" dy="34" font-size="24">SSH, Open OnDemand</tspan>
+    <circle cx="580" cy="430" r="21" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 580 417 V 430 L 590 436" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="625" y="421" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="625" font-size="28" font-weight="bold">Scheduler:</tspan>
+      <tspan x="625" dy="32" font-size="24">Slurm or K8s queues</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="580" y="420" width="440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-compute">
+    <rect x="520" y="535" width="560" height="180" rx="18" fill="#fffdfa" stroke="#db8129" stroke-width="4" filter="url(#card-shadow)"/>
     
-    <g transform="translate(605, 447)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="28" cy="28" r="22" />
-      <polyline points="28,14 28,28 38,28" />
-      <line x1="6" y1="4" x2="16" y2="4" />
-      <line x1="40" y1="4" x2="50" y2="4" />
-    </g>
-    <text x="680" y="465" font-family="sans-serif" fill="#303a36">
-      <tspan x="680" dy="0" font-size="30" font-weight="bold">Scheduler:</tspan>
-      <tspan x="680" dy="34" font-size="24">Slurm or K8s queues</tspan>
+    <rect x="548" y="602" width="46" height="46" rx="6" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <rect x="559" y="613" width="24" height="24" rx="3" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    
+    <line x1="558" y1="596" x2="558" y2="602" stroke="#db8129" stroke-width="3"/>
+    <line x1="571" y1="596" x2="571" y2="602" stroke="#db8129" stroke-width="3"/>
+    <line x1="584" y1="596" x2="584" y2="602" stroke="#db8129" stroke-width="3"/>
+    <line x1="558" y1="648" x2="558" y2="654" stroke="#db8129" stroke-width="3"/>
+    <line x1="571" y1="648" x2="571" y2="654" stroke="#db8129" stroke-width="3"/>
+    <line x1="584" y1="648" x2="584" y2="654" stroke="#db8129" stroke-width="3"/>
+    <line x1="542" y1="612" x2="548" y2="612" stroke="#db8129" stroke-width="3"/>
+    <line x1="542" y1="625" x2="548" y2="625" stroke="#db8129" stroke-width="3"/>
+    <line x1="542" y1="638" x2="548" y2="638" stroke="#db8129" stroke-width="3"/>
+    <line x1="594" y1="612" x2="600" y2="612" stroke="#db8129" stroke-width="3"/>
+    <line x1="594" y1="625" x2="600" y2="625" stroke="#db8129" stroke-width="3"/>
+    <line x1="594" y1="638" x2="600" y2="638" stroke="#db8129" stroke-width="3"/>
+    
+    <text x="620" y="612" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="620" font-size="32" font-weight="bold" fill="#db8129">Compute nodes</tspan>
+      <tspan x="620" dy="38" font-size="28" font-weight="bold">with GPUs</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="580" y="600" width="440" height="120" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="4" />
+  <g id="node-apps">
+    <rect x="540" y="775" width="520" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(605, 632)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <rect x="12" y="12" width="32" height="32" rx="4" />
-      <rect x="20" y="20" width="16" height="16" />
-      <line x1="20" y1="6" x2="20" y2="12" />
-      <line x1="28" y1="6" x2="28" y2="12" />
-      <line x1="36" y1="6" x2="36" y2="12" />
-      <line x1="20" y1="44" x2="20" y2="50" />
-      <line x1="28" y1="44" x2="28" y2="50" />
-      <line x1="36" y1="44" x2="36" y2="50" />
-      <line x1="6" y1="20" x2="12" y2="20" />
-      <line x1="6" y1="28" x2="12" y2="28" />
-      <line x1="6" y1="36" x2="12" y2="36" />
-      <line x1="44" y1="20" x2="50" y2="20" />
-      <line x1="44" y1="28" x2="50" y2="28" />
-      <line x1="44" y1="36" x2="50" y2="36" />
-    </g>
-    <text x="680" y="650" font-family="sans-serif" fill="#303a36">
-      <tspan x="680" dy="0" font-size="30" font-weight="bold" fill="#db8129">Compute nodes</tspan>
-      <tspan x="680" dy="36" font-size="26" font-weight="bold" fill="#303a36">with GPUs</tspan>
+    <rect x="556" y="804" width="46" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="556" y1="814" x2="602" y2="814" stroke="#207448" stroke-width="2"/>
+    <circle cx="564" cy="809" r="1.5" fill="#207448"/>
+    <circle cx="570" cy="809" r="1.5" fill="#207448"/>
+    <path d="M 574 824 L 569 829 L 574 834 M 584 824 L 589 829 L 584 834" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="625" y="816" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="625" font-size="28" font-weight="bold">Apps:</tspan>
+      <tspan x="625" dy="32" font-size="24">MPI, NCCL, PyTorch</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="580" y="780" width="440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-management">
+    <rect x="50" y="380" width="430" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(605, 802)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <polygon points="28,8 50,18 28,28 6,18" />
-      <polyline points="6,27 28,37 50,27" />
-      <polyline points="6,36 28,46 50,36" />
-    </g>
-    <text x="680" y="820" font-family="sans-serif" fill="#303a36">
-      <tspan x="680" dy="0" font-size="30" font-weight="bold">Apps:</tspan>
-      <tspan x="680" dy="34" font-size="24">MPI, NCCL, PyTorch</tspan>
+    <circle cx="95" cy="435" r="11" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 95 417 V 421 M 95 449 V 453 M 77 435 H 81 M 109 435 H 113 M 82 422 L 85 425 M 105 445 L 108 448 M 82 448 L 85 445 M 105 425 L 108 422" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="135" y="426" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="135" font-size="28" font-weight="bold">Management:</tspan>
+      <tspan x="135" dy="32" font-size="24">PXE, BCM, BMC</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="70" y="420" width="440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-storage">
+    <rect x="50" y="550" width="430" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(95, 447)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <rect x="6" y="8" width="44" height="16" rx="3" />
-      <circle cx="14" cy="16" r="2" fill="#207448" />
-      <circle cx="22" cy="16" r="2" fill="#207448" />
-      <circle cx="34" cy="38" r="8" />
-      <path d="M 34 26 L 34 30 M 34 46 L 34 50 M 22 38 L 26 38 M 42 38 L 46 38 M 25 29 L 28 32 M 40 44 L 43 47 M 25 47 L 28 44 M 40 32 L 43 29" />
-    </g>
-    <text x="170" y="465" font-family="sans-serif" fill="#303a36">
-      <tspan x="170" dy="0" font-size="30" font-weight="bold">Management:</tspan>
-      <tspan x="170" dy="34" font-size="24">PXE, BCM, BMC</tspan>
+    <ellipse cx="95" cy="593" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 75 593 V 606 C 75 613, 115 613, 115 606 V 593" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 75 606 V 619 C 75 626, 115 626, 115 619 V 606" fill="none" stroke="#207448" stroke-width="3.5"/>
+    
+    <text x="135" y="597" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="135" font-size="28" font-weight="bold">Parallel storage:</tspan>
+      <tspan x="135" dy="32" font-size="24">Lustre, WEKA</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="70" y="600" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-fabric">
+    <rect x="1120" y="540" width="430" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(95, 632)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <ellipse cx="28" cy="14" rx="22" ry="7" />
-      <path d="M 6 14 V 28 C 6 32 16 35 28 35 C 40 35 50 32 50 28 V 14" />
-      <path d="M 6 28 V 42 C 6 46 16 49 28 49 C 40 49 50 46 50 42 V 28" />
-      <line x1="40" y1="21" x2="44" y2="21" />
-      <line x1="40" y1="35" x2="44" y2="35" />
-      <line x1="40" y1="45" x2="44" y2="45" />
-    </g>
-    <text x="170" y="650" font-family="sans-serif" fill="#303a36">
-      <tspan x="170" dy="0" font-size="30" font-weight="bold">Parallel storage:</tspan>
-      <tspan x="170" dy="34" font-size="24">Lustre, WEKA</tspan>
+    <circle cx="1155" cy="578" r="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="1185" cy="578" r="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="1170" cy="604" r="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="1161" y1="578" x2="1179" y2="578" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1158" y1="583" x2="1167" y2="599" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1182" y1="583" x2="1173" y2="599" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="1205" y="577" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1205" font-size="28" font-weight="bold">Compute fabric:</tspan>
+      <tspan x="1205" dy="32" font-size="24">IB or RoCE</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="1090" y="420" width="440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g id="node-facility">
+    <rect x="1120" y="665" width="430" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <g transform="translate(1115, 447)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <polygon points="22,6 10,28 22,28 16,50 34,22 22,22" />
-      <path d="M 42 16 C 42 16 34 27 34 35 C 34 41 38 46 44 46 C 50 46 54 41 54 35 C 54 27 42 16 42 16 Z" />
-    </g>
-    <text x="1190" y="465" font-family="sans-serif" fill="#303a36">
-      <tspan x="1190" dy="0" font-size="30" font-weight="bold">Facility:</tspan>
-      <tspan x="1190" dy="34" font-size="24">power, liquid cooling</tspan>
-    </text>
-  </g>
-
-  
-  <g>
-    <rect x="1090" y="600" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1162 696 L 1151 714 L 1163 714 L 1157 733 L 1176 711 L 1165 711 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
     
-    <g transform="translate(1115, 632)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="12" cy="14" r="5" />
-      <circle cx="44" cy="14" r="5" />
-      <circle cx="12" cy="42" r="5" />
-      <circle cx="44" cy="42" r="5" />
-      <line x1="17" y1="14" x2="39" y2="14" />
-      <line x1="17" y1="42" x2="39" y2="42" />
-      <line x1="12" y1="19" x2="12" y2="37" />
-      <line x1="44" y1="19" x2="44" y2="37" />
-      <line x1="16" y1="18" x2="40" y2="38" />
-      <line x1="40" y1="18" x2="16" y2="38" />
-    </g>
-    <text x="1190" y="650" font-family="sans-serif" fill="#303a36">
-      <tspan x="1190" dy="0" font-size="30" font-weight="bold">Compute fabric:</tspan>
-      <tspan x="1190" dy="34" font-size="24">IB or RoCE</tspan>
+    <text x="1205" y="702" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1205" font-size="28" font-weight="bold">Facility:</tspan>
+      <tspan x="1205" dy="32" font-size="24">power, liquid cooling</tspan>
     </text>
   </g>
 </svg>

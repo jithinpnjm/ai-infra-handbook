@@ -1,19 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Why one big image pull blocks a node</title>
-  <desc>Queue diagram showing serial pull head-of-line blocking on Kubernetes nodes, parallel pull configuration fix, and image pull stages.</desc>
+  <desc>Infographic explaining how serializeImagePulls causes head-of-line blocking on Kubernetes nodes and how parallel pulling resolves it.</desc>
 
   <defs>
     
-    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448"/>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#db8129"/>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#db8129"/>
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5"/>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
   <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why one big image pull blocks a node</text>
@@ -21,125 +22,200 @@
   
   
   
-  <rect x="50" y="120" width="880" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="50" y="120" width="940" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g transform="translate(80, 145)" stroke="#207448" stroke-width="4" fill="none">
-    <circle cx="28" cy="28" r="14"/>
-    <path d="M 28 4 L 28 14 M 28 42 L 28 52 M 4 28 L 14 28 M 42 28 L 52 28 M 11 11 L 18 18 M 38 38 L 45 45 M 11 45 L 18 38 M 38 18 L 45 11"/>
+  <g transform="translate(80, 145)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="28,14 28,28 38,36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
   </g>
 
   
-  <text x="160" y="165" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">
-    <tspan x="160" dy="0">serializeImagePulls true (default):</tspan>
-    <tspan x="160" dy="36">one PullImage CRI call at a time</tspan>
+  <text x="155" y="165" font-family="monospace, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="155" y="165">serializeImagePulls true (default):</tspan>
+    <tspan x="155" dy="34">one PullImage CRI call at a time</tspan>
   </text>
 
   
-  <rect x="80" y="240" width="820" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <g transform="translate(105, 267)" stroke="#207448" stroke-width="4" fill="none">
-    <ellipse cx="28" cy="14" rx="20" ry="8"/>
-    <path d="M 8 14 v 28 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -28"/>
-    <path d="M 8 28 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8"/>
-  </g>
-  <text x="180" y="305" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-    A 25 GB PyTorch image takes about 3 minutes
-  </text>
+  <g transform="translate(85, 245)">
+    
+    <rect x="670" y="15" width="150" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 745 40 L 745 58 M 736 49 L 754 49" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="745" cy="49" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="710" y="85" width="70" height="18" rx="4" fill="#e8f1ea"/>
 
-  
-  <line x1="490" y1="352" x2="490" y2="388" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    
+    <line x1="600" y1="70" x2="660" y2="70" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
 
-  
-  <rect x="80" y="390" width="820" height="160" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-  
-  <g transform="translate(105, 442)" stroke="#db8129" stroke-width="4" fill="none">
-    <circle cx="28" cy="28" r="22"/>
-    <polyline points="28,14 28,28 38,28"/>
-  </g>
-  <text x="180" y="455" font-family="sans-serif" font-size="26" fill="#303a36">
-    <tspan x="180" dy="0">behind it waits a tiny 5 MB busybox or monitoring pod</tspan>
-    <tspan x="180" dy="38" font-weight="bold" fill="#db8129">stuck in ContainerCreating or PodInitializing</tspan>
-  </text>
+    
+    <rect x="260" y="15" width="330" height="110" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <rect x="280" y="35" width="290" height="20" rx="6" fill="#fff0e0" stroke="#db8129" stroke-width="1.5"/>
+    <rect x="280" y="35" width="180" height="20" rx="6" fill="#db8129"/>
+    <path d="M 425 70 L 425 105 M 410 90 L 425 105 L 440 90" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 
-  
-  
-  
-  <rect x="50" y="610" width="880" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="20" y="25" width="180" height="90" rx="8" fill="#ffffff" stroke="#8c9c94" stroke-width="2" stroke-dasharray="6 4"/>
+    
+    <circle cx="110" cy="55" r="14" fill="none" stroke="#8c9c94" stroke-width="3"/>
+    <rect x="98" y="55" width="24" height="20" rx="3" fill="#8c9c94"/>
 
-  
-  <g transform="translate(80, 640)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="14" y="14" width="28" height="28" rx="4"/>
-    <path d="M 20 4 L 20 14 M 28 4 L 28 14 M 36 4 L 36 14 M 20 42 L 20 52 M 28 42 L 28 52 M 36 42 L 36 52 M 4 20 L 14 20 M 4 28 L 14 28 M 4 36 L 14 36 M 42 20 L 52 20 M 42 28 L 52 28 M 42 36 L 52 36"/>
+    
+    <line x1="205" y1="70" x2="250" y2="70" stroke="#8c9c94" stroke-width="3" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
   </g>
 
-  <rect x="80" y="720" width="820" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-
-  <text x="110" y="775" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="110" dy="0" font-weight="bold">serializeImagePulls false and maxParallelImagePulls 4 (3 to 5 concurrent)</tspan>
-    <tspan x="110" dy="48">on nodes with fast NVMe and network;</tspan>
-    <tspan x="110" dy="48">kubelet also enforces registryPullQPS and Burst</tspan>
+  
+  <text x="85" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="425">A 25 GB PyTorch image takes about 3 minutes;</tspan>
+    <tspan x="85" dy="36">behind it waits a tiny 5 MB busybox or monitoring pod</tspan>
+    <tspan x="85" dy="36">stuck in ContainerCreating or PodInitializing.</tspan>
   </text>
 
   
   
   
-  <rect x="960" y="120" width="590" height="850" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="50" y="570" width="940" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <rect x="990" y="160" width="530" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="1040" cy="205" r="24" fill="#207448"/>
-  <text x="1040" y="213" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  <text x="1090" y="213" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">tag</text>
-
-  
-  <line x1="1255" y1="250" x2="1255" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <rect x="990" y="292" width="530" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="1040" cy="337" r="24" fill="#207448"/>
-  <text x="1040" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  <text x="1090" y="345" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">manifest or index</text>
-
-  
-  <line x1="1255" y1="382" x2="1255" y2="422" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <rect x="990" y="424" width="530" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="1040" cy="469" r="24" fill="#207448"/>
-  <text x="1040" y="477" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  <text x="1090" y="477" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">config</text>
-
-  
-  <line x1="1255" y1="514" x2="1255" y2="554" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <rect x="990" y="556" width="530" height="380" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="1040" cy="610" r="24" fill="#207448"/>
-  <text x="1040" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
-  
-  <g transform="translate(1440, 582)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="4" y="8" width="48" height="38" rx="4"/>
-    <line x1="4" y1="18" x2="52" y2="18"/>
-    <circle cx="12" cy="13" r="2" fill="#207448"/>
-    <circle cx="18" cy="13" r="2" fill="#207448"/>
+  <g transform="translate(80, 595)">
+    <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
   </g>
-  <text x="1025" y="680" font-family="sans-serif" font-size="26" fill="#303a36">
-    <tspan x="1025" dy="0" font-weight="bold">layers downloaded in parallel,</tspan>
-    <tspan x="1025" dy="54" font-weight="bold">digests verified,</tspan>
-    <tspan x="1025" dy="54" font-weight="bold">unpacked into the</tspan>
-    <tspan x="1025" dy="54" font-weight="bold">overlayfs snapshotter</tspan>
+
+  
+  <text x="155" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="155" y="618">serializeImagePulls false and maxParallelImagePulls 4</tspan>
+    <tspan x="155" dy="36">(3 to 5 concurrent) on nodes with fast NVMe and network;</tspan>
+    <tspan x="155" dy="36">kubelet also enforces registryPullQPS and Burst</tspan>
   </text>
 
   
-  
-  
-  <rect x="50" y="1000" width="1500" height="80" rx="12" fill="#207448"/>
-  
-  <g transform="translate(75, 1012)" stroke="#ffffff" stroke-width="4" fill="none">
-    <path d="M 28 6 L 48 14 v 16 c 0 14 -20 24 -20 24 s -20 -10 -20 -24 V 14 Z"/>
+  <g transform="translate(85, 745)">
+    
+    <rect x="20" y="10" width="540" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="30" y="20" width="300" height="24" rx="4" fill="#207448"/>
+    <line x1="570" y1="32" x2="640" y2="32" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="20" y="68" width="540" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="30" y="78" width="480" height="24" rx="4" fill="#207448"/>
+    <line x1="570" y1="90" x2="640" y2="90" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="20" y="126" width="540" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="30" y="136" width="400" height="24" rx="4" fill="#207448"/>
+    <line x1="570" y1="148" x2="640" y2="148" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="20" y="184" width="540" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="30" y="194" width="220" height="24" rx="4" fill="#207448"/>
+    <line x1="570" y1="206" x2="640" y2="206" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="655" y="10" width="165" height="218" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(705, 55)">
+      <ellipse cx="32" cy="18" rx="30" ry="12" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 2 18 L 2 55 A 30 12 0 0 0 62 55 L 62 18" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 2 55 L 2 92 A 30 12 0 0 0 62 92 L 62 55" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 2 92 L 2 129 A 30 12 0 0 0 62 129 L 62 92" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
   </g>
-  <text x="150" y="1050" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+
+  
+  
+  
+  <rect x="1030" y="120" width="520" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1065, 145)">
+    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="20" r="5" fill="#207448"/>
+    <circle cx="28" cy="36" r="5" fill="#207448"/>
+    <line x1="28" y1="25" x2="28" y2="31" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="1060" y="215" width="460" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1105" cy="257" r="22" fill="#207448"/>
+  <text x="1105" y="265" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <line x1="1290" y1="305" x2="1290" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1060" y="340" width="460" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1105" cy="382" r="22" fill="#207448"/>
+  <text x="1105" y="390" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <line x1="1290" y1="430" x2="1290" y2="460" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1060" y="465" width="460" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1105" cy="507" r="22" fill="#207448"/>
+  <text x="1105" y="515" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <line x1="1290" y1="555" x2="1290" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1060" y="590" width="460" height="400" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1105" cy="640" r="22" fill="#207448"/>
+  <text x="1105" y="648" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+  
+  <text x="1145" y="266" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="1145" y="266">tag -></tspan>
+    <tspan x="1145" y="391">manifest or index -></tspan>
+    <tspan x="1145" y="516">config -></tspan>
+    <tspan x="1145" y="642">layers downloaded in parallel,</tspan>
+    <tspan x="1090" dy="46">digests verified, unpacked into the</tspan>
+    <tspan x="1090" dy="46">overlayfs snapshotter</tspan>
+  </text>
+
+  
+  <g transform="translate(1090, 770)">
+    
+    <rect x="0" y="0" width="400" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="0" y="0" width="340" height="24" rx="4" fill="#207448"/>
+    <circle cx="375" cy="12" r="7" fill="#207448"/>
+    <polyline points="371,12 374,15 380,9" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    
+    <rect x="0" y="36" width="400" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="0" y="36" width="280" height="24" rx="4" fill="#207448"/>
+    <circle cx="375" cy="48" r="7" fill="#207448"/>
+    <polyline points="371,48 374,51 380,45" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    
+    <rect x="0" y="72" width="400" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="0" y="72" width="390" height="24" rx="4" fill="#207448"/>
+    <circle cx="375" cy="84" r="7" fill="#207448"/>
+    <polyline points="371,84 374,87 380,81" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    
+    <rect x="0" y="108" width="400" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="0" y="108" width="400" height="24" rx="4" fill="#207448"/>
+    <circle cx="375" cy="120" r="7" fill="#207448"/>
+    <polyline points="371,120 374,123 380,117" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    
+    <g transform="translate(160, 150)">
+      <rect x="0" y="0" width="80" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="12" y1="12" x2="68" y2="12" stroke="#207448" stroke-width="2"/>
+      <line x1="12" y1="20" x2="68" y2="20" stroke="#207448" stroke-width="2"/>
+      <line x1="12" y1="28" x2="68" y2="28" stroke="#207448" stroke-width="2"/>
+    </g>
+  </g>
+
+  
+  
+  
+  <rect x="50" y="1065" width="1500" height="90" rx="16" fill="#207448"/>
+  <text x="800" y="1121" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">
     100 GPU nodes pulling 20 GB each is a registry and bandwidth problem; pre-pull with a DaemonSet
   </text>
 </svg>

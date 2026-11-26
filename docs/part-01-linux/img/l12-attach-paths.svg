@@ -1,108 +1,124 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
   <title>How storage is attached</title>
-  <desc>Infographic showing five storage attachment tiers from simple to shared: Disk devices (JBOD), RAID controller or software, Storage arrays and SANs, NAS, and Local NVMe in GPU servers.</desc>
-
-  <rect width="1600" height="1120" fill="#f5f8f5"/>
+  <desc>Visual overview of five storage attachment methods from simple to shared, and local NVMe storage.</desc>
 
   
-  <text x="80" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How storage is attached</text>
+  <rect width="1600" height="1380" fill="#f5f8f5"/>
 
   
-  <g id="row-1">
-    <rect x="80" y="125" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="100" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">How storage is attached</text>
+
+  
+  <g transform="translate(100, 130)">
+    <rect width="1400" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect width="14" height="180" rx="7" fill="#207448"/>
     
-    <g transform="translate(115, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="28" cy="18" rx="24" ry="10"/>
-      <path d="M 4 18 v 38 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10 v -38"/>
-      <path d="M 4 37 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10"/>
-      <path d="M 4 56 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10"/>
+    
+    <g transform="translate(45, 45)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      
+      <ellipse cx="24" cy="22" rx="18" ry="8"/>
+      <path d="M6,22 v42 c0,4.4 8,8 18,8 s18,-3.6 18,-8 v-42"/>
+      <path d="M6,43 c0,4.4 8,8 18,8 s18,-3.6 18,-8"/>
+      
+      <ellipse cx="68" cy="22" rx="18" ry="8"/>
+      <path d="M50,22 v42 c0,4.4 8,8 18,8 s18,-3.6 18,-8 v-42"/>
+      <path d="M50,43 c0,4.4 8,8 18,8 s18,-3.6 18,-8"/>
     </g>
+
     
-    <text x="205" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Disk devices (JBOD)</text>
-    <text x="205" y="235" font-family="sans-serif" font-size="24" fill="#303a36">the OS sees each disk, easiest to observe</text>
+    <text x="175" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Disk devices (JBOD)</text>
+    <text x="175" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the OS sees each disk, easiest to observe</text>
   </g>
 
   
-  <g id="row-2">
-    <rect x="80" y="315" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 345)">
+    <rect width="1400" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect width="14" height="180" rx="7" fill="#207448"/>
     
-    <g transform="translate(115, 345)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="44" height="60" rx="6"/>
-      <line x1="6" y1="28" x2="50" y2="28"/>
-      <line x1="6" y1="48" x2="50" y2="48"/>
-      <circle cx="16" cy="18" r="3" fill="#207448"/>
-      <circle cx="16" cy="38" r="3" fill="#207448"/>
-      <circle cx="16" cy="58" r="3" fill="#207448"/>
-      <line x1="28" y1="18" x2="42" y2="18"/>
-      <line x1="28" y1="38" x2="42" y2="38"/>
-      <line x1="28" y1="58" x2="42" y2="58"/>
+    
+    <g transform="translate(45, 45)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="12" width="76" height="30" rx="6"/>
+      <line x1="24" y1="27" x2="38" y2="27"/>
+      <line x1="54" y1="27" x2="68" y2="27"/>
+      <path d="M26,42 v14 l18,14"/>
+      <path d="M66,42 v14 l-18,14"/>
+      <ellipse cx="46" cy="74" rx="18" ry="7"/>
     </g>
+
     
-    <text x="205" y="368" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">RAID controller or software</text>
-    <text x="205" y="425" font-family="sans-serif" font-size="24" fill="#303a36">groups disks into one virtual disk, hardware RAID hides physical disks from the OS</text>
+    <text x="175" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">RAID controller or software</text>
+    <text x="175" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">groups disks into one virtual disk, hardware RAID hides physical disks from the OS</text>
   </g>
 
   
-  <g id="row-3">
-    <rect x="80" y="505" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 560)">
+    <rect width="1400" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect width="14" height="180" rx="7" fill="#207448"/>
     
-    <g transform="translate(115, 535)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="6" width="48" height="64" rx="4"/>
-      <line x1="4" y1="26" x2="52" y2="26"/>
-      <line x1="4" y1="46" x2="52" y2="46"/>
-      <circle cx="14" cy="16" r="3" fill="#207448"/>
-      <circle cx="22" cy="16" r="3" fill="#207448"/>
-      <circle cx="14" cy="36" r="3" fill="#207448"/>
-      <circle cx="22" cy="36" r="3" fill="#207448"/>
-      <circle cx="14" cy="56" r="3" fill="#207448"/>
-      <circle cx="22" cy="56" r="3" fill="#207448"/>
-      <line x1="32" y1="16" x2="44" y2="16"/>
-      <line x1="32" y1="36" x2="44" y2="36"/>
-      <line x1="32" y1="56" x2="44" y2="56"/>
+    
+    <g transform="translate(45, 45)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="76" height="48" rx="6"/>
+      <line x1="18" y1="22" x2="32" y2="22"/>
+      <line x1="42" y1="22" x2="56" y2="22"/>
+      <line x1="66" y1="22" x2="74" y2="22"/>
+      <line x1="18" y1="36" x2="74" y2="36"/>
+      <path d="M24,58 v18 M46,58 v18 M68,58 v18"/>
+      <line x1="14" y1="76" x2="78" y2="76"/>
     </g>
+
     
-    <text x="205" y="558" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Storage arrays and SANs</text>
-    <text x="205" y="615" font-family="sans-serif" font-size="24" fill="#303a36">behind controllers with big caches, attach by FC, SAS or iSCSI, often multipath</text>
+    <text x="175" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Storage arrays and SANs</text>
+    <text x="175" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">behind controllers with big caches, attach by FC, SAS or iSCSI, often multipath</text>
   </g>
 
   
-  <g id="row-4">
-    <rect x="80" y="695" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 775)">
+    <rect width="1400" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect width="14" height="180" rx="7" fill="#207448"/>
     
-    <g transform="translate(115, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="8" width="36" height="40" rx="4"/>
-      <line x1="10" y1="26" x2="46" y2="26"/>
-      <circle cx="18" cy="17" r="2.5" fill="#207448"/>
-      <circle cx="18" cy="35" r="2.5" fill="#207448"/>
-      <line x1="28" y1="48" x2="28" y2="66"/>
-      <line x1="6" y1="66" x2="50" y2="66"/>
-      <circle cx="6" cy="66" r="3" fill="#207448"/>
-      <circle cx="50" cy="66" r="3" fill="#207448"/>
+    
+    <g transform="translate(45, 45)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="68" height="38" rx="6"/>
+      <line x1="24" y1="31" x2="30" y2="31"/>
+      <circle cx="58" cy="31" r="3" fill="#207448"/>
+      
+      <line x1="46" y1="50" x2="46" y2="72"/>
+      <line x1="18" y1="72" x2="74" y2="72"/>
+      <circle cx="18" cy="72" r="5" fill="#207448"/>
+      <circle cx="74" cy="72" r="5" fill="#207448"/>
     </g>
+
     
-    <text x="205" y="748" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">NAS</text>
-    <text x="205" y="805" font-family="sans-serif" font-size="24" fill="#303a36">over NFS, SMB/CIFS or iSCSI, the network becomes part of the I/O path</text>
+    <text x="175" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">NAS</text>
+    <text x="175" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">over NFS, SMB/CIFS or iSCSI, the network becomes part of the I/O path</text>
   </g>
 
   
-  <g id="row-5">
-    <rect x="80" y="885" width="1440" height="185" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(100, 990)">
+    <rect width="1400" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect width="14" height="250" rx="7" fill="#207448"/>
     
-    <g transform="translate(115, 915)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="14" width="44" height="48" rx="4"/>
-      <rect x="16" y="24" width="16" height="16" rx="2"/>
-      <line x1="14" y1="62" x2="14" y2="68"/>
-      <line x1="22" y1="62" x2="22" y2="68"/>
-      <line x1="30" y1="62" x2="30" y2="68"/>
-      <line x1="38" y1="62" x2="38" y2="68"/>
+    
+    <g transform="translate(45, 55)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="76" height="52" rx="6"/>
+      <line x1="18" y1="24" x2="40" y2="24"/>
+      <line x1="18" y1="36" x2="40" y2="36"/>
+      
+      <path d="M60,18 l-10,18 h12 l-8,20" stroke="#db8129" fill="none"/>
+      
+      <line x1="20" y1="62" x2="20" y2="72"/>
+      <line x1="30" y1="62" x2="30" y2="72"/>
+      <line x1="40" y1="62" x2="40" y2="72"/>
     </g>
+
     
-    <text x="205" y="938" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Local NVMe in GPU servers</text>
-    <text x="205" y="990" font-family="sans-serif" font-size="24" fill="#303a36">for scratch data, caches, fast checkpoints, belongs to that one machine</text>
+    <text x="175" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Local NVMe in GPU servers</text>
+    <text x="175" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">for scratch data, caches, fast checkpoints, belongs to that one machine</text>
+
     
-    <g transform="translate(205, 1014)">
-      <rect x="0" y="0" width="530" height="38" rx="8" fill="#db8129" fill-opacity="0.15"/>
-      <text x="14" y="26" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">on the cloud an instance restart can lose it</text>
+    <g transform="translate(175, 155)">
+      <rect width="570" height="56" rx="10" fill="#fdf3e9" stroke="#db8129" stroke-width="2"/>
+      <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">on the cloud an instance restart can lose it</text>
     </g>
   </g>
 </svg>

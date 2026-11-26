@@ -1,136 +1,209 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Where facts about a GPU host come from, and how to read each safely</title>
-  <desc>Overview of GPU host data sources including nvidia-smi, NVML bindings, DCGM, and proc/sys, with safe subprocess rules and collection architecture.</desc>
+  <desc>A reference table and implementation guidelines for safely querying GPU host metrics via nvidia-smi, NVML, DCGM, and Linux pseudo-filesystems.</desc>
+
+  <style>
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      fill: #303a36;
+    }
+    .title {
+      font-size: 42px;
+      font-weight: bold;
+      fill: #207448;
+    }
+    .th {
+      font-size: 28px;
+      font-weight: bold;
+      fill: #ffffff;
+    }
+    .src-title {
+      font-size: 26px;
+      font-weight: bold;
+      fill: #207448;
+      text-anchor: middle;
+    }
+    .cell-mono {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 24px;
+      fill: #22302a;
+    }
+    .cell-text {
+      font-size: 24px;
+      fill: #303a36;
+    }
+    .section-head {
+      font-size: 26px;
+      font-weight: bold;
+      fill: #207448;
+    }
+    .design-head {
+      font-size: 26px;
+      font-weight: bold;
+      fill: #db8129;
+    }
+  </style>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Where facts about a GPU host come from, </tspan>
-    <tspan x="800" dy="56">and how to read each safely</tspan>
-  </text>
+  <text x="50" y="65" class="title">Where facts about a GPU host come from, and how to read each safely</text>
 
   
-  <rect x="40" y="140" width="1520" height="580" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-  <path d="M 40 152 Q 40 140 52 140 L 1548 140 Q 1560 140 1560 152 L 1560 192 L 40 192 Z" fill="#207448" />
-  <text x="210" y="176" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Source</text>
-  <text x="730" y="176" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">How to read</text>
-  <text x="1320" y="176" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Care</text>
-  <rect x="40" y="192" width="1520" height="180" fill="#ffffff" />
-  <line x1="40" y1="372" x2="1560" y2="372" stroke="#207448" stroke-width="1.5" opacity="0.3" />
-  <rect x="40" y="372" width="1520" height="160" fill="#e8f1ea" />
-  <line x1="40" y1="532" x2="1560" y2="532" stroke="#207448" stroke-width="1.5" opacity="0.3" />
-  <rect x="40" y="532" width="1520" height="92" fill="#ffffff" />
-  <line x1="40" y1="624" x2="1560" y2="624" stroke="#207448" stroke-width="1.5" opacity="0.3" />
-  <path d="M 40 624 L 1560 624 L 1560 708 Q 1560 720 1548 720 L 52 720 Q 40 720 40 708 Z" fill="#e8f1ea" />
-  <line x1="380" y1="140" x2="380" y2="720" stroke="#207448" stroke-width="1.5" opacity="0.35" />
-  <line x1="1080" y1="140" x2="1080" y2="720" stroke="#207448" stroke-width="1.5" opacity="0.35" />
   
-  <g transform="translate(182, 214)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2" y="6" width="52" height="42" rx="6" />
-    <line x1="2" y1="18" x2="54" y2="18" stroke-width="2.5" />
-    <polyline points="12,28 20,34 12,40" stroke-width="3" />
-    <line x1="26" y1="40" x2="38" y2="40" stroke-width="3" />
+  
+  <rect x="50" y="100" width="260" height="56" rx="8" fill="#207448" />
+  <text x="180" y="138" class="th" text-anchor="middle">Source</text>
+
+  
+  <rect x="320" y="100" width="800" height="56" rx="8" fill="#207448" />
+  <text x="720" y="138" class="th" text-anchor="middle">How to read</text>
+
+  
+  <rect x="1130" y="100" width="420" height="56" rx="8" fill="#207448" />
+  <text x="1340" y="138" class="th" text-anchor="middle">Care</text>
+
+  
+  <g>
+    
+    <rect x="50" y="166" width="260" height="214" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="156" y="186" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 164 200 L 172 206 L 164 212 M 176 214 L 194 214" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="180" y="270" class="src-title">nvidia-smi</text>
+
+    
+    <rect x="320" y="166" width="800" height="214" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="340" y="202" class="cell-mono">
+      <tspan x="340" dy="0">nvidia-smi --query-gpu=index,name,</tspan>
+      <tspan x="340" dy="32">temperature.gpu,utilization.gpu,memory.used,</tspan>
+      <tspan x="340" dy="32">memory.total,power.draw,ecc.errors.uncorrected.</tspan>
+      <tspan x="340" dy="32">volatile.total --format=csv,noheader,nounits:</tspan>
+      <tspan x="340" dy="32">one CSV line per GPU; nvidia-smi -q -x for XML</tspan>
+    </text>
+
+    
+    <rect x="1130" y="166" width="420" height="214" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="1150" y="204" class="cell-text">
+      <tspan x="1150" dy="0">parse with csv module;</tspan>
+      <tspan x="1150" dy="32">treat [N/A] and</tspan>
+      <tspan x="1150" dy="32">[Not Supported] as missing;</tspan>
+      <tspan x="1150" dy="32">each call initialises NVML</tspan>
+      <tspan x="1150" dy="32">and can take a second on a</tspan>
+      <tspan x="1150" dy="32">busy host</tspan>
+    </text>
   </g>
-  <text x="210" y="317" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">nvidia-smi</text>
-  <text x="404" y="228" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="404" dy="0">nvidia-smi --query-gpu=index,name,</tspan><tspan x="404" dy="27">temperature.gpu,utilization.gpu,</tspan><tspan x="404" dy="27">memory.used,memory.total,power.draw,</tspan><tspan x="404" dy="27">ecc.errors.uncorrected.volatile.total </tspan><tspan x="404" dy="27">--format=csv,noheader,nounits: one CSV line </tspan><tspan x="404" dy="27">per GPU; nvidia-smi -q -x for XML</tspan>
-  </text>
-  <text x="1104" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1104" dy="0">parse with csv module; treat </tspan>
-    <tspan x="1104" dy="28">[N/A] and [Not Supported] as </tspan>
-    <tspan x="1104" dy="28">missing; each call </tspan>
-    <tspan x="1104" dy="28">initialises NVML and can </tspan>
-    <tspan x="1104" dy="28">take a second on a busy host</tspan>
-  </text>
-  
-  <g transform="translate(182, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="10" y="10" width="36" height="36" rx="4" />
-    <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448" fill-opacity="0.15" />
-    <line x1="18" y1="3" x2="18" y2="10" />
-    <line x1="28" y1="3" x2="28" y2="10" />
-    <line x1="38" y1="3" x2="38" y2="10" />
-    <line x1="18" y1="46" x2="18" y2="53" />
-    <line x1="28" y1="46" x2="28" y2="53" />
-    <line x1="38" y1="46" x2="38" y2="53" />
-    <line x1="3" y1="18" x2="10" y2="18" />
-    <line x1="3" y1="28" x2="10" y2="28" />
-    <line x1="3" y1="38" x2="10" y2="38" />
-    <line x1="46" y1="18" x2="53" y2="18" />
-    <line x1="46" y1="28" x2="53" y2="28" />
-    <line x1="46" y1="38" x2="53" y2="38" />
-  </g>
-  <text x="210" y="487" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">NVML bindings</text>
-  <text x="404" y="402" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="404" dy="0">pynvml and nvidia-ml-py: </tspan>
-    <tspan x="404" dy="25">nvmlDeviceGetTemperature, </tspan>
-    <tspan x="404" dy="25">nvmlDeviceGetUtilizationRates, </tspan>
-    <tspan x="404" dy="25">nvmlDeviceGetMemoryInfo, </tspan>
-    <tspan x="404" dy="25">nvmlDeviceGetPowerUsage; </tspan>
-    <tspan x="404" dy="25">throttling reasons and XID events</tspan>
-  </text>
-  <text x="1104" y="460" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">continuous monitoring</text>
-  
-  <g transform="translate(182, 540)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="10" />
-    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12.4 12.4 L 16.7 16.7 M 39.3 39.3 L 43.6 43.6 M 12.4 43.6 L 16.7 39.3 M 39.3 16.7 L 43.6 12.4" />
-  </g>
-  <text x="210" y="608" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">DCGM</text>
-  <text x="404" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="404" dy="0">Python bindings for health checks </tspan>
-    <tspan x="404" dy="26">and diagnostics; dcgmi diag -r 1|2|3 </tspan>
-    <tspan x="404" dy="26">as a subprocess</tspan>
-  </text>
-  <text x="1320" y="586" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">-</text>
-  
-  <g transform="translate(182, 634)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <ellipse cx="28" cy="14" rx="20" ry="7" />
-    <path d="M 8 14 L 8 42 A 20 7 0 0 0 48 42 L 48 14" />
-    <path d="M 8 28 A 20 7 0 0 0 48 28" stroke-width="3" />
-  </g>
-  <text x="210" y="702" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">/proc and /sys</text>
-  <text x="404" y="656" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="404" dy="0">/proc/meminfo, /proc/pressure/*, </tspan>
-    <tspan x="404" dy="26">/sys/class/infiniband/*/ports/*/counters/*, </tspan>
-    <tspan x="404" dy="26">/sys/class/net/*/statistics/*</tspan>
-  </text>
-  <text x="1104" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1104" dy="0">dependency-free; files can </tspan>
-    <tspan x="1104" dy="26">vanish between listing </tspan>
-    <tspan x="1104" dy="26">and reading</tspan>
-  </text>
 
   
-  <rect x="40" y="760" width="1520" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-  
-  <g transform="translate(76, 812)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 28 6 L 48 14 L 48 28 C 48 40 38 49 28 53 C 18 49 8 40 8 28 L 8 14 Z" />
-    <line x1="28" y1="20" x2="28" y2="34" stroke-width="3.5" />
-    <circle cx="28" cy="40" r="2" fill="#207448" />
+  <g>
+    
+    <rect x="50" y="390" width="260" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="156" y="410" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 166 410 L 166 404 M 180 410 L 180 404 M 194 410 L 194 404 M 166 450 L 166 456 M 180 450 L 180 456 M 194 450 L 194 456 M 156 420 L 150 420 M 156 430 L 150 430 M 156 440 L 150 440 M 204 420 L 210 420 M 204 430 L 210 430 M 204 440 L 210 440" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <text x="180" y="490" class="src-title">NVML bindings</text>
+
+    
+    <rect x="320" y="390" width="800" height="180" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="340" y="428" class="cell-mono">
+      <tspan x="340" dy="0">pynvml and nvidia-ml-py:</tspan>
+      <tspan x="340" dy="32">nvmlDeviceGetTemperature,</tspan>
+      <tspan x="340" dy="32">nvmlDeviceGetUtilizationRates,</tspan>
+      <tspan x="340" dy="32">nvmlDeviceGetMemoryInfo, nvmlDeviceGetPowerUsage;</tspan>
+      <tspan x="340" dy="32">throttling reasons and XID events</tspan>
+    </text>
+
+    
+    <rect x="1130" y="390" width="420" height="180" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="1150" y="482" class="cell-text">
+      <tspan x="1150" dy="0">continuous monitoring</tspan>
+    </text>
   </g>
-  <text x="170" y="800" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="170" dy="0">argument list, timeout=, check=False so you handle the return code, capture stderr, </tspan>
-    <tspan x="170" dy="28">never shell=True with uncontrolled input; subprocess.run timeout kills the child </tspan>
-    <tspan x="170" dy="28">but not its descendants: start_new_session=True then os.killpg; </tspan>
-    <tspan x="170" dy="28">in long-running agents call wait() to avoid zombies</tspan>
-  </text>
 
   
-  <rect x="40" y="960" width="1520" height="105" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
-  
-  <g transform="translate(76, 984)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 28 8 L 48 18 L 28 28 L 8 18 Z" />
-    <path d="M 8 28 L 28 38 L 48 28" />
-    <path d="M 8 38 L 28 48 L 48 38" />
+  <g>
+    
+    <rect x="50" y="580" width="260" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="180" cy="620" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 180 608 L 180 632 M 168 620 L 192 620" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="180" y="685" class="src-title">DCGM</text>
+
+    
+    <rect x="320" y="580" width="800" height="160" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="340" y="632" class="cell-mono">
+      <tspan x="340" dy="0">Python bindings for health checks and</tspan>
+      <tspan x="340" dy="36">diagnostics; dcgmi diag -r 1|2|3</tspan>
+      <tspan x="340" dy="36">as a subprocess</tspan>
+    </text>
+
+    
+    <rect x="1130" y="580" width="420" height="160" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="1340" y="670" class="cell-text" text-anchor="middle">-</text>
   </g>
-  <text x="170" y="1005" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="170" dy="0">wrap each source in a function returning a typed result such as a dataclass, </tspan>
-    <tspan x="170" dy="32">so the CLI, exporter and agent share one collection layer and tests feed canned output</tspan>
-  </text>
 
   
-  <rect x="40" y="1105" width="1520" height="56" rx="10" fill="#207448" />
-  <text x="800" y="1141" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Read in a way that survives odd output, slow tools and vanishing files</text>
+  <g>
+    
+    <rect x="50" y="750" width="260" height="170" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 160 782 L 174 782 L 180 788 L 200 788 C 203 788 206 791 206 794 L 206 814 C 206 817 203 820 200 820 L 160 820 C 157 820 154 817 154 814 L 154 788 C 154 785 157 782 160 782 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <text x="180" y="865" class="src-title">/proc and /sys</text>
 
+    
+    <rect x="320" y="750" width="800" height="170" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="340" y="796" class="cell-mono">
+      <tspan x="340" dy="0">/proc/meminfo, /proc/pressure/*,</tspan>
+      <tspan x="340" dy="34">/sys/class/infiniband/*/ports/*/counters/*,</tspan>
+      <tspan x="340" dy="34">/sys/class/net/*/statistics/*</tspan>
+    </text>
+
+    
+    <rect x="1130" y="750" width="420" height="170" rx="8" fill="#ffffff" stroke="#c0d6c4" stroke-width="2" />
+    <text x="1150" y="808" class="cell-text">
+      <tspan x="1150" dy="0">dependency-free;</tspan>
+      <tspan x="1150" dy="34">files can vanish between</tspan>
+      <tspan x="1150" dy="34">listing and reading</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="940" width="1500" height="230" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 85 978 L 105 970 L 125 978 L 125 1002 C 125 1018 105 1030 105 1030 C 105 1030 85 1018 85 1002 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 98 998 L 104 1004 L 115 992" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    
+    <text x="145" y="995" class="cell-mono">
+      <tspan x="145" dy="0">argument list, timeout=, check=False so you handle the return code,</tspan>
+      <tspan x="145" dy="36">capture stderr, never shell=True with uncontrolled input;</tspan>
+      <tspan x="145" dy="36">subprocess.run timeout kills the child but not its descendants:</tspan>
+      <tspan x="145" dy="36">start_new_session=True then os.killpg; in long-running agents</tspan>
+      <tspan x="145" dy="36">call wait() to avoid zombies</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1190" width="1500" height="150" rx="10" fill="#fcf3eb" stroke="#db8129" stroke-width="3" />
+    
+    
+    <circle cx="105" cy="1265" r="16" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 105 1241 L 105 1247 M 105 1283 L 105 1289 M 81 1265 L 87 1265 M 123 1265 L 129 1265 M 88 1248 L 92 1252 M 118 1278 L 122 1282 M 88 1282 L 92 1278 M 118 1252 L 122 1248" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+
+    
+    <text x="145" y="1245" class="cell-text">
+      <tspan x="145" dy="0">wrap each source in a function returning a typed result such as a dataclass,</tspan>
+      <tspan x="145" dy="36">so the CLI, exporter and agent share one collection layer and tests feed canned output</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1360" width="1500" height="70" rx="8" fill="#207448" />
+    <text x="800" y="1405" class="th" text-anchor="middle">Read in a way that survives odd output, slow tools and vanishing files</text>
+  </g>
 </svg>

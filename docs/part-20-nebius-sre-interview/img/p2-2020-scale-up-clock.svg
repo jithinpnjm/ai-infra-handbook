@@ -1,202 +1,193 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
   <title>Scale-up latency: the clock from crossing the line to serving</title>
-  <desc>Horizontal timeline of scale-up latency stages from metric trigger to stream serving, highlighting provisioning bottleneck, optimizations, and bypass path.</desc>
+  <desc>Visual explanation of the six stages in scale-up latency and optimization cures.</desc>
 
   <defs>
-    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1120" fill="#f5f8f5" />
+  <rect width="1600" height="1140" fill="#f5f8f5" />
 
   
-  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Scale-up latency: the clock from crossing the line to serving</text>
+  <text x="60" y="68" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Scale-up latency: the clock from crossing the line to serving</text>
 
   
-  
-  <g transform="translate(50, 115)">
-    <rect x="0" y="0" width="370" height="64" rx="8" fill="#207448" />
-    
-    <path d="M 22 18 L 22 46 M 22 18 L 44 26 L 22 35" fill="none" stroke="#f5f8f5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <text x="58" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Metric crosses the target</text>
+  <g>
+    <rect x="60" y="112" width="360" height="48" rx="24" fill="#207448" />
+    <circle cx="86" cy="136" r="12" fill="#ffffff" />
+    <circle cx="86" cy="136" r="6" fill="#207448" />
+    <text x="114" y="144" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Metric crosses the target</text>
+    <path d="M 240 160 L 240 200" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
   </g>
 
   
-  <g transform="translate(1250, 115)">
-    <rect x="0" y="0" width="300" height="64" rx="8" fill="#207448" />
-    
-    <circle cx="32" cy="32" r="14" fill="none" stroke="#f5f8f5" stroke-width="3" />
-    <path d="M 25 32 L 30 37 L 40 25" fill="none" stroke="#f5f8f5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <text x="60" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Stream is served</text>
+
+  
+  <g>
+    <rect x="580" y="132" width="440" height="44" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="162" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Warm node pool, placeholder pods</text>
+    <path d="M 800 176 L 800 202" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
   </g>
 
   
-  <path d="M 235 179 L 235 240" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  <path d="M 1400 900 L 1400 189" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  
-  <g transform="translate(680, 220)">
-    <rect x="0" y="0" width="460" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="28" cy="27" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 28 21 L 28 33 M 22 27 L 34 27" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-    <text x="48" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Warm node pool, placeholder pods</text>
+  <g>
+    <rect x="1100" y="132" width="440" height="44" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="162" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pre-pulled image, smaller image</text>
+    <path d="M 1320 176 L 1320 202" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
   </g>
 
   
-  <g transform="translate(50, 480)">
-    <rect x="0" y="0" width="420" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="28" cy="27" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 28 21 L 28 33 M 22 27 L 34 27" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-    <text x="48" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pre-pulled image, smaller image</text>
+  <g>
+    <rect x="60" y="210" width="440" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="104" cy="254" r="22" fill="#207448" />
+    <text x="104" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <circle cx="440" cy="254" r="20" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 440 242 L 440 254 L 450 254" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="145" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Decision:</text>
+    <text x="90" y="322" font-family="sans-serif" font-size="25" fill="#303a36">scrape, polling</text>
+    <text x="90" y="362" font-family="sans-serif" font-size="25" fill="#303a36">and 15 s sync</text>
   </g>
 
   
-  <g transform="translate(560, 480)">
-    <rect x="0" y="0" width="440" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="28" cy="27" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 28 21 L 28 33 M 22 27 L 34 27" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-    <text x="48" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Local volume cache, fast storage</text>
+  <path d="M 500 325 L 568 325" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="580" y="210" width="440" height="230" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="5" />
+    <circle cx="624" cy="254" r="22" fill="#db8129" />
+    <text x="624" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="930" y="238" width="40" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="930" y="256" width="40" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    <circle cx="960" cy="244" r="2" fill="#db8129" />
+    <circle cx="960" cy="262" r="2" fill="#db8129" />
+    
+    <text x="665" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node provision</text>
+    <text x="610" y="322" font-family="sans-serif" font-size="25" fill="#303a36">by the cluster</text>
+    <text x="610" y="362" font-family="sans-serif" font-size="25" fill="#303a36">autoscaler</text>
   </g>
 
   
-  <g transform="translate(50, 770)">
-    <rect x="0" y="0" width="500" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="28" cy="27" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-    <path d="M 28 21 L 28 33 M 22 27 L 34 27" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-    <text x="48" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Warm-up request in the startup probe</text>
+  <path d="M 1020 325 L 1088 325" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="1100" y="210" width="440" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1144" cy="254" r="22" fill="#207448" />
+    <text x="1144" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <rect x="1450" y="244" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1468 234 L 1468 256 M 1462 250 L 1468 256 L 1474 250" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="1185" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Image pull</text>
   </g>
 
   
-  <g transform="translate(50, 290)">
-    <rect x="0" y="0" width="450" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-    
-    <g transform="translate(370, 20)">
-      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 28 14 L 28 28 L 38 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Decision</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Decision: scrape, polling and 15 s sync</text>
+
+  
+  
+  <path d="M 110 440 L 110 514" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8,6" />
+  
+  <g>
+    <rect x="40" y="514" width="350" height="76" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="215" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Warm node:</text>
+    <text x="215" y="576" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">the pod skips provisioning</text>
+  </g>
+  
+  <path d="M 110 590 L 110 748" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1320 440 L 1320 648 L 470 648 L 470 748" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g>
+    <rect x="150" y="694" width="290" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="295" y="720" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Local volume cache,</text>
+    <text x="295" y="740" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">fast storage</text>
   </g>
 
   
-  <path d="M 500 365 L 590 365" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <g transform="translate(600, 290)">
-    <rect x="0" y="0" width="950" height="150" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="5" />
-    
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-    
-    <g transform="translate(860, 20)">
-      <rect x="6" y="8" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="16" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="16" y1="28" x2="30" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <circle cx="38" cy="36" r="3" fill="#207448" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node provision</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Node provision by the cluster autoscaler</text>
+  <g>
+    <rect x="630" y="694" width="340" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="720" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Warm-up request in</text>
+    <text x="800" y="740" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">the startup probe</text>
   </g>
 
   
-  
-  <path d="M 545 365 L 545 455 L 1570 455 L 1570 580 L 1500 580" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
-  <g transform="translate(760, 427)">
-    <rect x="0" y="0" width="480" height="46" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
-    <text x="14" y="32" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Warm node: the pod skips provisioning</text>
+  <g>
+    <rect x="60" y="760" width="440" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="104" cy="804" r="22" fill="#207448" />
+    <text x="104" y="812" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <ellipse cx="440" cy="796" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 422 796 L 422 818 A 18 7 0 0 0 458 818 L 458 796" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="145" y="812" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Weight load</text>
+    <text x="90" y="872" font-family="sans-serif" font-size="25" fill="#303a36">from storage to</text>
+    <text x="90" y="912" font-family="sans-serif" font-size="25" fill="#303a36">GPU memory</text>
   </g>
 
   
-  <path d="M 1075 440 L 1075 510 L 1400 510 L 1400 540" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 500 875 L 568 875" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(50, 550)">
-    <rect x="0" y="0" width="470" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g>
+    <rect x="580" y="760" width="440" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="624" cy="804" r="22" fill="#207448" />
+    <text x="624" y="812" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
     
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <path d="M 950 820 C 938 820 932 810 938 798 C 942 790 948 786 950 780 C 952 786 958 790 962 798 C 968 810 962 820 950 820 Z" fill="none" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(390, 20)">
-      <rect x="8" y="14" width="40" height="34" rx="3" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 8 24 L 48 24 M 28 24 L 28 48" stroke="#207448" stroke-width="3" />
-      <path d="M 18 14 L 28 6 L 38 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Image pull</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Image pull</text>
+    <text x="665" y="812" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Warm-up:</text>
+    <text x="610" y="872" font-family="sans-serif" font-size="25" fill="#303a36">first requests,</text>
+    <text x="610" y="912" font-family="sans-serif" font-size="25" fill="#303a36">graph capture, caches</text>
   </g>
 
   
-  <path d="M 520 625 L 550 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1020 875 L 1088 875" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(560, 550)">
-    <rect x="0" y="0" width="990" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g>
+    <rect x="1100" y="760" width="440" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1144" cy="804" r="22" fill="#207448" />
+    <text x="1144" y="812" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
     
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <rect x="1446" y="800" width="40" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1454 792 L 1454 800 M 1466 792 L 1466 800 M 1478 792 L 1478 800" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="1456" cy="810" r="2" fill="#207448" />
+    <circle cx="1466" cy="810" r="2" fill="#207448" />
+    <circle cx="1476" cy="810" r="2" fill="#207448" />
     
-    <g transform="translate(900, 20)">
-      <ellipse cx="28" cy="14" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 8 14 L 8 40 C 8 45, 48 45, 48 40 L 48 14" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 8 27 C 8 32, 48 32, 48 27" fill="none" stroke="#207448" stroke-width="3" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Weight load</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Weight load from storage to GPU memory</text>
+    <text x="1185" y="812" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Registration:</text>
+    <text x="1130" y="872" font-family="sans-serif" font-size="25" fill="#303a36">readiness passes,</text>
+    <text x="1130" y="912" font-family="sans-serif" font-size="25" fill="#303a36">router adds it</text>
   </g>
 
   
-  <path d="M 1055 700 L 1055 765 L 290 765 L 290 830" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(50, 840)">
-    <rect x="0" y="0" width="670" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <path d="M 1320 990 L 1320 1028" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g>
+    <rect x="1180" y="1040" width="280" height="48" rx="24" fill="#207448" />
     
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
-    
-    <g transform="translate(590, 20)">
-      <path d="M 28 6 C 28 6, 36 16, 36 24 C 36 30, 32 36, 26 38 C 22 39, 18 36, 18 32 C 18 26, 22 22, 22 22 C 22 22, 14 26, 14 34 C 14 43, 21 50, 30 50 C 40 50, 46 41, 46 30 C 46 16, 28 6, 28 6 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Warm-up</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Warm-up: first requests, graph capture, caches</text>
+    <circle cx="1206" cy="1064" r="12" fill="#ffffff" />
+    <path d="M 1200 1064 L 1204 1068 L 1212 1060" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1230" y="1072" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Stream is served</text>
   </g>
 
   
-  <path d="M 720 915 L 760 915" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="60" y="1072" font-family="sans-serif" font-size="24" font-style="italic" fill="#505e58">The values are assumptions, not measurements.</text>
 
-  
-  <g transform="translate(770, 840)">
-    <rect x="0" y="0" width="780" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    <circle cx="44" cy="44" r="24" fill="#207448" />
-    <text x="44" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
-    
-    <g transform="translate(700, 20)">
-      <circle cx="28" cy="18" r="8" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="14" cy="40" r="6" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="42" cy="40" r="6" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="24" y1="25" x2="18" y2="34" stroke="#207448" stroke-width="3" />
-      <line x1="32" y1="25" x2="38" y2="34" stroke="#207448" stroke-width="3" />
-    </g>
-    
-    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Registration</text>
-    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Registration: readiness passes, router adds it</text>
-  </g>
-
-  
-  <text x="50" y="1065" font-family="sans-serif" font-size="24" font-style="italic" fill="#303a36">The values are assumptions, not measurements.</text>
 </svg>

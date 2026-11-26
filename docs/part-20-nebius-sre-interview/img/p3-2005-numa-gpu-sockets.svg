@@ -1,263 +1,260 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
-  <title>NUMA: local memory is fast, remote memory crosses the interconnect</title>
-  <desc>Visual explanation of NUMA memory access latencies, interconnect penalties, multi-socket GPU topology, and worker binding policies.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
+  <title>NUMA Architecture and GPU Socket Placement</title>
+  <desc>Visual infographic explaining NUMA local vs remote memory access, interconnect latency, GPU placement, and process binding.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
     </marker>
-    <marker id="bar-arrow-left" viewBox="0 0 18 18" refX="2" refY="9" markerWidth="12" markerHeight="12" orient="auto">
-      <path d="M 18 2 L 2 9 L 18 16 z" fill="#207448" />
-    </marker>
-    <marker id="bar-arrow-right" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="12" markerHeight="12" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
-    </marker>
+
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b382b" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1320" fill="#f5f8f5"/>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">NUMA: local memory is fast,</tspan>
-    <tspan x="800" dy="56">remote memory crosses the interconnect</tspan>
+  <text x="800" y="62" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">
+    NUMA: local memory is fast, remote memory crosses the interconnect
   </text>
 
   
-  <rect x="40" y="160" width="530" height="520" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" />
-  <rect x="40" y="160" width="530" height="60" rx="16" fill="#e8f1ea" />
-  <rect x="40" y="204" width="530" height="16" fill="#e8f1ea" />
-  <text x="305" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Socket 0 (NUMA node 0)</text>
+  <g filter="url(#card-shadow)">
+    
+    <rect x="60" y="120" width="500" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="310" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      Socket 0 (NUMA node 0)
+    </text>
+
+    
+    <rect x="150" y="210" width="260" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(175, 240)">
+      <rect x="0" y="0" width="60" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <rect x="15" y="15" width="30" height="30" rx="4" fill="#207448" opacity="0.25"/>
+      <line x1="12" y1="0" x2="12" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="0" x2="30" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="48" y1="0" x2="48" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="12" y1="60" x2="12" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="60" x2="30" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="48" y1="60" x2="48" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="260" y="285" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">CPU</text>
+
+    
+    <rect x="150" y="440" width="260" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(170, 475)">
+      <rect x="0" y="0" width="70" height="50" rx="5" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <rect x="10" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <rect x="29" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <rect x="48" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <line x1="6" y1="42" x2="64" y2="42" stroke="#207448" stroke-width="2" stroke-dasharray="3 3"/>
+    </g>
+    <text x="252" y="515" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Memory bank 0</text>
+
+    
+    
+    <g transform="translate(80, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(195, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(310, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(425, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+  </g>
 
   
-  <rect x="65" y="240" width="225" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(85, 262)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="46" height="56" rx="4" fill="#fdfefd" />
-    <line x1="10" y1="12" x2="36" y2="12" />
-    <line x1="10" y1="24" x2="36" y2="24" />
-    <line x1="10" y1="36" x2="36" y2="36" />
-    <circle cx="23" cy="48" r="2" fill="#207448" />
-  </g>
-  <text x="205" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="205" dy="-10">Memory</tspan>
-    <tspan x="205" dy="32">bank 0</tspan>
+  <path d="M 230 340 L 230 435" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  
+  <rect x="255" y="360" width="270" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="390" y="400" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    local access: about 80 ns
   </text>
 
   
-  <rect x="65" y="370" width="225" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(85, 392)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="8" y="8" width="38" height="38" rx="4" fill="#fdfefd" />
-    <line x1="16" y1="0" x2="16" y2="8" />
-    <line x1="27" y1="0" x2="27" y2="8" />
-    <line x1="38" y1="0" x2="38" y2="8" />
-    <line x1="16" y1="46" x2="16" y2="54" />
-    <line x1="27" y1="46" x2="27" y2="54" />
-    <line x1="38" y1="46" x2="38" y2="54" />
-    <line x1="0" y1="16" x2="8" y2="16" />
-    <line x1="0" y1="27" x2="8" y2="27" />
-    <line x1="0" y1="38" x2="8" y2="38" />
-    <line x1="46" y1="16" x2="54" y2="16" />
-    <line x1="46" y1="27" x2="54" y2="27" />
-    <line x1="46" y1="38" x2="54" y2="38" />
+  <g filter="url(#card-shadow)">
+    
+    <rect x="1040" y="120" width="500" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="1290" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      Socket 1 (NUMA node 1)
+    </text>
+
+    
+    <rect x="1130" y="210" width="260" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1150, 245)">
+      <rect x="0" y="0" width="70" height="50" rx="5" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <rect x="10" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <rect x="29" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <rect x="48" y="10" width="12" height="18" fill="#207448" opacity="0.4"/>
+      <line x1="6" y1="42" x2="64" y2="42" stroke="#207448" stroke-width="2" stroke-dasharray="3 3"/>
+    </g>
+    <text x="1232" y="285" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Memory bank 1</text>
+
+    
+    <rect x="1130" y="440" width="260" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1155, 470)">
+      <rect x="0" y="0" width="60" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <rect x="15" y="15" width="30" height="30" rx="4" fill="#207448" opacity="0.25"/>
+      <line x1="12" y1="0" x2="12" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="0" x2="30" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="48" y1="0" x2="48" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="12" y1="60" x2="12" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="60" x2="30" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="48" y1="60" x2="48" y2="66" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="1240" y="515" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">CPU</text>
+
+    
+    
+    <g transform="translate(1060, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(1175, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(1290, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
+    
+    <g transform="translate(1405, 620)">
+      <rect x="0" y="0" width="100" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="15" y="18" width="70" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="50" cy="39" r="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="50" y="102" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">GPU</text>
+    </g>
   </g>
-  <text x="210" y="432" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU</text>
 
   
-  <path d="M 125 370 L 125 344" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-  <text x="315" y="348" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="315" dy="0">local access:</tspan>
-    <tspan x="315" dy="28">about 80 ns</tspan>
+  
+  <g transform="translate(600, 420)">
+    
+    <rect x="0" y="0" width="400" height="44" rx="8" fill="#d9e8dc" stroke="#207448" stroke-width="3"/>
+    
+    <polygon points="0,22 18,10 18,34" fill="#207448"/>
+    
+    <polygon points="400,22 382,10 382,34" fill="#207448"/>
+    
+    <line x1="30" y1="22" x2="370" y2="22" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+  </g>
+  
+  <text x="800" y="500" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    interconnect
   </text>
 
   
   
-  <rect x="65" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(93, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
-  </g>
-  <text x="117" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
-
   
-  <rect x="185" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(213, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
-  </g>
-  <text x="237" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
-
-  
-  <rect x="305" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(333, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
-  </g>
-  <text x="357" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
-
-  
-  <rect x="425" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(453, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
-  </g>
-  <text x="477" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
+  <path d="M 410 300 L 1125 300" fill="none" stroke="#db8129" stroke-width="6" marker-end="url(#arrow-orange)"/>
 
   
   
-  <rect x="570" y="260" width="460" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <line x1="585" y1="290" x2="1015" y2="290" stroke="#207448" stroke-width="3" marker-start="url(#bar-arrow-left)" marker-end="url(#bar-arrow-right)" />
-  <text x="800" y="299" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">interconnect</text>
-
-  
-  <path d="M 290 420 L 1046 420" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
-  <text x="670" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="670" dy="0">remote access: about 139 ns,</tspan>
-    <tspan x="670" dy="28">roughly 75 percent slower</tspan>
+  <rect x="620" y="200" width="360" height="76" rx="10" fill="#fff5ec" stroke="#db8129" stroke-width="2.5"/>
+  <text x="800" y="234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    remote access: about 139 ns,
   </text>
-
-  
-  <rect x="1030" y="160" width="530" height="520" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" />
-  <rect x="1030" y="160" width="530" height="60" rx="16" fill="#e8f1ea" />
-  <rect x="1030" y="204" width="530" height="16" fill="#e8f1ea" />
-  <text x="1295" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Socket 1 (NUMA node 1)</text>
-
-  
-  <rect x="1055" y="240" width="225" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1075, 262)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="8" y="8" width="38" height="38" rx="4" fill="#fdfefd" />
-    <line x1="16" y1="0" x2="16" y2="8" />
-    <line x1="27" y1="0" x2="27" y2="8" />
-    <line x1="38" y1="0" x2="38" y2="8" />
-    <line x1="16" y1="46" x2="16" y2="54" />
-    <line x1="27" y1="46" x2="27" y2="54" />
-    <line x1="38" y1="46" x2="38" y2="54" />
-    <line x1="0" y1="16" x2="8" y2="16" />
-    <line x1="0" y1="27" x2="8" y2="27" />
-    <line x1="0" y1="38" x2="8" y2="38" />
-    <line x1="46" y1="16" x2="54" y2="16" />
-    <line x1="46" y1="27" x2="54" y2="27" />
-    <line x1="46" y1="38" x2="54" y2="38" />
-  </g>
-  <text x="1200" y="302" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU</text>
-
-  
-  <rect x="1055" y="370" width="225" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1075, 392)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="46" height="56" rx="4" fill="#fdfefd" />
-    <line x1="10" y1="12" x2="36" y2="12" />
-    <line x1="10" y1="24" x2="36" y2="24" />
-    <line x1="10" y1="36" x2="36" y2="36" />
-    <circle cx="23" cy="48" r="2" fill="#207448" />
-  </g>
-  <text x="1195" y="430" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="1195" dy="-10">Memory</tspan>
-    <tspan x="1195" dy="32">bank 1</tspan>
+  <text x="800" y="262" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    roughly 75 percent slower
   </text>
 
   
   
-  <rect x="1055" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1083, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
+  <g transform="translate(60, 830)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="700" height="180" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(26, 30)">
+      <polygon points="26,4 50,48 2,48" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+      <line x1="26" y1="20" x2="26" y2="34" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="26" cy="42" r="2.5" fill="#db8129"/>
+    </g>
+    
+    <text x="96" y="80" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Data loader on the wrong socket pulls every batch
+    </text>
+    <text x="96" y="125" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      across the interconnect, the GPU waits
+    </text>
   </g>
-  <text x="1107" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
 
   
-  <rect x="1175" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1203, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
+  <g transform="translate(800, 830)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="740" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(25, 30)">
+      <rect x="0" y="0" width="48" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <path d="M 12 14 L 22 21 L 12 28" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="26" y1="28" x2="36" y2="28" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    
+    <text x="92" y="80" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      numactl --cpunodebind=NODE --membind=NODE
+    </text>
+    <text x="92" y="125" font-family="monospace" font-size="24" fill="#303a36">
+      numastat: numa_hit vs numa_miss and numa_foreign
+    </text>
   </g>
-  <text x="1227" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
 
   
-  <rect x="1295" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1323, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
+  <g transform="translate(60, 1045)">
+    <rect x="0" y="0" width="1480" height="110" rx="12" fill="#ffffff" stroke="#8fa89b" stroke-width="2"/>
+    
+    <circle cx="45" cy="55" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="45" y="63" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">i</text>
+    
+    <text x="85" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      NUMA policy is not always inherited by child processes and Python workers,
+    </text>
+    <text x="85" y="84" font-family="sans-serif" font-size="24" fill="#303a36">
+      apply it inside each worker and check.
+    </text>
   </g>
-  <text x="1347" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
 
   
-  <rect x="1415" y="500" width="105" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1443, 520)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="48" height="52" rx="4" fill="#fdfefd" />
-    <circle cx="24" cy="26" r="14" />
-    <line x1="24" y1="16" x2="24" y2="36" />
-    <line x1="14" y1="26" x2="34" y2="26" />
+  <g transform="translate(60, 1190)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="1480" height="85" rx="14" fill="#207448"/>
+    <text x="740" y="52" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      On a multi-socket GPU host, ask which node the GPU belongs to before you ask why the data loader is slow.
+    </text>
   </g>
-  <text x="1467" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU</text>
-
-  
-  
-  <rect x="40" y="720" width="700" height="320" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" />
-  <rect x="40" y="720" width="700" height="70" rx="16" fill="#e8f1ea" />
-  <rect x="40" y="774" width="700" height="16" fill="#e8f1ea" />
-  
-  <g transform="translate(70, 727)" stroke="#207448" stroke-width="3" fill="none">
-    <circle cx="28" cy="28" r="12" />
-    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
-  </g>
-  <text x="390" y="855" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="390" dy="0">Data loader on the wrong socket</tspan>
-    <tspan x="390" dy="44">pulls every batch across the interconnect,</tspan>
-    <tspan x="390" dy="44">the GPU waits</tspan>
-  </text>
-
-  
-  <rect x="780" y="720" width="780" height="150" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" />
-  
-  <g transform="translate(810, 742)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="56" height="44" rx="6" fill="#e8f1ea" />
-    <polyline points="12,14 22,22 12,30" />
-    <line x1="26" y1="30" x2="42" y2="30" />
-  </g>
-  <text x="1190" y="775" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1190" dy="0">numactl --cpunodebind=NODE --membind=NODE</tspan>
-    <tspan x="1190" dy="45">numastat: numa_hit vs numa_miss and numa_foreign</tspan>
-  </text>
-
-  
-  <rect x="780" y="890" width="780" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(810, 938)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="0" y="0" width="44" height="54" rx="4" fill="#fdfefd" />
-    <line x1="10" y1="14" x2="34" y2="14" />
-    <line x1="10" y1="26" x2="34" y2="26" />
-    <line x1="10" y1="38" x2="24" y2="38" />
-  </g>
-  <text x="1200" y="945" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1200" dy="0">NUMA policy is not always inherited by</tspan>
-    <tspan x="1200" dy="36">child processes and Python workers, apply it</tspan>
-    <tspan x="1200" dy="36">inside each worker and check.</tspan>
-  </text>
-
-  
-  <rect x="40" y="1080" width="1520" height="80" rx="12" fill="#207448" />
-  <text x="800" y="1130" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
-    On a multi-socket GPU host, ask which node the GPU belongs to before you ask why the data loader is slow.
-  </text>
 </svg>

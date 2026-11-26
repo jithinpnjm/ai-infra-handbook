@@ -1,208 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>Karpenter versus node groups, and the NodePool rules</title>
-  <desc>Technical infographic comparing Cluster Autoscaler fixed node group menu versus Karpenter just-in-time chef provisioning, beside an annotated Karpenter NodePool manifest for gpu-inference with requirements, taints, limits, and disruption policies.</desc>
+  <desc>Visual comparison between Cluster Autoscaler menu-based scaling and Karpenter JIT chef-like provisioning, alongside an annotated NodePool specification for gpu-inference.</desc>
+
+  <rect width="1600" height="1350" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="50" y="65" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">Karpenter versus node groups, and the NodePool rules</text>
 
   
-  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Karpenter versus node groups,</tspan>
-    <tspan x="800" dy="54">and the NodePool rules</tspan>
-  </text>
+  <rect x="50" y="100" width="710" height="1200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g id="left-panel">
+  <g transform="translate(80, 130)">
     
-    <rect x="40" y="140" width="740" height="1020" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-
+    <path d="M 12 40 L 48 40 L 46 48 L 14 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 14 40 C 6 36 6 22 18 20 C 16 10 32 8 36 16 C 42 8 54 18 44 28 C 48 34 46 38 46 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="18" y1="44" x2="42" y2="44" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(68, 150)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 10 44 h 36 v 8 h -36 z" />
-      <path d="M 12 44 c -8 -4 -8 -16 0 -22 c -4 -10 6 -18 16 -14 c 6 -8 18 -8 24 0 c 10 -4 20 4 16 14 c 8 6 8 18 0 22" />
-      <line x1="18" y1="48" x2="38" y2="48" stroke-width="2.5" />
-    </g>
-
-    
-    <text x="144" y="188" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">menu versus chef</text>
-
-    
-    <g id="ca-card">
-      <rect x="64" y="216" width="692" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      
-      <g transform="translate(86, 293)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="6" width="48" height="44" rx="4" />
-        <line x1="4" y1="18" x2="52" y2="18" />
-        <line x1="16" y1="26" x2="40" y2="26" />
-        <line x1="16" y1="34" x2="40" y2="34" />
-        <line x1="16" y1="42" x2="30" y2="42" />
-        <circle cx="10" cy="12" r="2" fill="#207448" />
-        <circle cx="16" cy="12" r="2" fill="#207448" />
-      </g>
-
-      
-      <text x="160" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
-        <tspan x="160" dy="0">Cluster Autoscaler orders from a fixed</tspan>
-        <tspan x="160" dy="42">menu of node groups, each with one</tspan>
-        <tspan x="160" dy="42">shape</tspan>
-      </text>
-    </g>
-
-    
-    <g id="karpenter-card">
-      <rect x="64" y="456" width="692" height="678" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
-      
-      <g transform="translate(86, 767)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="28" cy="28" r="14" />
-        <path d="M 28 6 v 8 M 28 42 v 8 M 6 28 h 8 M 42 28 h 8 M 12 12 l 6 6 M 38 38 l 6 6 M 12 44 l 6 -6 M 38 18 l 6 -6" />
-        <circle cx="28" cy="28" r="5" fill="#207448" />
-      </g>
-
-      
-      <text x="160" y="605" font-family="sans-serif" font-size="24" fill="#303a36">
-        <tspan x="160" dy="0">Karpenter watches Pending pods,</tspan>
-        <tspan x="160" dy="54">batches them, computes the best set of</tspan>
-        <tspan x="160" dy="54">instance types that satisfy their</tspan>
-        <tspan x="160" dy="54">constraints, and provisions just in</tspan>
-        <tspan x="160" dy="54">time; bin-packing, spot handling with</tspan>
-        <tspan x="160" dy="54">interruption notices, automatic</tspan>
-        <tspan x="160" dy="54">rotation and drift correction</tspan>
-      </text>
-    </g>
+    <text x="70" y="38" font-family="sans-serif" font-size="34px" font-weight="bold" fill="#207448">menu versus chef</text>
   </g>
 
   
-  <g id="right-panel">
+  <rect x="80" y="210" width="650" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(106, 236)">
     
-    <rect x="820" y="140" width="740" height="1020" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <rect x="0" y="4" width="36" height="48" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="18" x2="28" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="28" x2="28" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="38" x2="22" y2="38" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="160" y="272" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Fixed Node Groups</text>
+  <text x="106" y="336" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="106" dy="0">Cluster Autoscaler orders from a fixed</tspan>
+    <tspan x="106" dy="38">menu of node groups, each with one shape</tspan>
+  </text>
+
+  
+  <rect x="80" y="500" width="650" height="520" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(106, 526)">
+    
+    <circle cx="24" cy="24" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="24" cy="24" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="160" y="562" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Just-In-Time Provisioning</text>
+  <text x="106" y="626" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="106" dy="0">Karpenter watches Pending pods, batches</tspan>
+    <tspan x="106" dy="38">them, computes the best set of instance types</tspan>
+    <tspan x="106" dy="38">that satisfy their constraints, and provisions</tspan>
+    <tspan x="106" dy="38">just in time; bin-packing, spot handling with</tspan>
+    <tspan x="106" dy="38">interruption notices, automatic rotation and</tspan>
+    <tspan x="106" dy="38">drift correction</tspan>
+  </text>
+
+  
+  <rect x="800" y="100" width="750" height="1200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(830, 130)">
+    
+    <line x1="6" y1="14" x2="42" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="18" cy="14" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="6" y1="34" x2="42" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="32" cy="34" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <text x="64" y="32" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">NodePool gpu-inference</text>
+  </g>
+
+  
+  <rect x="830" y="200" width="690" height="740" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(856, 230)">
+    
+    <text x="0" y="24" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">requirements</text>
+    <text x="24" y="62" font-family="monospace" font-size="24px" fill="#303a36">instance-family In g6, g6e, p5</text>
+    <text x="24" y="98" font-family="monospace" font-size="24px" fill="#303a36">capacity-type On-demand</text>
+    <text x="24" y="134" font-family="monospace" font-size="24px" fill="#303a36">zones us-east-1a and us-east-1b</text>
 
     
-    <g transform="translate(848, 150)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="6" width="40" height="44" rx="5" />
-      <path d="M 18 18 h 20 M 18 26 h 20 M 18 34 h 12" />
-      <circle cx="14" cy="18" r="1.5" fill="#207448" />
-      <circle cx="14" cy="26" r="1.5" fill="#207448" />
-      <circle cx="14" cy="34" r="1.5" fill="#207448" />
-    </g>
+    <text x="0" y="190" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">taints</text>
+    <text x="24" y="228" font-family="monospace" font-size="24px" fill="#303a36">nvidia.com/gpu=present NoSchedule</text>
+    <text x="24" y="262" font-family="sans-serif" font-size="24px" fill="#303a36">(keeps ordinary pods off)</text>
 
     
-    <text x="922" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">annotated NodePool gpu-inference</text>
+    <text x="0" y="318" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">nodeClassRef</text>
+    <text x="210" y="318" font-family="monospace" font-size="24px" fill="#303a36">EC2NodeClass gpu</text>
+
+    <text x="0" y="374" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">expireAfter</text>
+    <text x="210" y="374" font-family="monospace" font-size="24px" fill="#303a36">720h</text>
+
+    <text x="0" y="430" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">limits</text>
+    <text x="210" y="430" font-family="monospace" font-size="24px" fill="#303a36">nvidia.com/gpu 64</text>
+    <text x="210" y="464" font-family="sans-serif" font-size="24px" fill="#303a36">(cap on total GPUs)</text>
 
     
-    <g id="item-requirements">
-      <rect x="844" y="216" width="692" height="98" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 245)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="6" width="34" height="32" rx="4" />
-        <line x1="4" y1="16" x2="38" y2="16" />
-        <circle cx="12" cy="26" r="2" fill="#207448" />
-        <circle cx="21" cy="26" r="2" fill="#207448" />
-        <circle cx="30" cy="26" r="2" fill="#207448" />
-      </g>
-      <text x="922" y="259" font-family="monospace" font-size="24" fill="#303a36">
-        <tspan x="922" dy="0">requirements instance-family</tspan>
-        <tspan x="922" dy="32">In g6, g6e, p5</tspan>
-      </text>
-    </g>
+    <text x="0" y="520" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">disruption</text>
+    <text x="24" y="558" font-family="monospace" font-size="24px" fill="#303a36">consolidationPolicy WhenEmptyOrUnderutilized</text>
+    <text x="24" y="594" font-family="monospace" font-size="24px" fill="#303a36">consolidateAfter 10m</text>
+    <text x="24" y="630" font-family="monospace" font-size="24px" fill="#303a36">budgets nodes 10 percent</text>
+  </g>
 
+  
+  <rect x="830" y="970" width="690" height="200" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(856, 1000)">
     
-    <g id="item-capacity">
-      <rect x="844" y="324" width="692" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 336)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="21" cy="22" r="15" />
-        <polyline points="15,22 19,26 28,17" />
-      </g>
-      <text x="922" y="368" font-family="monospace" font-size="24" fill="#303a36">capacity-type On-demand</text>
-    </g>
-
-    
-    <g id="item-zones">
-      <rect x="844" y="402" width="692" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 414)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="15" cy="22" r="9" />
-        <circle cx="27" cy="22" r="9" />
-      </g>
-      <text x="922" y="446" font-family="monospace" font-size="24" fill="#303a36">zones us-east-1a and us-east-1b</text>
-    </g>
-
-    
-    <g id="item-taints">
-      <rect x="844" y="480" width="692" height="98" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 509)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 21 6 L 36 12 V 25 C 36 34 21 40 21 40 C 21 40 6 34 6 25 V 12 Z" />
-        <line x1="15" y1="23" x2="27" y2="23" />
-      </g>
-      <text x="922" y="523" font-family="sans-serif" font-size="24" fill="#303a36">
-        <tspan x="922" dy="0" font-family="monospace">taints nvidia.com/gpu=present</tspan>
-        <tspan x="922" dy="32">NoSchedule (keeps ordinary pods off)</tspan>
-      </text>
-    </g>
-
-    
-    <g id="item-nodeclass">
-      <rect x="844" y="588" width="692" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 600)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="30" height="26" rx="3" />
-        <line x1="6" y1="17" x2="36" y2="17" />
-        <line x1="21" y1="34" x2="21" y2="40" />
-        <line x1="12" y1="40" x2="30" y2="40" />
-      </g>
-      <text x="922" y="632" font-family="monospace" font-size="24" fill="#303a36">nodeClassRef EC2NodeClass gpu</text>
-    </g>
-
-    
-    <g id="item-expire">
-      <rect x="844" y="666" width="692" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 678)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="21" cy="22" r="15" />
-        <polyline points="21,13 21,22 28,22" />
-      </g>
-      <text x="922" y="710" font-family="monospace" font-size="24" fill="#303a36">expireAfter 720h</text>
-    </g>
-
-    
-    <g id="item-limits">
-      <rect x="844" y="744" width="692" height="98" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 773)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="6" y1="36" x2="36" y2="36" />
-        <line x1="21" y1="10" x2="21" y2="36" />
-        <polyline points="10,17 21,10 32,17" />
-      </g>
-      <text x="922" y="787" font-family="sans-serif" font-size="24" fill="#303a36">
-        <tspan x="922" dy="0" font-family="monospace">limits nvidia.com/gpu 64</tspan>
-        <tspan x="922" dy="32">(cap on total GPUs)</tspan>
-      </text>
-    </g>
-
-    
-    <g id="item-disruption">
-      <rect x="844" y="852" width="692" height="166" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-      <g transform="translate(862, 913)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 34 18 A 14 14 0 1 0 36 28" />
-        <polyline points="28,11 36,18 29,25" />
-      </g>
-      <text x="922" y="897" font-family="monospace" font-size="24" fill="#303a36">
-        <tspan x="922" dy="0">disruption consolidationPolicy</tspan>
-        <tspan x="922" dy="32">WhenEmptyOrUnderutilized,</tspan>
-        <tspan x="922" dy="32">consolidateAfter 10m,</tspan>
-        <tspan x="922" dy="32">budgets nodes 10 percent</tspan>
-      </text>
-    </g>
-
-    
-    <g id="item-warning">
-      <rect x="844" y="1028" width="692" height="108" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="2.5" />
-      
-      <g transform="translate(862, 1060)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 21 6 L 38 38 H 4 Z" />
-        <line x1="21" y1="18" x2="21" y2="27" />
-        <circle cx="21" cy="33" r="1.5" fill="#db8129" stroke="none" />
-      </g>
-      <text x="922" y="1074" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-        <tspan x="922" dy="0">consolidation can remove a node under a</tspan>
-        <tspan x="922" dy="34">training job: set do-not-disrupt</tspan>
-      </text>
-    </g>
+    <path d="M 22 2 L 42 38 L 2 38 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="22" y1="16" x2="22" y2="26" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="22" cy="32" r="2.5" fill="#db8129"/>
+    <text x="56" y="30" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">Warning</text>
+    <text x="0" y="80" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="0" dy="0">consolidation can remove a node under a training job:</tspan>
+      <tspan x="0" dy="38" font-family="monospace" font-weight="bold">set do-not-disrupt</tspan>
+    </text>
   </g>
 </svg>

@@ -1,265 +1,192 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
   <title>How the first matching case in handle(event) is chosen</title>
-  <desc>A decision ladder showing Python pattern matching in handle(event) where four example events enter from the left, match case patterns in order, and bind extracted values.</desc>
+  <desc>Visual decision ladder illustrating Python pattern matching order, variable bindings, guards, and outcomes.</desc>
 
   <defs>
-    
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
-    </marker>
-    <marker id="arrow-ladder" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1140" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1320" fill="#f5f8f5" />
 
   
-  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">How the first matching case</tspan>
-    <tspan x="800" dy="56">in handle(event) is chosen</tspan>
-  </text>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">How the first matching case in handle(event) is chosen</text>
 
   
   
-  <g transform="translate(45, 189)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="8" y1="18" x2="48" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <line x1="8" y1="36" x2="48" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="16" cy="27" r="3" fill="#207448" />
-    <circle cx="26" cy="27" r="3" fill="#207448" />
-    <circle cx="16" cy="45" r="3" fill="#207448" />
-    <circle cx="26" cy="45" r="3" fill="#207448" />
+  <rect x="40" y="130" width="350" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="185" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">event {type: node_down,</text>
+  <text x="135" y="225" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">node: gpu07}</text>
+
+  
+  <rect x="425" y="146" width="290" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="570" y="177" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">binds name to gpu07</text>
+  <line x1="390" y1="225" x2="738" y2="225" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="750" y="130" width="540" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="785" cy="165" r="20" fill="#207448" />
+  <text x="785" y="173" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="820" y="172" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {"type": "node_down",</text>
+  <text x="880" y="208" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">"node": str(name)}</text>
+  <rect x="880" y="222" width="165" height="34" rx="6" fill="#e8f1ea" />
+  <text x="890" y="247" font-family="monospace" font-size="24" fill="#207448">drain name</text>
+
+  
+  <line x1="1290" y1="197" x2="1338" y2="197" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1350" y="150" width="210" height="95" rx="12" fill="#207448" />
+  <text x="1455" y="206" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">drain gpu07</text>
+
+
+  
+  <line x1="1020" y1="265" x2="1020" y2="283" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" marker-end="url(#arrow-green)" />
+
+
+  
+  
+  <rect x="40" y="285" width="350" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="340" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">event {type: temp,</text>
+  <text x="135" y="380" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">value: 91.0}</text>
+
+  
+  <rect x="400" y="301" width="340" height="44" rx="22" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="570" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the guard v &gt; 85 holds</text>
+  <line x1="390" y1="380" x2="738" y2="380" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="750" y="285" width="540" height="135" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <circle cx="785" cy="320" r="20" fill="#db8129" />
+  <text x="785" y="328" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="820" y="332" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {"type": "temp",</text>
+  <text x="880" y="372" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">"value": float(v)}</text>
+  <text x="880" y="407" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">if v &gt; 85</text>
+
+  
+  <line x1="1290" y1="352" x2="1338" y2="352" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="1350" y="305" width="210" height="95" rx="12" fill="#db8129" />
+  <text x="1455" y="361" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">throttle</text>
+
+
+  
+  <line x1="1020" y1="420" x2="1020" y2="438" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" marker-end="url(#arrow-green)" />
+
+
+  
+  
+  <rect x="40" y="440" width="350" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="495" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">event {type: gpu,</text>
+  <text x="135" y="535" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ids: [3, 4]}</text>
+
+  
+  <rect x="430" y="456" width="280" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="570" y="487" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">binding first to 3</text>
+  <line x1="390" y1="535" x2="738" y2="535" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="750" y="440" width="540" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="785" cy="475" r="20" fill="#207448" />
+  <text x="785" y="483" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="820" y="482" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {"type": "gpu",</text>
+  <text x="880" y="518" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">"ids": [first, *_]}</text>
+  <rect x="880" y="532" width="230" height="34" rx="6" fill="#e8f1ea" />
+  <text x="890" y="557" font-family="monospace" font-size="24" fill="#207448">first gpu first</text>
+
+  
+  <line x1="1290" y1="507" x2="1338" y2="507" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1350" y="460" width="210" height="95" rx="12" fill="#207448" />
+  <text x="1455" y="516" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">first gpu 3</text>
+
+
+  
+  <line x1="1020" y1="575" x2="1020" y2="593" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" marker-end="url(#arrow-green)" />
+
+
+  
+  
+  <rect x="40" y="595" width="350" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="670" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">event {type: fan}</text>
+
+  
+  <rect x="440" y="611" width="260" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="570" y="642" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">binding t to fan</text>
+  <line x1="390" y1="690" x2="738" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="750" y="595" width="540" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="785" cy="630" r="20" fill="#207448" />
+  <text x="785" y="638" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="820" y="642" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {"type": t}</text>
+  <rect x="820" y="675" width="180" height="34" rx="6" fill="#e8f1ea" />
+  <text x="830" y="700" font-family="monospace" font-size="24" fill="#207448">unhandled t</text>
+
+  
+  <line x1="1290" y1="662" x2="1338" y2="662" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1350" y="615" width="210" height="95" rx="12" fill="#207448" />
+  <text x="1455" y="671" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">unhandled fan</text>
+
+
+  
+  <line x1="1020" y1="730" x2="1020" y2="748" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" marker-end="url(#arrow-green)" />
+
+
+  
+  
+  <rect x="750" y="750" width="540" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="785" cy="805" r="20" fill="#207448" />
+  <text x="785" y="813" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="820" y="813" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case _</text>
+
+  
+  <line x1="1290" y1="805" x2="1338" y2="805" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1350" y="760" width="210" height="90" rx="12" fill="#303a36" />
+  <text x="1455" y="814" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">unknown</text>
+
+
+  
+  <rect x="40" y="890" width="1520" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 922)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 16 28 L 24 20 L 32 28 L 40 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
   </g>
+  <text x="130" y="930" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Pattern kinds</text>
+  <text x="130" y="968" font-family="sans-serif" font-size="24" fill="#303a36">literals, captures, wildcard _, sequences, mappings,</text>
+  <text x="130" y="996" font-family="sans-serif" font-size="24" fill="#303a36">class patterns Point(x=0, y=0), alternatives with |, guards with if</text>
+
 
   
-  <rect x="115" y="170" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="135" y="210" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">event {type: node_down,</tspan>
-    <tspan x="135" dy="32">       node: gpu07}</tspan>
-  </text>
-
+  <rect x="40" y="1035" width="1520" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <line x1="475" y1="217" x2="760" y2="217" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  <text x="618" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="618" dy="0">matches case 1 and</tspan>
-    <tspan x="618" dy="30">binds name to gpu07</tspan>
-  </text>
-
-  
-  <rect x="770" y="170" width="500" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="804" cy="217" r="22" fill="#207448" />
-  <text x="804" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-  <text x="840" y="210" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="840" dy="0">case {"type": "node_down",</tspan>
-    <tspan x="840" dy="32">      "node": str(name)}</tspan>
-  </text>
-
-  
-  <line x1="1270" y1="217" x2="1302" y2="217" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="1310" y="170" width="250" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="1316" y="175" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="202" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">drain name</text>
-  <rect x="1316" y="221" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="248" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">drain gpu07</text>
-
-  
-  <line x1="1020" y1="265" x2="1020" y2="287" stroke="#207448" stroke-width="3" marker-end="url(#arrow-ladder)" />
-
-  
-  
-  <g transform="translate(45, 320)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 28 12 L 28 32" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="28" cy="38" r="8" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="28" cy="38" r="4" fill="#207448" />
-    <line x1="22" y1="18" x2="25" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    <line x1="22" y1="24" x2="25" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <g transform="translate(60, 1067)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 14 20 L 22 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
   </g>
+  <text x="130" y="1075" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Command parsing</text>
+  <text x="130" y="1120" font-family="monospace" font-size="24" fill="#303a36">match cmd.split(): case ["start", service], case ["stop", service, *flags], case ["status"]</text>
+
 
   
-  <rect x="115" y="295" width="360" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="135" y="340" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">event {type: temp,</tspan>
-    <tspan x="135" dy="32">       value: 91.0}</tspan>
-  </text>
-
-  
-  <line x1="475" y1="347" x2="760" y2="347" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-  <text x="618" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="618" dy="0">matches case 2 because</tspan>
-    <tspan x="618" dy="30">the guard v &gt; 85 holds</tspan>
-  </text>
-
-  
-  <rect x="770" y="295" width="500" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="804" cy="347" r="22" fill="#207448" />
-  <text x="804" y="356" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-  <text x="840" y="330" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="840" dy="0">case {"type": "temp",</tspan>
-    <tspan x="840" dy="30">      "value": float(v)}</tspan>
-    <tspan x="840" dy="30">      if v &gt; 85</tspan>
-  </text>
-
-  
-  <line x1="1270" y1="347" x2="1302" y2="347" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="1310" y="295" width="250" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="1316" y="325" width="238" height="46" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="357" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">throttle</text>
-
-  
-  <line x1="1020" y1="400" x2="1020" y2="422" stroke="#207448" stroke-width="3" marker-end="url(#arrow-ladder)" />
-
-  
-  
-  <g transform="translate(45, 450)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <rect x="14" y="14" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-    <line x1="8" y1="22" x2="14" y2="22" stroke="#207448" stroke-width="3" />
-    <line x1="8" y1="34" x2="14" y2="34" stroke="#207448" stroke-width="3" />
-    <line x1="42" y1="22" x2="48" y2="22" stroke="#207448" stroke-width="3" />
-    <line x1="42" y1="34" x2="48" y2="34" stroke="#207448" stroke-width="3" />
-    <line x1="22" y1="8" x2="22" y2="14" stroke="#207448" stroke-width="3" />
-    <line x1="34" y1="8" x2="34" y2="14" stroke="#207448" stroke-width="3" />
-    <line x1="22" y1="42" x2="22" y2="48" stroke="#207448" stroke-width="3" />
-    <line x1="34" y1="42" x2="34" y2="48" stroke="#207448" stroke-width="3" />
+  <rect x="40" y="1185" width="1520" height="85" rx="12" fill="#207448" />
+  <g transform="translate(65, 1200)">
+    <circle cx="27" cy="27" r="22" fill="none" stroke="#ffffff" stroke-width="3" />
+    <path d="M 18 27 L 24 33 L 36 20" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
   </g>
+  <text x="800" y="1238" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Not a C-style switch: the first matching case wins, and matched parts are bound to names</text>
 
-  
-  <rect x="115" y="430" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="135" y="470" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">event {type: gpu,</tspan>
-    <tspan x="135" dy="32">       ids: [3, 4]}</tspan>
-  </text>
-
-  
-  <line x1="475" y1="477" x2="760" y2="477" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  <text x="618" y="455" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="618" dy="0">matches case 3</tspan>
-    <tspan x="618" dy="30">binding first to 3</tspan>
-  </text>
-
-  
-  <rect x="770" y="430" width="500" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="804" cy="477" r="22" fill="#207448" />
-  <text x="804" y="486" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  <text x="840" y="470" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="840" dy="0">case {"type": "gpu",</tspan>
-    <tspan x="840" dy="32">      "ids": [first, *_]}</tspan>
-  </text>
-
-  
-  <line x1="1270" y1="477" x2="1302" y2="477" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="1310" y="430" width="250" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="1316" y="435" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="462" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">first gpu first</text>
-  <rect x="1316" y="481" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="508" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">first gpu 3</text>
-
-  
-  <line x1="1020" y1="525" x2="1020" y2="547" stroke="#207448" stroke-width="3" marker-end="url(#arrow-ladder)" />
-
-  
-  
-  <g transform="translate(45, 575)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="28" cy="28" r="6" fill="none" stroke="#207448" stroke-width="3" />
-    <path d="M 28 22 C 28 14 36 12 40 14 C 42 18 36 24 28 22 Z" fill="#207448" />
-    <path d="M 34 28 C 42 28 44 36 42 40 C 38 42 32 36 34 28 Z" fill="#207448" />
-    <path d="M 28 34 C 28 42 20 44 16 42 C 14 38 20 32 28 34 Z" fill="#207448" />
-    <path d="M 22 28 C 14 28 12 20 14 16 C 18 14 24 20 22 28 Z" fill="#207448" />
-  </g>
-
-  
-  <rect x="115" y="555" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="135" y="612" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">event {type: fan}</text>
-
-  
-  <line x1="475" y1="602" x2="760" y2="602" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  <text x="618" y="580" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="618" dy="0">reaches case 4</tspan>
-    <tspan x="618" dy="30">binding t to fan</tspan>
-  </text>
-
-  
-  <rect x="770" y="555" width="500" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="804" cy="602" r="22" fill="#207448" />
-  <text x="804" y="611" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
-  <text x="840" y="612" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">case {"type": t}</text>
-
-  
-  <line x1="1270" y1="602" x2="1302" y2="602" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="1310" y="555" width="250" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="1316" y="560" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="587" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">unhandled t</text>
-  <rect x="1316" y="606" width="238" height="38" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="633" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">unhandled fan</text>
-
-  
-  <line x1="1020" y1="650" x2="1020" y2="672" stroke="#207448" stroke-width="3" marker-end="url(#arrow-ladder)" />
-
-  
-  
-  <rect x="770" y="680" width="500" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="804" cy="720" r="22" fill="#207448" />
-  <text x="804" y="729" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
-  <text x="840" y="728" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">case _</text>
-
-  
-  <line x1="1270" y1="720" x2="1302" y2="720" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="1310" y="680" width="250" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <rect x="1316" y="697" width="238" height="46" rx="6" fill="#e8f1ea" />
-  <text x="1435" y="729" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">unknown</text>
-
-  
-  <rect x="45" y="790" width="1515" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(65, 807)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <rect x="10" y="10" width="14" height="14" rx="2" fill="#207448" />
-    <circle cx="39" cy="17" r="7" fill="none" stroke="#207448" stroke-width="3" />
-    <polygon points="17,35 24,47 10,47" fill="none" stroke="#207448" stroke-width="3" />
-    <line x1="32" y1="41" x2="46" y2="41" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="145" y="830" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">literals, captures, wildcard _, sequences, mappings,</tspan>
-    <tspan x="145" dy="32">class patterns Point(x=0, y=0), alternatives with |, guards with if</tspan>
-  </text>
-
-  
-  <rect x="45" y="905" width="1515" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(65, 922)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
-    <circle cx="12" cy="9" r="2.5" fill="#207448" />
-    <circle cx="20" cy="9" r="2.5" fill="#207448" />
-    <circle cx="28" cy="9" r="2.5" fill="#207448" />
-    <path d="M 12 30 L 20 37 L 12 44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <line x1="26" y1="44" x2="42" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="145" y="958" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">match cmd.split(): case ["start", service], case ["stop", service, *flags], case ["status"]</text>
-
-  
-  <rect x="45" y="1020" width="1515" height="80" rx="12" fill="#207448" />
-  
-  <g transform="translate(65, 1032)">
-    <circle cx="28" cy="28" r="24" fill="none" stroke="#ffffff" stroke-width="4" />
-    <path d="M 16 28 L 24 36 L 40 18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-  </g>
-  <text x="145" y="1069" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Not a C-style switch: the first matching case wins, and matched parts are bound to names</text>
 </svg>

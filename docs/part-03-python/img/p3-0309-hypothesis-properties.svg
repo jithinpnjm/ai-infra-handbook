@@ -1,195 +1,172 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>Four kinds of property, with the two Hypothesis tests from the chapter</title>
-  <desc>Infographic illustrating four kinds of property testing and two Hypothesis test examples.</desc>
+  <desc>Infographic explaining four kinds of property testing and showing two concrete Hypothesis code examples.</desc>
 
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
-
-  
-  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Four kinds of property,</tspan>
-    <tspan x="800" dy="54">with the two Hypothesis tests from the chapter</tspan>
-  </text>
+  <rect width="1600" height="1350" fill="#f5f8f5"/>
 
   
-  <g transform="translate(40, 126)">
-    <rect width="1520" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <g transform="translate(20, 12)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 4h18l10 10v22H6z"/>
-      <path d="M24 4v10h10"/>
-      <line x1="14" y1="22" x2="26" y2="22"/>
-      <line x1="14" y1="28" x2="22" y2="28"/>
-    </g>
-    <text x="75" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan>a parser passes every example in its test file, then someone feeds it an empty field</tspan>
+  <g id="header">
+    <text x="80" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">
+      Four kinds of property, with the two Hypothesis tests from the chapter
     </text>
   </g>
 
   
-  <g transform="translate(40, 204)">
-    <rect width="1520" height="66" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
-    <rect width="12" height="66" rx="4" fill="#db8129"/>
+  <g id="opening-story">
+    <rect x="80" y="105" width="1440" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="120" cy="140" r="18" fill="#207448"/>
+    <text x="120" y="148" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">!</text>
+    <text x="155" y="148" font-family="sans-serif" font-size="24" fill="#303a36">
+      a parser passes every example in its test file, then someone feeds it an empty field
+    </text>
+  </g>
+
+  
+  <g id="core-definition">
+    <rect x="80" y="195" width="1440" height="74" rx="10" fill="#db8129"/>
     
-    <g transform="translate(26, 13)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="20" cy="20" r="16"/>
-      <polygon points="20,8 24,18 32,20 24,22 20,32 16,22 8,20 16,18" fill="#db8129"/>
-    </g>
-    <text x="80" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">
-      <tspan>a property is a rule about behaviour, not one hand-picked example</tspan>
+    <path d="M 120 216 L 138 224 L 138 242 Q 138 254 120 260 Q 102 254 102 242 L 102 224 Z" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+    <text x="155" y="242" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      a property is a rule about behaviour, not one hand-picked example
     </text>
   </g>
 
   
   
+
   
-  <g transform="translate(40, 284)">
-    <rect width="740" height="296" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="test-round-trip">
+    <rect x="80" y="295" width="710" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="8" width="40" height="40" rx="4"/>
-      <line x1="20" y1="2" x2="20" y2="8"/>
-      <line x1="36" y1="2" x2="36" y2="8"/>
-      <line x1="20" y1="48" x2="20" y2="54"/>
-      <line x1="36" y1="48" x2="36" y2="54"/>
-      <line x1="2" y1="20" x2="8" y2="20"/>
-      <line x1="2" y1="36" x2="8" y2="36"/>
-      <line x1="48" y1="20" x2="54" y2="20"/>
-      <line x1="48" y1="36" x2="54" y2="36"/>
-      <path d="M22 24h12v8h-12z"/>
-    </g>
     
-    <rect x="90" y="16" width="630" height="264" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5"/>
-    <text x="106" y="48" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="106" dy="0">Round trip: </tspan>
-      <tspan x="106" dy="34">@given(st.lists(st.tuples(</tspan>
-      <tspan x="106" dy="34">st.integers(0, 15), st.integers(0, 120)), </tspan>
-      <tspan x="106" dy="34">max_size=16)); </tspan>
-      <tspan x="106" dy="34">gpus = [Gpu(i, H100, t, None, None, </tspan>
-      <tspan x="106" dy="34">None, None) for i, t in pairs]; </tspan>
-      <tspan x="106" dy="34">assert parse_smi_csv(render_csv(gpus)) == gpus</tspan>
+    <rect x="80" y="295" width="710" height="56" rx="12" fill="#e8f1ea"/>
+    
+    <rect x="105" y="310" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="113,323 119,323 125,323" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="155" y="334" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      Hypothesis Test: Round trip
+    </text>
+
+    
+    <text x="105" y="386" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">Round trip: @given(st.lists(st.tuples(</tspan>
+      <tspan x="105" dy="38">  st.integers(0, 15),</tspan>
+      <tspan x="105" dy="38">  st.integers(0, 120)), max_size=16));</tspan>
+      <tspan x="105" dy="38">gpus = [Gpu(i, H100, t, None, None, None, None)</tspan>
+      <tspan x="105" dy="38">  for i, t in pairs];</tspan>
+      <tspan x="105" dy="38">assert parse_smi_csv(render_csv(gpus))</tspan>
+      <tspan x="105" dy="38">  == gpus</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 594)">
-    <rect width="740" height="240" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="test-exception">
+    <rect x="80" y="655" width="710" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M28 6l18 8v16c0 14-18 22-18 22S10 44 10 30V14z"/>
-      <path d="M20 28l6 6 12-12"/>
-    </g>
     
-    <rect x="90" y="16" width="630" height="208" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5"/>
-    <text x="106" y="52" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="106" dy="0">Only the documented exception: </tspan>
-      <tspan x="106" dy="44">@given(st.text()); </tspan>
-      <tspan x="106" dy="44">try parse_smi_csv(s) except ValueError: pass</tspan>
+    <rect x="80" y="655" width="710" height="56" rx="12" fill="#e8f1ea"/>
+    
+    <circle cx="123" cy="683" r="13" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="123" y1="670" x2="123" y2="696" stroke="#207448" stroke-width="2"/>
+    <line x1="110" y1="683" x2="136" y2="683" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="694" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      Hypothesis Test: Exception handling
+    </text>
+
+    
+    <text x="105" y="750" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">Only the documented exception:</tspan>
+      <tspan x="105" dy="40">@given(st.text());</tspan>
+      <tspan x="105" dy="40">try parse_smi_csv(s)</tspan>
+      <tspan x="105" dy="40">except ValueError:</tspan>
+      <tspan x="105" dy="40">    pass</tspan>
     </text>
   </g>
 
   
   
-  <g transform="translate(820, 284)">
-    <rect width="740" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g id="prop-round-trip">
+    <rect x="810" y="295" width="710" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 32)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M44 20A18 18 0 0 0 16 12L10 18"/>
-      <polyline points="10 8 10 18 20 18"/>
-      <path d="M12 36A18 18 0 0 0 40 44L46 38"/>
-      <polyline points="46 48 46 38 36 38"/>
-    </g>
-    <text x="96" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      <tspan>round trip: encode then decode</tspan>
+    <path d="M 855 350 A 18 18 0 1 1 855 375" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="855,340 855,352 867,352" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="895" y="375" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      round trip: encode then decode
     </text>
   </g>
 
   
-  <g transform="translate(820, 418)">
-    <rect width="740" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="prop-idempotence">
+    <rect x="810" y="455" width="710" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 32)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="10" width="38" height="36" rx="4"/>
-      <line x1="18" y1="24" x2="36" y2="24"/>
-      <line x1="18" y1="32" x2="36" y2="32"/>
-    </g>
-    <text x="96" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      <tspan x="96" dy="0">idempotence: </tspan>
-      <tspan x="96" dy="36" font-family="monospace" font-size="24">normalize(normalize(x)) == normalize(x)</tspan>
+    <circle cx="855" cy="525" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="844" y1="520" x2="866" y2="520" stroke="#207448" stroke-width="4"/>
+    <line x1="844" y1="530" x2="866" y2="530" stroke="#207448" stroke-width="4"/>
+    <text x="895" y="525" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="895" dy="0" font-weight="bold">idempotence:</tspan>
+      <tspan x="895" dy="36" font-family="monospace" font-size="24">normalize(normalize(x)) == normalize(x)</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(820, 552)">
-    <rect width="740" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="prop-invariants">
+    <rect x="810" y="615" width="710" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 32)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="28" y1="10" x2="28" y2="46"/>
-      <line x1="12" y1="18" x2="44" y2="18"/>
-      <path d="M12 18l-6 16h12z"/>
-      <path d="M44 18l-6 16h12z"/>
-      <line x1="20" y1="46" x2="36" y2="46"/>
-    </g>
-    <text x="96" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="96" dy="0">invariants: a preserved sum, </tspan>
-      <tspan x="96" dy="36">an order that does not matter</tspan>
+    <path d="M 843 695 L 867 695 M 855 675 L 855 695 M 840 680 L 870 680" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="895" y="675" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="895" dy="0" font-weight="bold">invariants:</tspan>
+      <tspan x="895" dy="36">a preserved sum, an order that does not matter</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(820, 686)">
-    <rect width="740" height="148" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="prop-compare">
+    <rect x="810" y="775" width="710" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 46)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="20"/>
-      <line x1="28" y1="28" x2="38" y2="18"/>
-      <circle cx="28" cy="28" r="3" fill="#207448"/>
-    </g>
-    <text x="96" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="96" dy="0">compare against a slow reference, or check </tspan>
-      <tspan x="96" dy="34">that the code never raises anything except </tspan>
-      <tspan x="96" dy="34">a specific exception</tspan>
+    <rect x="838" y="825" width="30" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="844,845 850,851 862,839" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="895" y="830" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="895" dy="0">compare against a slow reference, or</tspan>
+      <tspan x="895" dy="34">check that the code never raises</tspan>
+      <tspan x="895" dy="34">anything except a specific exception</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 848)">
-    <rect width="1520" height="82" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="strip-shrinking">
+    <rect x="80" y="945" width="1440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(22, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="26" cy="14" rx="18" ry="7"/>
-      <path d="M8 14v24c0 4 8 7 18 7s18-3 18-7V14"/>
-      <path d="M8 26c0 4 8 7 18 7s18-3 18-7"/>
-    </g>
-    <text x="80" y="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="80" dy="0">when Hypothesis finds a counterexample it shrinks the input to a minimal case; </tspan>
-      <tspan x="80" dy="32">failing examples go into a database so regressions are replayed on later runs</tspan>
+    <ellipse cx="125" cy="985" rx="18" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 107 985 L 107 1015 A 18 8 0 0 0 143 1015 L 143 985" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 107 1000 A 18 8 0 0 0 143 1000" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="165" y="990" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">when Hypothesis finds a counterexample it shrinks the input to a minimal case;</tspan>
+      <tspan x="165" dy="36">failing examples go into a database so regressions are replayed on later runs</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(40, 944)">
-    <rect width="1520" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="good-fit-strip">
+    <rect x="80" y="1075" width="1440" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(24, 15)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="18" cy="18" r="14"/>
-      <path d="M11 18l5 5 10-10"/>
-    </g>
-    <text x="75" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
-      <tspan>parsers, serialisers, validators, arithmetic on units</tspan>
+    <circle cx="125" cy="1115" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="125" cy="1115" r="7" fill="#207448"/>
+    <text x="165" y="1124" font-family="sans-serif" font-size="25" fill="#303a36">
+      parsers, serialisers, validators, arithmetic on units
     </text>
   </g>
 
   
-  <g transform="translate(40, 1024)">
-    <rect width="1520" height="82" rx="10" fill="#207448"/>
+  <g id="bottom-bar">
+    <rect x="80" y="1175" width="1440" height="90" rx="12" fill="#207448"/>
     
-    <g transform="translate(26, 17)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M24 6a14 14 0 0 0-9 24c2 2 3 5 3 8h12c0-3 1-6 3-8a14 14 0 0 0-9-24z"/>
-      <line x1="18" y1="44" x2="30" y2="44"/>
-    </g>
-    <text x="800" y="37" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
-      <tspan x="800" dy="0">Example tests check the inputs you thought of, </tspan>
-      <tspan x="800" dy="34">properties go looking for the ones you missed</tspan>
+    <path d="M 125 1205 A 12 12 0 0 1 137 1222 C 134 1227 132 1230 132 1235 L 118 1235 C 118 1230 116 1227 113 1222 A 12 12 0 0 1 125 1205 Z" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="120" y1="1240" x2="130" y2="1240" stroke="#ffffff" stroke-width="3"/>
+    <text x="165" y="1231" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      Example tests check the inputs you thought of, properties go looking for the ones you missed
     </text>
   </g>
+
 </svg>

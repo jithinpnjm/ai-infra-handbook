@@ -1,151 +1,217 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
   <title>Reading a Netplan file with three kinds of interface</title>
-  <desc>Visual infographic explaining Netplan YAML configuration with DHCP, static jumbo-frame fabric NIC, and VLAN interfaces, alongside equivalent NetworkManager and systemd-networkd commands and operational side facts.</desc>
+  <desc>Visual guide comparing Netplan multi-interface YAML configuration with NetworkManager and systemd-networkd equivalents.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title { font-family: sans-serif; font-size: 44px; font-weight: bold; fill: #303a36; }
+      .section-title { font-family: sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+      .sans-text { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .sans-bold { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #207448; }
+      .mono-text { font-family: monospace; font-size: 24px; fill: #1c2722; }
+      .mono-bold { font-family: monospace; font-size: 24px; font-weight: bold; fill: #1c2722; }
+      .banner-text { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #207448; }
+      .orange-mono { font-family: monospace; font-size: 24px; font-weight: bold; fill: #b85d10; }
+      .orange-text { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .bottom-text { font-family: sans-serif; font-size: 25px; font-weight: bold; fill: #ffffff; }
+      .card { fill: #ffffff; stroke: #207448; stroke-width: 2; rx: 12px; }
+      .card-light { fill: #e8f1ea; stroke: #207448; stroke-width: 2; rx: 10px; }
+      .card-orange { fill: #fffaf5; stroke: #db8129; stroke-width: 3; rx: 10px; }
+      .cmd-box { fill: #f0f5f1; stroke: #b2ceb9; stroke-width: 1.5; rx: 8px; }
+      .icon-stroke { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .icon-orange { fill: none; stroke: #db8129; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1440" class="bg"/>
 
   
-  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Reading a Netplan file with three kinds of interface</text>
+  <text x="50" y="62" class="title">Reading a Netplan file with three kinds of interface</text>
 
   
-  <g id="netplan-panel">
+  <g transform="translate(40, 85)">
+    <rect width="1520" height="70" class="card-light"/>
     
-    <rect x="40" y="88" width="720" height="662" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    
-    <path d="M 40 100 A 12 12 0 0 1 52 88 L 748 88 A 12 12 0 0 1 760 100 L 760 164 L 40 164 Z" fill="#e8f1ea"/>
-    <line x1="40" y1="164" x2="760" y2="164" stroke="#207448" stroke-width="2"/>
-    
-    <path d="M 60 106 h 20 l 12 12 v 30 h -32 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <polyline points="80,106 80,118 92,118" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    
-    <text x="110" y="122" font-family="monospace" font-size="24" font-weight="bold" fill="#207448"># /etc/netplan/50-gpu.yaml  (apply with: sudo netplan try)</text>
-
-    
-    <rect x="55" y="176" width="690" height="110" rx="8" fill="#fbfdfb" stroke="#c8dcce" stroke-width="2"/>
-    
-    <circle cx="92" cy="231" r="8" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 92 215 v 5 M 92 242 v 5 M 76 231 h 5 M 103 231 h 5 M 81 220 l 3.5 3.5 M 99.5 238.5 l 3.5 3.5 M 81 242 l 3.5 -3.5 M 99.5 223.5 l 3.5 -3.5" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="128" y="214" font-family="monospace" font-size="24" fill="#303a36">version: 2</text>
-    <text x="295" y="214" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">renderer: networkd</text>
-    <text x="128" y="260" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">who turns this into real configuration</text>
-
-    
-    <rect x="55" y="298" width="690" height="135" rx="8" fill="#fbfdfb" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="73" y="348" width="38" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 81 380 v -8 h 22 v 8 M 86 358 v 6 M 92 358 v 6 M 98 358 v 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="128" y="336" font-family="monospace" font-size="24" fill="#303a36">eno1: { dhcp4: true,<tspan x="128" dy="30">dhcp4-overrides: { use-routes: true } }</tspan></text>
-    <text x="128" y="411" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">a DHCP link that also takes routes from DHCP</text>
-
-    
-    <rect x="55" y="445" width="690" height="145" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
-    
-    <rect x="71" y="497" width="42" height="36" rx="4" fill="none" stroke="#db8129" stroke-width="3.5"/>
-    <path d="M 79 497 v -6 M 87 497 v -6 M 95 497 v -6 M 103 497 v -6 M 79 533 v 6 M 87 533 v 6 M 95 533 v 6 M 103 533 v 6" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="92" cy="515" r="5" fill="#db8129"/>
-    
-    <text x="128" y="480" font-family="monospace" font-size="24" fill="#303a36">ens1f0: addresses [10.100.0.45/24],<tspan x="128" dy="30">mtu 9000, dhcp4 false, optional true</tspan></text>
-    <text x="128" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">a static fabric NIC with jumbo MTU; optional so<tspan x="128" dy="28">boot does not wait for the link</tspan></text>
-
-    
-    <rect x="55" y="602" width="690" height="136" rx="8" fill="#fbfdfb" stroke="#207448" stroke-width="2"/>
-    
-    <path d="M 72 654 l 20 -10 l 20 10 l -20 10 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 72 664 l 20 10 l 20 -10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 72 674 l 20 10 l 20 -10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    
-    <text x="128" y="638" font-family="monospace" font-size="24" fill="#303a36">vlans: vlan200: { id: 200, link: eno1,<tspan x="128" dy="30">addresses: [10.200.0.45/24] }</tspan></text>
-    <text x="128" y="714" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">a VLAN on top of the first link</text>
+    <path class="icon-stroke" d="M 32 35 C 32 26 40 20 50 20 C 60 20 68 26 68 35 C 68 44 60 50 50 50 C 40 50 32 44 32 35 Z M 50 14 L 50 20 M 50 50 L 50 56 M 29 35 L 35 35 M 65 35 L 71 35"/>
+    <text x="85" y="44" class="banner-text">Netplan does not manage the network itself: it renders files for NetworkManager or systemd-networkd</text>
   </g>
 
   
-  <g id="tools-panel">
+  <g transform="translate(40, 180)">
     
-    <rect x="790" y="88" width="770" height="662" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    
-    <path d="M 790 100 A 12 12 0 0 1 802 88 L 1548 88 A 12 12 0 0 1 1560 100 L 1560 164 L 790 164 Z" fill="#e8f1ea"/>
-    <line x1="790" y1="164" x2="1560" y2="164" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="815" y="104" width="46" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="815" y1="116" x2="861" y2="116" stroke="#207448" stroke-width="2.5"/>
-    <path d="M 823 126 l 6 5 l -6 5 M 835 136 h 8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <text x="875" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Same job with other tools</text>
+    <rect width="820" height="1130" class="card"/>
 
     
-    <rect x="805" y="176" width="740" height="184" rx="8" fill="#fbfdfb" stroke="#c8dcce" stroke-width="2"/>
+    <rect width="820" height="60" rx="12" fill="#207448"/>
     
-    <rect x="825" y="244" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="843" y1="270" x2="843" y2="284" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="833" y1="236" x2="833" y2="244" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="853" y1="236" x2="853" y2="244" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="876" y="206" font-family="monospace" font-size="24" fill="#303a36">nmcli connection add type ethernet<tspan x="876" dy="27">ifname ens1f0 con-name fabric0</tspan><tspan x="876" dy="27">ipv4.method manual</tspan><tspan x="876" dy="27">ipv4.addresses 10.100.0.45/24</tspan><tspan x="876" dy="27">802-3-ethernet.mtu 9000</tspan><tspan x="876" dy="27">ipv4.never-default yes</tspan></text>
+    <rect y="45" width="820" height="15" fill="#207448"/>
+    <text x="25" y="39" class="mono-bold" fill="#ffffff"># /etc/netplan/50-gpu.yaml  (apply with: sudo netplan try)</text>
 
     
-    <rect x="805" y="372" width="740" height="100" rx="8" fill="#fbfdfb" stroke="#c8dcce" stroke-width="2"/>
-    
-    <path d="M 830 422 a 16 16 0 0 1 24 -10 l 3 -5 v 12 h -12 l 5 -3 a 10 10 0 0 0 -15 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M 856 422 a 16 16 0 0 1 -24 10 l -3 5 v -12 h 12 l -5 3 a 10 10 0 0 0 15 -6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="876" y="412" font-family="monospace" font-size="24" fill="#303a36">nmcli connection up fabric0;<tspan x="876" dy="32">nmcli device reapply ens1f0</tspan></text>
+    <g transform="translate(25, 80)">
+      <rect width="770" height="120" class="cmd-box"/>
+      <text x="25" y="44" class="mono-bold">version: 2</text>
+      <text x="25" y="86" class="mono-bold">renderer: networkd</text>
+      
+      
+      <g transform="translate(320, 52)">
+        <rect width="425" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+        <text x="18" y="32" class="sans-text">who turns this into real configuration</text>
+      </g>
+      
+      <path d="M 320 76 L 275 76" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    </g>
 
     
-    <rect x="805" y="484" width="740" height="135" rx="8" fill="#fbfdfb" stroke="#c8dcce" stroke-width="2"/>
-    
-    <circle cx="843" cy="542" r="16" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <polyline points="843,532 843,542 851,546" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="876" y="522" font-family="monospace" font-size="24" fill="#303a36">nm-online -q &amp;&amp; echo network-up:<tspan x="876" dy="32" font-family="sans-serif">exit code 0 when the network is up,</tspan><tspan x="876" dy="30" font-family="sans-serif">usable in scripts</tspan></text>
+    <g transform="translate(25, 225)">
+      <rect width="770" height="215" class="cmd-box"/>
+      
+      <g transform="translate(25, 24)">
+        <rect x="0" y="0" width="46" height="38" rx="6" class="icon-stroke"/>
+        <path d="M 12 38 L 12 24 M 23 38 L 23 24 M 34 38 L 34 24" class="icon-stroke" stroke-width="3"/>
+      </g>
+      <text x="90" y="50" class="sans-bold">a DHCP link that also takes routes from DHCP</text>
+      
+      <rect x="25" y="85" width="720" height="105" rx="6" fill="#ffffff" stroke="#b2ceb9" stroke-width="1"/>
+      <text x="45" y="128" class="mono-text">eno1: { dhcp4: true,</text>
+      <text x="65" y="166" class="mono-text">dhcp4-overrides: { use-routes: true } }</text>
+    </g>
 
     
-    <rect x="805" y="631" width="740" height="107" rx="8" fill="#fbfdfb" stroke="#c8dcce" stroke-width="2"/>
+    <g transform="translate(25, 465)">
+      <rect width="770" height="375" class="card-orange"/>
+      
+      <g transform="translate(25, 24)">
+        <rect x="0" y="0" width="46" height="38" rx="6" class="icon-orange"/>
+        <path d="M 10 19 L 36 19 M 26 10 L 36 19 L 26 28" class="icon-orange" stroke-width="3"/>
+      </g>
+      
+      
+      <text x="90" y="50" class="orange-text">a static fabric NIC with jumbo MTU; optional</text>
+      <text x="90" y="86" class="orange-text">so boot does not wait for the link</text>
+
+      
+      <rect x="25" y="115" width="720" height="235" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+      <text x="45" y="160" class="orange-mono">ens1f0:</text>
+      <text x="75" y="204" class="orange-mono">addresses [10.100.0.45/24],</text>
+      <text x="75" y="248" class="orange-mono">mtu 9000,</text>
+      <text x="75" y="292" class="orange-mono">dhcp4 false, optional true</text>
+    </g>
+
     
-    <rect x="825" y="663" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="832" y1="673" x2="854" y2="673" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="832" y1="680" x2="854" y2="680" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="832" y1="687" x2="846" y2="687" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    
-    <text x="876" y="670" font-family="monospace" font-size="24" fill="#303a36">networkctl status; networkctl list;<tspan x="876" dy="32">networkctl reload</tspan></text>
+    <g transform="translate(25, 865)">
+      <rect width="770" height="235" class="cmd-box"/>
+      
+      <g transform="translate(25, 24)">
+        <rect x="0" y="0" width="46" height="38" rx="6" class="icon-stroke"/>
+        <path d="M 10 14 L 36 14 M 10 24 L 26 24" class="icon-stroke" stroke-width="3"/>
+      </g>
+      <text x="90" y="50" class="sans-bold">a VLAN on top of the first link</text>
+
+      <rect x="25" y="85" width="720" height="125" rx="6" fill="#ffffff" stroke="#b2ceb9" stroke-width="1"/>
+      <text x="45" y="126" class="mono-text">vlans: vlan200: { id: 200, link: eno1,</text>
+      <text x="65" y="170" class="mono-text">addresses: [10.200.0.45/24] }</text>
+    </g>
   </g>
 
   
-  <g id="side-facts">
+  <g transform="translate(890, 180)">
     
-    <rect x="40" y="765" width="480" height="295" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <circle cx="76" cy="805" r="16" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 76 795 v 4 M 76 811 v 4 M 66 805 h 4 M 82 805 h 4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M 102 805 h 20 l -6 -6 M 122 805 l -6 6" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <text x="65" y="860" font-family="sans-serif" font-size="24" fill="#303a36">Netplan does not manage the<tspan x="65" dy="34">network itself: it renders files</tspan><tspan x="65" dy="34">for NetworkManager or</tspan><tspan x="65" dy="34">systemd-networkd</tspan></text>
+    <rect width="670" height="695" class="card"/>
+    <text x="35" y="52" class="section-title">Same job with other tools</text>
 
     
-    <rect x="560" y="765" width="480" height="295" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    
-    <path d="M 596 792 l 18 -6 l 18 6 v 14 c 0 14 -18 22 -18 22 c 0 0 -18 -8 -18 -22 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    
-    <text x="585" y="852" font-family="sans-serif" font-size="24" fill="#303a36">ifupdown plug-in:<tspan x="585" dy="28">managed=false in</tspan><tspan x="585" dy="28">NetworkManager.conf;</tspan><tspan x="585" dy="28">ifcfg-rh plug-in:</tspan><tspan x="585" dy="28">NM_CONTROLLED=no;</tspan><tspan x="585" dy="28">unmanaged-devices=mac:... in the</tspan><tspan x="585" dy="28">keyfile section</tspan></text>
+    <g transform="translate(25, 75)">
+      <rect width="620" height="210" class="cmd-box"/>
+      <text x="20" y="44" class="mono-bold">
+        <tspan x="20" dy="0">nmcli connection add type ethernet</tspan>
+        <tspan x="20" dy="38">ifname ens1f0 con-name fabric0</tspan>
+        <tspan x="20" dy="38">ipv4.method manual ipv4.never-default yes</tspan>
+        <tspan x="20" dy="38">ipv4.addresses 10.100.0.45/24 802-3-ethernet.mtu 9000</tspan>
+      </text>
+    </g>
 
     
-    <rect x="1080" y="765" width="480" height="295" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(25, 305)">
+      <rect width="620" height="105" class="cmd-box"/>
+      <text x="20" y="44" class="mono-bold">
+        <tspan x="20" dy="0">nmcli connection up fabric0;</tspan>
+        <tspan x="20" dy="38">nmcli device reapply ens1f0</tspan>
+      </text>
+    </g>
+
     
-    <path d="M 1115 790 h 20 l 10 10 v 26 h -30 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 1130 804 l -6 8 h 8 l -4 8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(25, 430)">
+      <rect width="620" height="120" class="cmd-box"/>
+      <text x="20" y="44" class="mono-bold">
+        <tspan x="20" dy="0">nm-online -q &amp;&amp; echo network-up:</tspan>
+      </text>
+      <text x="20" y="88" class="sans-text">
+        <tspan x="20" dy="0">exit code 0 when the network is up,</tspan>
+        <tspan x="20" dy="30">usable in scripts</tspan>
+      </text>
+    </g>
+
     
-    <text x="1105" y="870" font-family="sans-serif" font-size="24" fill="#303a36">dispatcher scripts in<tspan x="1105" dy="34">/etc/NetworkManager/</tspan><tspan x="1105" dy="34">dispatcher.d</tspan><tspan x="1105" dy="34">run on up and down</tspan></text>
+    <g transform="translate(25, 570)">
+      <rect width="620" height="100" class="cmd-box"/>
+      <text x="20" y="44" class="mono-bold">
+        <tspan x="20" dy="0">networkctl status; networkctl list;</tspan>
+        <tspan x="20" dy="38">networkctl reload</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(0, 720)">
+      <rect width="670" height="410" class="card-light"/>
+
+      
+      <g transform="translate(25, 25)">
+        <rect width="620" height="215" class="card"/>
+        <text x="20" y="42" class="mono-bold" fill="#207448">
+          <tspan x="20" dy="0">ifupdown plug-in: managed=false</tspan>
+          <tspan x="30" dy="34">in NetworkManager.conf;</tspan>
+          <tspan x="20" dy="38">ifcfg-rh plug-in: NM_CONTROLLED=no;</tspan>
+          <tspan x="20" dy="38">unmanaged-devices=mac:...</tspan>
+          <tspan x="30" dy="34">in the keyfile section</tspan>
+        </text>
+      </g>
+
+      
+      <g transform="translate(25, 260)">
+        <rect width="620" height="125" class="card"/>
+        
+        <g transform="translate(20, 25)">
+          <rect x="0" y="0" width="36" height="44" rx="4" class="icon-stroke" stroke-width="3"/>
+          <path d="M 8 14 L 28 14 M 8 24 L 24 24 M 8 34 L 20 34" class="icon-stroke" stroke-width="2.5"/>
+        </g>
+        <text x="75" y="52" class="sans-text">
+          <tspan x="75" dy="0">dispatcher scripts in</tspan>
+          <tspan x="75" dy="34">/etc/NetworkManager/dispatcher.d</tspan>
+          <tspan x="75" dy="34">run on up and down</tspan>
+        </text>
+      </g>
+    </g>
   </g>
 
   
-  <g id="bottom-bar">
-    <rect x="40" y="1080" width="1520" height="85" rx="12" fill="#207448"/>
+  <g transform="translate(40, 1335)">
+    <rect width="1520" height="75" rx="12" fill="#207448"/>
     
-    <circle cx="85" cy="1122" r="20" fill="none" stroke="#ffffff" stroke-width="3.5"/>
-    <path d="M 77 1122 l 5 5 l 11 -11" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <text x="130" y="1132" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Manual ip changes vanish on reboot; move the result into the manager that owns the interface</text>
+    <g transform="translate(30, 16)">
+      <path d="M 22 4 L 40 38 L 4 38 Z" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M 22 17 L 22 27 M 22 32 L 22 34" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="90" y="47" class="bottom-text">Manual ip changes vanish on reboot; move the result into the manager that owns the interface</text>
   </g>
+
 </svg>

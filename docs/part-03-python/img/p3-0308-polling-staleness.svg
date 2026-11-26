@@ -1,231 +1,238 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Background polling versus a scrape-time collector</title>
-  <desc>Visual comparison between background polling with Gauge.set versus an on-demand scrape-time FleetCollector registered with REGISTRY.register, followed by collector rules and key takeaway.</desc>
+  <desc>Visual comparison between background gauge polling and on-demand scrape-time metric collection in Prometheus exporters.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+    
+    <marker id="arrow-dark" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#303a36" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Background polling versus a scrape-time collector</text>
-
-  
-  <rect x="420" y="76" width="760" height="38" rx="19" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="800" y="102" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#207448">
-    <tspan>Both serve on port 9101 with </tspan>
-    <tspan font-family="ui-monospace, monospace" font-weight="bold">start_http_server(9101)</tspan>
-  </text>
-
-  
-  <g id="top-timeline">
-    
-    <rect x="40" y="125" width="1520" height="268" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <path d="M 40 137 A 12 12 0 0 1 52 125 L 1548 125 A 12 12 0 0 1 1560 137 L 1560 172 L 40 172 Z" fill="#e8f1ea" />
-
-    
-    <g transform="translate(56, 133)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="13" />
-      <polyline points="16 8 16 16 22 16" />
-    </g>
-    <text x="96" y="159" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan font-family="ui-monospace, monospace">poll_forever</tspan>
-      <tspan> with </tspan>
-      <tspan font-family="ui-monospace, monospace">Gauge.set</tspan>
-    </text>
-
-    
-    <rect x="58" y="184" width="410" height="194" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(72, 194)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="14" cy="14" r="10" />
-      <path d="M 14 4 L 14 24 M 4 14 L 24 14" />
-    </g>
-    <text x="72" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="72" dy="0">a polling thread writes</tspan>
-      <tspan x="72" dy="30" font-family="ui-monospace, monospace" fill="#207448">TEMP.labels(h, gpu).set(t)</tspan>
-      <tspan x="72" dy="30">every interval=15 and</tspan>
-      <tspan x="72" dy="30" font-family="ui-monospace, monospace" fill="#207448">ERRORS.labels(h).inc()</tspan>
-      <tspan x="72" dy="30">on failure</tspan>
-    </text>
-
-    
-    <rect x="482" y="184" width="200" height="194" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(496, 194)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="6" width="22" height="18" rx="3" />
-      <line x1="8" y1="24" x2="22" y2="24" />
-    </g>
-    <text x="496" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="496" dy="0">Prometheus</tspan>
-      <tspan x="496" dy="32">scrapes at</tspan>
-      <tspan x="496" dy="32">its own rate</tspan>
-    </text>
-
-    
-    <text x="765" y="246" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="765" dy="0">if polling</tspan>
-      <tspan x="765" dy="28">stalls in</tspan>
-      <tspan x="765" dy="28">the night</tspan>
-    </text>
-    <line x1="682" y1="316" x2="844" y2="316" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="846" y="184" width="370" height="194" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
-    <g transform="translate(862, 196)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 16 4 L 30 28 L 2 28 Z" />
-      <line x1="16" y1="13" x2="16" y2="19" />
-      <circle cx="16" cy="24" r="1.5" fill="#db8129" />
-    </g>
-    <text x="862" y="252" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="862" dy="0">the metrics keep showing</tspan>
-      <tspan x="862" dy="32">the last values, dashboards</tspan>
-      <tspan x="862" dy="32">stay calm on hours-old</tspan>
-      <tspan x="862" dy="32">numbers</tspan>
-    </text>
-
-    
-    <rect x="1230" y="184" width="314" height="194" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(1246, 196)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="6" width="20" height="20" rx="3" />
-      <line x1="11" y1="16" x2="21" y2="16" />
-    </g>
-    <text x="1246" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1246" dy="0">series for removed</tspan>
-      <tspan x="1246" dy="32">hosts linger until</tspan>
-      <tspan x="1246" dy="34" font-family="ui-monospace, monospace" fill="#207448">.remove(...)</tspan>
-    </text>
+  <g id="header">
+    <text x="50" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Background polling versus a scrape-time collector</text>
+    <rect x="1150" y="24" width="400" height="44" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1350" y="54" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">start_http_server(9101)</text>
   </g>
 
   
-  <g id="bottom-timeline">
+  <g id="top-panel">
+    <rect x="40" y="88" width="1520" height="380" rx="16" fill="#ffffff" stroke="#c4d6c8" stroke-width="2" />
     
-    <rect x="40" y="408" width="1520" height="476" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <path d="M 40 420 A 12 12 0 0 1 52 408 L 1548 408 A 12 12 0 0 1 1560 420 L 1560 455 L 40 455 Z" fill="#e8f1ea" />
-
     
-    <g transform="translate(56, 416)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="6" />
-      <path d="M 16 3 L 16 7 M 16 25 L 16 29 M 3 16 L 7 16 M 25 16 L 29 16 M 7 7 L 10 10 M 22 22 L 25 25 M 7 25 L 10 22 M 22 10 L 25 7" />
+    <rect x="40" y="88" width="1520" height="56" rx="16" fill="#e8f1ea" />
+    <rect x="40" y="124" width="1520" height="20" fill="#e8f1ea" />
+    
+    
+    <g transform="translate(60, 96)">
+      <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="20,10 20,20 28,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
     </g>
-    <text x="96" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan font-family="ui-monospace, monospace">FleetCollector</tspan>
-      <tspan> registered with </tspan>
-      <tspan font-family="ui-monospace, monospace">REGISTRY.register</tspan>
-    </text>
+    
+    <text x="115" y="127" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">poll_forever with Gauge.set</text>
 
     
-    <rect x="58" y="472" width="240" height="98" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <circle cx="82" cy="496" r="14" fill="#207448" />
-    <text x="82" y="504" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-    <text x="108" y="503" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Prometheus</text>
-    <text x="74" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">scrapes</text>
-
-    
-    <line x1="178" y1="570" x2="178" y2="602" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="58" y="604" width="240" height="98" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <circle cx="82" cy="628" r="14" fill="#207448" />
-    <text x="82" y="636" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-    <text x="108" y="635" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">collect()</text>
-    <text x="74" y="674" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">runs now</text>
-
-    
-    <line x1="298" y1="653" x2="340" y2="653" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="342" y="525" width="295" height="156" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <circle cx="366" cy="551" r="14" fill="#207448" />
-    <text x="366" y="559" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-    <text x="392" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Per Host</text>
-    <text x="358" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="358" dy="0">for each host:</tspan>
-      <tspan x="358" dy="32" font-family="ui-monospace, monospace" fill="#207448">read_temps(h,</tspan>
-      <tspan x="358" dy="30" font-family="ui-monospace, monospace" fill="#207448">timeout=5)</tspan>
-    </text>
-
-    
-    <path d="M 637 570 L 680 570 L 680 522 L 722 522" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <path d="M 637 635 L 680 635 L 680 678 L 722 678" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    
-    <text x="682" y="708" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-style="italic" fill="#303a36">on failure</text>
-
-    
-    <rect x="724" y="468" width="455" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <circle cx="748" cy="494" r="14" fill="#207448" />
-    <text x="748" y="502" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
-    <text x="774" y="501" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Success Data</text>
-    <text x="740" y="538" font-family="ui-monospace, monospace" font-size="24" fill="#207448">
-      <tspan x="740" dy="0">temp.add_metric([h, str(gpu)], t);</tspan>
-      <tspan x="740" dy="30">up.add_metric([h], 1)</tspan>
-    </text>
-
-    
-    <rect x="724" y="622" width="455" height="114" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <text x="740" y="658" font-family="ui-monospace, monospace" font-size="24" fill="#207448">up.add_metric([h], 0)</text>
-    <text x="740" y="694" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="740" dy="0">so failure is data,</tspan>
-      <tspan x="740" dy="30">not an exception</tspan>
-    </text>
-
-    
-    <path d="M 1179 522 L 1210 522 L 1210 575 L 1238 575" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <path d="M 1179 678 L 1210 678 L 1210 625 L 1238 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="1240" y="525" width="304" height="156" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <circle cx="1264" cy="551" r="14" fill="#207448" />
-    <text x="1264" y="559" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
-    <text x="1290" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yield</text>
-    <text x="1254" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1254" dy="0">yield temp, up and</tspan>
-      <tspan x="1254" dy="32" font-family="ui-monospace, monospace" fill="#207448">fleet_scrape_</tspan>
-      <tspan x="1254" dy="30" font-family="ui-monospace, monospace" fill="#207448">duration_seconds</tspan>
-    </text>
-
-    
-    <rect x="58" y="810" width="1486" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(76, 822)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 16 12 24 28 8" />
+    <g transform="translate(70, 166)">
+      <rect x="0" y="0" width="670" height="130" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <g transform="translate(20, 24)">
+        <rect x="0" y="0" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <polyline points="10,22 20,32 34,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="80" y="44" font-family="sans-serif" font-size="24" fill="#303a36">a polling thread writes</text>
+      <text x="80" y="76" font-family="monospace" font-size="24" fill="#207448">TEMP.labels(h, gpu).set(t) every interval=15</text>
+      <text x="80" y="108" font-family="monospace" font-size="24" fill="#207448">and ERRORS.labels(h).inc() on failure</text>
     </g>
-    <text x="800" y="848" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">each scrape is a fresh, consistent snapshot, so no stale series survive</text>
+
+    
+    <g transform="translate(850, 166)">
+      <rect x="0" y="0" width="670" height="130" rx="12" fill="#f5f8f5" stroke="#303a36" stroke-width="2" stroke-dasharray="6,6" />
+      <g transform="translate(24, 24)">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="#303a36" stroke-width="4" />
+        <circle cx="22" cy="22" r="8" fill="none" stroke="#303a36" stroke-width="4" />
+      </g>
+      <text x="80" y="74" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Prometheus scrapes at its own rate</text>
+    </g>
+
+    
+    <g transform="translate(70, 316)">
+      <rect x="0" y="0" width="940" height="130" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+      <g transform="translate(20, 38)">
+        <path d="M 20 2 L 38 34 L 2 34 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+        <line x1="20" y1="14" x2="20" y2="22" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+        <circle cx="20" cy="28" r="2.5" fill="#db8129" />
+      </g>
+      <text x="75" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">if polling stalls in the night:</text>
+      <text x="75" y="86" font-family="sans-serif" font-size="24" fill="#303a36">the metrics keep showing the last values, dashboards stay</text>
+      <text x="75" y="116" font-family="sans-serif" font-size="24" fill="#303a36">calm on hours-old numbers</text>
+    </g>
+
+    
+    <g transform="translate(1030, 316)">
+      <rect x="0" y="0" width="490" height="130" rx="10" fill="#f5f8f5" stroke="#7a8b82" stroke-width="2" />
+      <g transform="translate(20, 42)">
+        <rect x="0" y="0" width="36" height="36" rx="6" fill="none" stroke="#7a8b82" stroke-width="4" />
+        <line x1="8" y1="8" x2="28" y2="28" stroke="#7a8b82" stroke-width="4" stroke-linecap="round" />
+        <line x1="28" y1="8" x2="8" y2="28" stroke="#7a8b82" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="72" y="56" font-family="sans-serif" font-size="24" fill="#303a36">series for removed hosts</text>
+      <text x="72" y="90" font-family="monospace" font-size="24" fill="#303a36">linger until .remove(...)</text>
+    </g>
   </g>
 
   
-  <g id="rules-strip">
-    <rect x="40" y="902" width="1520" height="224" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <path d="M 40 914 A 12 12 0 0 1 52 902 L 1548 902 A 12 12 0 0 1 1560 914 L 1560 944 L 40 944 Z" fill="#e8f1ea" />
-
+  <g id="bottom-panel">
+    <rect x="40" y="490" width="1520" height="610" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(56, 910)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 16 4 L 28 9 L 28 17 C 28 23 16 29 16 29 C 16 29 4 23 4 17 L 4 9 Z" />
+    
+    <rect x="40" y="490" width="1520" height="56" rx="16" fill="#207448" />
+    <rect x="40" y="526" width="1520" height="20" fill="#207448" />
+    
+    
+    <g transform="translate(60, 498)">
+      <rect x="2" y="4" width="36" height="32" rx="6" fill="none" stroke="#ffffff" stroke-width="4" />
+      <line x1="10" y1="14" x2="30" y2="14" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <line x1="10" y1="22" x2="26" y2="22" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
     </g>
-    <text x="96" y="934" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Rules</text>
+    
+    <text x="115" y="529" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">FleetCollector registered with REGISTRY.register</text>
 
     
-    <text x="64" y="976" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="64" dy="0">• collection must finish well inside the scrape</tspan>
-      <tspan x="84" dy="28">timeout; parallelise with a thread pool and a</tspan>
-      <tspan x="84" dy="28">per-host timeout, or cache results for a few</tspan>
-      <tspan x="84" dy="28">seconds (a TTL cache keeps each result for a</tspan>
-      <tspan x="84" dy="28">short lifetime);</tspan>
-    </text>
+    <g transform="translate(70, 566)">
+      <rect x="0" y="0" width="310" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="72" y="64" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Prometheus scrapes</text>
+    </g>
 
     
-    <text x="814" y="976" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="814" dy="0">• never let one failing target raise out of</tspan>
-      <tspan x="834" dy="28">collect();</tspan>
-      <tspan x="814" dy="28">• do not block on slow hardware, BMC queries</tspan>
-      <tspan x="834" dy="28">can take seconds;</tspan>
-      <tspan x="814" dy="28">• protect the endpoint: internal interface, TLS</tspan>
-      <tspan x="834" dy="28">and basic auth through proxies, or a sidecar</tspan>
-    </text>
+    <path d="M 380 621 L 436 621" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(440, 566)">
+      <rect x="0" y="0" width="320" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="72" y="64" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">collect() runs now</text>
+    </g>
+
+    
+    <path d="M 760 621 L 816 621" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(820, 566)">
+      <rect x="0" y="0" width="700" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="72" y="48" font-family="sans-serif" font-size="24" fill="#303a36">query hardware concurrently:</text>
+      <text x="72" y="84" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">for each host: read_temps(h, timeout=5)</text>
+    </g>
+
+    
+    <path d="M 1170 676 L 1170 706 L 500 706 L 500 730" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <path d="M 1170 706 L 1190 706 L 1190 730" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(70, 734)">
+      <rect x="0" y="0" width="760" height="170" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4a</text>
+      <text x="72" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Success Data</text>
+      <g transform="translate(24, 60)">
+        <rect x="0" y="0" width="712" height="92" rx="8" fill="#ffffff" stroke="#c4d6c8" stroke-width="1.5" />
+        <text x="16" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">temp.add_metric([h, str(gpu)], t);</text>
+        <text x="16" y="74" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">up.add_metric([h], 1)</text>
+      </g>
+    </g>
+
+    
+    <g transform="translate(860, 734)">
+      <rect x="0" y="0" width="660" height="170" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#db8129" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4b</text>
+      <text x="72" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Failure Handling</text>
+      <g transform="translate(20, 60)">
+        <rect x="0" y="0" width="620" height="92" rx="8" fill="#ffffff" stroke="#fcd4b0" stroke-width="1.5" />
+        <text x="16" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">up.add_metric([h], 0)</text>
+        <text x="16" y="74" font-family="sans-serif" font-size="24" fill="#303a36">so failure is data, not an exception</text>
+      </g>
+    </g>
+
+    
+    <path d="M 450 904 L 450 926 L 770 926 L 770 946" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1190 904 L 1190 926 L 770 926" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(70, 950)">
+      <rect x="0" y="0" width="760" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="72" y="46" font-family="sans-serif" font-size="24" fill="#303a36">return metrics together:</text>
+      <text x="72" y="88" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">yield temp, up and fleet_scrape_duration_seconds</text>
+    </g>
+
+    
+    <g transform="translate(860, 950)">
+      <rect x="0" y="0" width="660" height="120" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="3" />
+      <g transform="translate(24, 38)">
+        <polygon points="20,2 38,36 2,36" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <polyline points="14,24 19,29 27,17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+      <text x="76" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Guarantee:</text>
+      <text x="76" y="86" font-family="sans-serif" font-size="24" fill="#303a36">each scrape is a fresh, consistent snapshot,</text>
+      <text x="76" y="114" font-family="sans-serif" font-size="24" fill="#303a36">so no stale series survive</text>
+    </g>
   </g>
 
   
-  <rect x="40" y="1142" width="1520" height="46" rx="8" fill="#207448" />
-  <text x="800" y="1174" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Let the scrape drive the collection</text>
+  <g id="rules-strip" transform="translate(40, 1120)">
+    <rect x="0" y="0" width="1520" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(24, 20)">
+      <path d="M 24 4 L 44 14 L 44 28 C 44 42 24 50 24 50 C 24 50 4 42 4 28 L 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="14,26 21,33 34,18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="80" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Collector Implementation Rules</text>
+
+    
+    <g transform="translate(24, 80)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">collection must finish well inside the scrape timeout; parallelise with a thread pool and a per-host timeout,</text>
+      <text x="30" y="50" font-family="sans-serif" font-size="24" fill="#303a36">or cache results for a few seconds (a TTL cache keeps each result for a short lifetime);</text>
+    </g>
+
+    
+    <g transform="translate(24, 144)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">never let one failing target raise out of collect(); do not block on slow hardware, BMC queries can take seconds;</text>
+    </g>
+
+    
+    <g transform="translate(24, 184)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">protect the endpoint: internal interface, TLS and basic auth through proxies, or a sidecar</text>
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar" transform="translate(40, 1400)">
+    <rect x="0" y="0" width="1520" height="70" rx="14" fill="#207448" />
+    <g transform="translate(30, 14)">
+      <circle cx="21" cy="21" r="18" fill="none" stroke="#ffffff" stroke-width="3" />
+      <polyline points="12,21 18,27 30,15" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="760" y="46" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Let the scrape drive the collection</text>
+  </g>
 </svg>

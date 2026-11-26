@@ -1,208 +1,196 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1490" width="1600" height="1490">
   <title>Names decide which network a job uses: per-NIC names in a cluster</title>
-  <desc>Infographic explaining per-NIC naming in a GPU cluster, routing outcomes, configuration consumption, DNS hygiene, and cloud resolvers.</desc>
+  <desc>Visual infographic explaining how per-NIC naming impacts cluster network routing and job execution.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448" />
+    <marker id="arrowhead-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#db8129" />
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1490" fill="#f5f8f5" />
 
   
-  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Names decide which network a job uses: per-NIC names in a cluster</text>
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Names decide which network a job uses: per-NIC names in a cluster</text>
 
   
+
   
-  <rect x="40" y="115" width="700" height="315" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="60" y="120" width="640" height="370" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
   
   
-  <g transform="translate(65, 135)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="0" width="46" height="34" rx="4" />
-    <line x1="10" y1="11" x2="18" y2="11" />
-    <line x1="10" y1="23" x2="18" y2="23" />
-    <circle cx="34" cy="11" r="2" fill="#207448" />
-    <circle cx="34" cy="23" r="2" fill="#207448" />
+  <g transform="translate(90, 140)">
+    <rect x="0" y="0" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="8" y1="12" x2="16" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="8" y1="22" x2="24" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="36" cy="17" r="3" fill="#207448" />
   </g>
-  <text x="125" y="162" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">gpu01</text>
+  <text x="150" y="167" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">gpu01</text>
 
   
-  <g id="port-fabric">
-    <rect x="65" y="185" width="650" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <rect x="77" y="202" width="22" height="30" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <text x="115" y="226" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">gpu01-ib0: fabric 10.100.0.45</text>
-  </g>
+  <rect x="85" y="195" width="590" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="100" y="215" width="34" height="34" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <line x1="117" y1="215" x2="117" y2="227" stroke="#207448" stroke-width="2" />
+  <text x="150" y="242" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">gpu01-ib0: fabric 10.100.0.45</text>
 
   
-  <g id="port-mgmt">
-    <rect x="65" y="265" width="650" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <rect x="77" y="282" width="22" height="30" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <text x="115" y="306" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">gpu01 or gpu01-mgmt: management 10.20.0.45</text>
-  </g>
+  <rect x="85" y="285" width="590" height="75" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <rect x="100" y="305" width="34" height="34" rx="4" fill="#fff6ed" stroke="#db8129" stroke-width="2" />
+  <line x1="117" y1="305" x2="117" y2="317" stroke="#db8129" stroke-width="2" />
+  <text x="150" y="332" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">gpu01 or gpu01-mgmt: management 10.20.0.45</text>
 
   
-  <g id="port-storage">
-    <rect x="65" y="345" width="650" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(77, 357)" stroke="#207448" stroke-width="2" fill="none">
-      <ellipse cx="11" cy="7" rx="10" ry="4" />
-      <path d="M 1 7 v 14 c 0 2.2 4.5 4 10 4 s 10 -1.8 10 -4 v -14" />
-      <path d="M 1 14 c 0 2.2 4.5 4 10 4 s 10 -1.8 10 -4" />
-    </g>
-    <text x="115" y="386" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">storage as another named interface</text>
-  </g>
+  <rect x="85" y="375" width="590" height="75" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" />
+  <rect x="100" y="395" width="34" height="34" rx="4" fill="#ffffff" stroke="#a0aba3" stroke-width="2" />
+  <line x1="117" y1="395" x2="117" y2="407" stroke="#a0aba3" stroke-width="2" />
+  <text x="150" y="422" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">storage</text>
 
   
-  <rect x="850" y="115" width="710" height="145" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(875, 132)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 18 2 L 4 8 v 10 c 0 11 14 18 14 18 s 14 -7 14 -18 V 8 Z" />
-    <path d="M 11 17 l 5 5 l 9 -9" />
-  </g>
-  <text x="925" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Outcome A</text>
-  <text x="875" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="875" dy="0">hostfile names the fabric NIC (gpu01-ib0):</tspan>
-    <tspan x="875" dy="32">bootstrap traffic uses the fabric</tspan>
+  <path d="M 700 232 L 816 232" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-green)" />
+
+  
+  <path d="M 700 322 L 755 322 L 755 395 L 816 395" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)" />
+
+  
+  <rect x="820" y="165" width="720" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <circle cx="865" cy="232" r="24" fill="#207448" />
+  <path d="M 854 232 L 862 240 L 876 224" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="910" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="910" dy="0">hostfile names the fabric NIC (gpu01-ib0):</tspan>
+    <tspan x="910" dy="36">bootstrap traffic uses the fabric</tspan>
   </text>
 
   
-  <rect x="850" y="275" width="710" height="155" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <rect x="820" y="325" width="720" height="165" rx="14" fill="#fff6ed" stroke="#db8129" stroke-width="3" />
+  <circle cx="865" cy="407" r="24" fill="#db8129" />
+  <line x1="865" y1="395" x2="865" y2="411" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  <circle cx="865" cy="421" r="2.5" fill="#ffffff" />
+  <text x="910" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b35900">
+    <tspan x="910" dy="0">hostfile name resolves to the management NIC:</tspan>
+    <tspan x="910" dy="36">bootstrap traffic takes the wrong network, and the</tspan>
+    <tspan x="910" dy="36">job crawls or fails with no obvious error</tspan>
+  </text>
+
+
   
-  <g transform="translate(875, 290)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 18 4 L 2 32 h 32 Z" />
-    <line x1="18" y1="14" x2="18" y2="22" />
-    <circle cx="18" cy="27" r="1.5" fill="#db8129" />
+
+  
+  <rect x="60" y="525" width="1480" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="85" y="550" width="530" height="290" rx="10" fill="#f5f8f5" stroke="#cbd8ce" stroke-width="2" />
+  
+  <g transform="translate(110, 570)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 20 2 L 20 7 M 20 33 L 20 38 M 2 20 L 7 20 M 33 20 L 38 20 M 7 7 L 11 11 M 29 29 L 33 33 M 7 33 L 11 29 M 29 11 L 33 7" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="20" cy="20" r="6" fill="#207448" />
   </g>
-  <text x="925" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Outcome B</text>
-  <text x="875" y="358" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="875" dy="0">hostfile name resolves to the management NIC:</tspan>
-    <tspan x="875" dy="30">bootstrap traffic takes the wrong network, and the job</tspan>
-    <tspan x="875" dy="30">crawls or fails with no obvious error</tspan>
+  <text x="165" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Slurm</text>
+  
+  <text x="110" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0" font-weight="bold">Slurm: NodeName and NodeAddr in slurm.conf;</tspan>
+    <tspan x="110" dy="38">use NodeAddr to bind jobs to a specific</tspan>
+    <tspan x="110" dy="38">interface; forward lookups must match</tspan>
+    <tspan x="110" dy="38">through SlurmctldHost and NodeHostname</tspan>
   </text>
 
   
+  <rect x="635" y="550" width="510" height="290" rx="10" fill="#f5f8f5" stroke="#cbd8ce" stroke-width="2" />
   
-  <path d="M 715 217 H 848" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  
-  <path d="M 715 297 H 785 V 352 H 846" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-  
-  
-  <rect x="40" y="455" width="530" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(505, 470)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="18" cy="18" r="7" />
-    <path d="M 18 2 v 4 M 18 30 v 4 M 2 18 h 4 M 30 18 h 4 M 7 7 l 3 3 M 26 26 l 3 3 M 7 29 l 3 -3 M 26 7 l 3 3" />
+  <g transform="translate(660, 570)">
+    <rect x="0" y="0" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="0" y1="10" x2="40" y2="10" stroke="#207448" stroke-width="2" />
+    <circle cx="7" cy="5" r="2" fill="#207448" />
+    <circle cx="14" cy="5" r="2" fill="#207448" />
   </g>
-  <text x="65" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="65" dy="0">Slurm: NodeName and NodeAddr in slurm.conf;</tspan>
-    <tspan x="65" dy="30">use NodeAddr to bind jobs to a specific</tspan>
-    <tspan x="65" dy="30">interface; forward lookups must match through</tspan>
-    <tspan x="65" dy="30">SlurmctldHost and NodeHostname</tspan>
+  <text x="715" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">MPI and NCCL launchers</text>
+  <text x="660" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="660" dy="0" font-weight="bold">MPI and NCCL launchers: hostnames from a</tspan>
+    <tspan x="660" dy="38">hostfile; set NCCL_SOCKET_IFNAME</tspan>
+    <tspan x="660" dy="38">and NCCL_IB_HCA explicitly rather</tspan>
+    <tspan x="660" dy="38">than relying on names</tspan>
   </text>
 
   
-  <rect x="590" y="455" width="570" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1095, 470)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="9" cy="9" r="5" />
-    <circle cx="27" cy="9" r="5" />
-    <circle cx="18" cy="27" r="5" />
-    <line x1="13" y1="12" x2="23" y2="12" />
-    <line x1="11" y1="14" x2="16" y2="23" />
-    <line x1="25" y1="14" x2="20" y2="23" />
+  <rect x="1165" y="550" width="350" height="290" rx="10" fill="#f5f8f5" stroke="#cbd8ce" stroke-width="2" />
+  
+  <g transform="translate(1190, 570)">
+    <path d="M 18 2 L 34 8 L 34 20 C 34 30 18 36 18 36 C 18 36 2 30 2 20 L 2 8 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 12 18 L 16 22 L 24 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-  <text x="615" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="615" dy="0">MPI and NCCL launchers: hostnames from a</tspan>
-    <tspan x="615" dy="30">hostfile; set NCCL_SOCKET_IFNAME and</tspan>
-    <tspan x="615" dy="30">NCCL_IB_HCA explicitly rather than</tspan>
-    <tspan x="615" dy="30">relying on names</tspan>
+  <text x="1240" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Observability</text>
+  <text x="1190" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1190" dy="0">monitoring labels</tspan>
+    <tspan x="1190" dy="38">and certificates</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="60" y="890" width="1480" height="355" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="85" y="915" width="1430" height="90" rx="10" fill="#ffffff" stroke="#cbd8ce" stroke-width="1.5" />
+  
+  <g transform="translate(105, 938)">
+    <circle cx="20" cy="22" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 14 16 L 14 12 C 14 8 16 6 20 6 C 24 6 26 8 26 12 L 26 16" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="20" cy="22" r="2.5" fill="#207448" />
+  </g>
+  <text x="160" y="952" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">reverse DNS must exist for all node IPs, management and where used fabric; missing PTR records</tspan>
+    <tspan x="160" dy="34">cause multi-second stalls</tspan>
   </text>
 
   
-  <rect x="1180" y="455" width="380" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1495, 470)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2" y="2" width="28" height="34" rx="3" />
-    <circle cx="16" cy="15" r="5" />
-    <path d="M 12 25 l 4 -4 l 4 4" />
+  <rect x="85" y="1020" width="1430" height="95" rx="10" fill="#ffffff" stroke="#cbd8ce" stroke-width="1.5" />
+  
+  <g transform="translate(105, 1045)">
+    <path d="M 20 6 L 34 32 L 6 32 Z" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="20" y1="16" x2="20" y2="24" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="20" cy="28" r="2" fill="#db8129" />
   </g>
-  <text x="1205" y="545" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1205" dy="0">monitoring labels and</tspan>
-    <tspan x="1205" dy="32">certificates</tspan>
+  <text x="160" y="1060" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">Debian 127.0.1.1 hostname line makes a host resolve its own name to loopback, which breaks MPI</tspan>
+    <tspan x="160" dy="34">and Kerberos assumptions</tspan>
   </text>
 
   
-  <rect x="40" y="680" width="1520" height="295" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
+  <rect x="85" y="1130" width="1430" height="95" rx="10" fill="#ffffff" stroke="#cbd8ce" stroke-width="1.5" />
   
-  <g transform="translate(60, 700)">
-    <rect x="0" y="0" width="460" height="255" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    
-    <g transform="translate(395, 15)" stroke="#207448" stroke-width="2.5" fill="none">
-      <circle cx="18" cy="18" r="14" />
-      <line x1="4" y1="18" x2="32" y2="18" />
-      <ellipse cx="18" cy="18" rx="6" ry="14" />
-    </g>
-    <text x="25" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="25" dy="0">reverse DNS must exist for all node</tspan>
-      <tspan x="25" dy="32">IPs, management and where used</tspan>
-      <tspan x="25" dy="32">fabric; missing PTR records cause</tspan>
-      <tspan x="25" dy="32">multi-second stalls</tspan>
-    </text>
+  <g transform="translate(105, 1155)">
+    <rect x="4" y="6" width="32" height="6" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <rect x="4" y="16" width="32" height="6" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <rect x="4" y="26" width="32" height="6" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
   </g>
-
-  
-  <g transform="translate(540, 700)">
-    <rect x="0" y="0" width="460" height="255" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    
-    <g transform="translate(395, 15)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 8 18 A 12 12 0 1 1 26 26" />
-      <polyline points="26 20 26 26 20 26" />
-    </g>
-    <text x="25" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="25" dy="0">Debian 127.0.1.1 hostname line</tspan>
-      <tspan x="25" dy="32">makes a host resolve its own name</tspan>
-      <tspan x="25" dy="32">to loopback, which breaks MPI and</tspan>
-      <tspan x="25" dy="32">Kerberos assumptions</tspan>
-    </text>
-  </g>
-
-  
-  <g transform="translate(1020, 700)">
-    <rect x="0" y="0" width="520" height="255" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    
-    <g transform="translate(455, 15)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="2" width="28" height="32" rx="3" />
-      <line x1="8" y1="10" x2="22" y2="10" />
-      <line x1="8" y1="18" x2="22" y2="18" />
-      <line x1="8" y1="26" x2="16" y2="26" />
-    </g>
-    <text x="25" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="25" dy="0">generate every record from one</tspan>
-      <tspan x="25" dy="30">naming scheme and inventory so Slurm,</tspan>
-      <tspan x="25" dy="30">MPI and DNS always agree; predictable</tspan>
-      <tspan x="25" dy="30">names such as gpu-rack03-node07;</tspan>
-      <tspan x="25" dy="30">hostname -f should resolve to the</tspan>
-      <tspan x="25" dy="30">primary address</tspan>
-    </text>
-  </g>
-
-  
-  <rect x="40" y="995" width="1520" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(65, 1032)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 10 32 A 9 9 0 0 1 10 16 A 14 14 0 0 1 36 12 A 11 11 0 0 1 44 24 A 8 8 0 0 1 40 32 Z" />
-  </g>
-  <text x="135" y="1032" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">GCP: instance.zone.c.project.internal, Cloud DNS public and private zones, forwarding, peering,</tspan>
-    <tspan x="135" dy="30">response policies, metadata-server resolver 169.254.169.254; AWS Route 53 Resolver;</tspan>
-    <tspan x="135" dy="30">Kubernetes ExternalDNS syncs service and ingress hostnames</tspan>
+  <text x="160" y="1168" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">generate every record from one naming scheme and inventory so Slurm, MPI and DNS always agree;</tspan>
+    <tspan x="160" dy="34">predictable names such as gpu-rack03-node07; hostname -f should resolve to the primary address</tspan>
   </text>
 
+
   
-  <rect x="40" y="1132" width="1520" height="52" rx="8" fill="#207448" />
-  <text x="800" y="1167" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Get names right before you tune anything else</text>
+
+  <rect x="60" y="1270" width="1480" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(90, 1300)">
+    <path d="M 12 30 C 6 30 2 26 2 20 C 2 15 6 12 11 12 C 12 6 18 2 26 2 C 34 2 40 7 42 14 C 47 14 50 17 50 22 C 50 26 46 30 40 30 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  <text x="160" y="1312" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">GCP: instance.zone.c.project.internal, Cloud DNS public and private zones, forwarding, peering,</tspan>
+    <tspan x="160" dy="34">response policies, metadata-server resolver 169.254.169.254; AWS Route 53 Resolver; Kubernetes ExternalDNS syncs service and ingress hostnames</tspan>
+  </text>
+
+
+  
+
+  <rect x="60" y="1395" width="1480" height="65" rx="10" fill="#207448" />
+  <text x="800" y="1438" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Get names right before you tune anything else</text>
+
 </svg>

@@ -1,120 +1,135 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
   <title>Anatomy of a MAC address</title>
-  <desc>Visual infographic explaining the anatomy of a MAC address including OUI and NIC-specific octets, bit 0 I/G and bit 1 U/L zoom callout, and special multicast and broadcast mappings.</desc>
+  <desc>Visual breakdown of a 48-bit MAC address showing OUI, NIC-specific portions, zoom callout on octet 1 bit flags, and multicast mapping chips.</desc>
 
   
-  <rect width="1600" height="1050" fill="#f5f8f5"/>
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
 
   
-  <text x="80" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of a MAC address</text>
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of a MAC address</text>
 
   
-  <rect x="80" y="130" width="700" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="60" y="115" width="720" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(90, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="22"/>
+    <ellipse cx="24" cy="24" rx="10" ry="22"/>
+    <line x1="2" y1="24" x2="46" y2="24"/>
+  </g>
+  
+  <text x="445" y="168" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">OUI (assigned by IEEE, names the vendor)</text>
 
   
-  <path d="M133 156 L154 165 V186 C154 198 144 207 133 210 C122 207 112 198 112 186 V165 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="90" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="320" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  
+  <rect x="550" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
 
   
-  <text x="180" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="180" dy="0">OUI (assigned by IEEE,</tspan>
-    <tspan x="180" dy="38">names the vendor)</tspan>
+  <rect x="820" y="115" width="720" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(850, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="28" height="28" rx="4"/>
+    <line x1="16" y1="2" x2="16" y2="10"/>
+    <line x1="24" y1="2" x2="24" y2="10"/>
+    <line x1="32" y1="2" x2="32" y2="10"/>
+    <line x1="16" y1="38" x2="16" y2="46"/>
+    <line x1="24" y1="38" x2="24" y2="46"/>
+    <line x1="32" y1="38" x2="32" y2="46"/>
+    <line x1="2" y1="16" x2="10" y2="16"/>
+    <line x1="2" y1="24" x2="10" y2="24"/>
+    <line x1="2" y1="32" x2="10" y2="32"/>
+    <line x1="38" y1="16" x2="46" y2="16"/>
+    <line x1="38" y1="24" x2="46" y2="24"/>
+    <line x1="38" y1="32" x2="46" y2="32"/>
+  </g>
+
+  <text x="1205" y="168" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">NIC-specific (assigned by manufacturer)</text>
+
+  
+  <rect x="850" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  
+  <rect x="1080" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  
+  <rect x="1310" y="215" width="200" height="110" rx="10" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+
+  
+  <polygon points="90,325 290,325 860,420 60,420" fill="#207448" fill-opacity="0.06" stroke="#207448" stroke-dasharray="6 6" stroke-width="2"/>
+
+  
+  <rect x="60" y="420" width="800" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(90, 440)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="14"/>
+    <line x1="30" y1="30" x2="44" y2="44"/>
+  </g>
+
+  
+  
+  <rect x="160" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  <rect x="238" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  <rect x="316" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  <rect x="394" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  <rect x="472" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  <rect x="550" y="445" width="70" height="50" rx="6" fill="#ffffff" stroke="#a0b8a6" stroke-width="2"/>
+  
+  <rect x="628" y="445" width="95" height="50" rx="6" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+  
+  <rect x="731" y="445" width="95" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <line x1="675" y1="495" x2="675" y2="525" stroke="#db8129" stroke-width="3"/>
+
+  
+  <rect x="90" y="525" width="740" height="235" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <text x="120" y="580" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">U/L: 0 = universally administered (burned-in),</tspan>
+    <tspan x="120" dy="40">1 = locally administered</tspan>
   </text>
 
   
-  <rect x="105" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <rect x="305" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <rect x="505" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="120" y="680" width="370" height="56" rx="28" fill="#db8129"/>
+  <text x="305" y="716" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">virtual NICs often set it</text>
 
   
-  <rect x="820" y="130" width="700" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <line x1="778" y1="495" x2="778" y2="785" stroke="#207448" stroke-width="3"/>
 
   
-  <rect x="857" y="166" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-  <line x1="865" y1="156" x2="865" y2="166" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="881" y1="156" x2="881" y2="166" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="865" y1="198" x2="865" y2="208" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="881" y1="198" x2="881" y2="208" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="847" y1="174" x2="857" y2="174" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="847" y1="190" x2="857" y2="190" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="889" y1="174" x2="899" y2="174" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <line x1="889" y1="190" x2="899" y2="190" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-
-  
-  <text x="915" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="915" dy="0">NIC-specific (assigned</tspan>
-    <tspan x="915" dy="38">by manufacturer)</tspan>
+  <rect x="90" y="785" width="740" height="235" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="120" y="865" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">I/G: 0 = unicast,</tspan>
+    <tspan x="120" dy="44">1 = multicast or broadcast</tspan>
   </text>
 
   
-  <rect x="845" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <rect x="1045" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <rect x="1245" y="245" width="180" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="900" y="420" width="640" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <polygon points="105,335 285,335 960,420 80,420" fill="#207448" fill-opacity="0.07" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(930, 442)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14 L20 2 L42 2 L42 24 L26 36 Z"/>
+    <circle cx="32" cy="12" r="4"/>
+  </g>
 
   
-  <rect x="80" y="420" width="880" height="570" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="930" y="515" width="580" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="965" y="592" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ff:ff:ff:ff:ff:ff = broadcast</text>
 
   
-  <rect x="110" y="450" width="820" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-  
-  <circle cx="145" cy="545" r="10" fill="none" stroke="#207448" stroke-width="4"/>
-  <path d="M155 545 H170 M170 520 V570 M170 520 H182 M170 545 H182 M170 570 H182" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="189" cy="520" r="5" fill="#207448"/>
-  <circle cx="189" cy="545" r="5" fill="#207448"/>
-  <circle cx="189" cy="570" r="5" fill="#207448"/>
-
-  
-  <text x="215" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="215" dy="0">I/G: 0 = unicast,</tspan>
-    <tspan x="215" dy="42">1 = multicast or broadcast</tspan>
+  <rect x="930" y="680" width="580" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="965" y="742" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="965" dy="0">01:00:5e:xx:xx:xx =</tspan>
+    <tspan x="965" dy="44">IPv4 multicast mapping</tspan>
   </text>
 
   
-  <rect x="110" y="665" width="820" height="295" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
-
-  
-  <rect x="140" y="705" width="38" height="38" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
-  <path d="M150 724 L157 731 L169 719" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-
-  
-  <text x="205" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-    <tspan x="205" dy="0">U/L: 0 = universally administered (burned-in),</tspan>
-    <tspan x="205" dy="40">1 = locally administered</tspan>
-  </text>
-
-  
-  <rect x="135" y="855" width="770" height="75" rx="10" fill="#fdeee0" stroke="#db8129" stroke-width="2.5"/>
-  <text x="165" y="902" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">virtual NICs often set it</text>
-
-  
-  <rect x="1000" y="420" width="520" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-
-  
-  <circle cx="1260" cy="485" r="7" fill="#207448"/>
-  <path d="M1248 473 C1241 480 1241 490 1248 497 M1272 473 C1279 480 1279 490 1272 497" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <path d="M1238 463 C1226 475 1226 495 1238 507 M1282 463 C1294 475 1294 495 1282 507" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-
-  
-  <rect x="1030" y="525" width="460" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-  <text x="1055" y="580" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1055" dy="0">ff:ff:ff:ff:ff:ff =</tspan>
-    <tspan x="1055" dy="36">broadcast</tspan>
-  </text>
-
-  
-  <rect x="1030" y="675" width="460" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-  <text x="1055" y="730" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1055" dy="0">01:00:5e:xx:xx:xx =</tspan>
-    <tspan x="1055" dy="36">IPv4 multicast mapping</tspan>
-  </text>
-
-  
-  <rect x="1030" y="825" width="460" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-  <text x="1055" y="880" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1055" dy="0">33:33:xx:xx:xx:xx =</tspan>
-    <tspan x="1055" dy="36">IPv6 multicast mapping</tspan>
+  <rect x="930" y="865" width="580" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="965" y="927" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="965" dy="0">33:33:xx:xx:xx:xx =</tspan>
+    <tspan x="965" dy="44">IPv6 multicast mapping</tspan>
   </text>
 </svg>

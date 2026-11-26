@@ -1,175 +1,168 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420" style="background-color: #f5f8f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <title>The quality configuration in pyproject.toml and pre-commit, line by line</title>
-  <desc>Visual infographic explaining the quality configuration in pyproject.toml and pre-commit configuration hooks, line by line.</desc>
+  <desc>Visual breakdown of linting, typing, coverage configurations and pre-commit gate hooks</desc>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="50" y="65" font-size="44" font-weight="bold" fill="#303a36">The quality configuration in pyproject.toml and pre-commit, line by line</text>
 
   
-  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">
-    <tspan x="800" dy="0">The quality configuration in pyproject.toml </tspan>
-    <tspan x="800" dy="55">and pre-commit, line by line</tspan>
-  </text>
-
-  
-  <rect x="40" y="175" width="880" height="765" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-  
-  <g transform="translate(65, 192)">
+  <g transform="translate(40, 100)">
     
-    <rect x="0" y="0" width="36" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="8" y1="12" x2="28" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="8" y1="22" x2="28" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="8" y1="32" x2="20" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  </g>
-  <text x="120" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Annotated config.</text>
-
-  
-  <rect x="60" y="248" width="840" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 268)">
+    <rect x="0" y="0" width="880" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <path d="M28 6 A14 14 0 0 0 10 24 L2 32 A4 4 0 0 0 8 38 L16 30 A14 14 0 0 0 34 12 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="135" y="284" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">[tool.ruff] </tspan>
-    <tspan x="135" dy="32">line-length = 100, target-version = py311</tspan>
-  </text>
-
-  
-  <rect x="60" y="348" width="840" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 395)">
     
-    <path d="M4 8 L36 8 L24 24 L24 38 L16 34 L16 24 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="135" y="380" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">lint select = E, F, I, B, UP, S, C4, SIM, </tspan>
-    <tspan x="135" dy="28">PT, RUF, ASYNC, T20: </tspan>
-    <tspan x="135" dy="28" font-family="sans-serif">pycodestyle, pyflakes, isort, bugbear, </tspan>
-    <tspan x="135" dy="28" font-family="sans-serif">upgrade, bandit and more</tspan>
-  </text>
+    <g transform="translate(30, 26)">
+      
+      <rect x="0" y="0" width="46" height="54" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="12" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <text x="64" y="38" font-size="32" font-weight="bold" fill="#207448">Annotated config.</text>
+    </g>
 
-  
-  <rect x="60" y="500" width="840" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 520)">
     
-    <path d="M20 4 L36 10 L36 24 C36 34 20 42 20 42 C20 42 4 34 4 24 L4 10 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M12 24 L18 30 L28 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="135" y="536" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">ignore = [S101]: asserts allowed in tests; </tspan>
-    <tspan x="135" dy="32">per-file-ignores tests/** = [S, T20]</tspan>
-  </text>
+    <g transform="translate(30, 95)">
+      <rect x="0" y="0" width="820" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="47" r="14" fill="#207448"/>
+      <text x="28" y="55" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="58" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">[tool.ruff]</text>
+      <text x="58" y="74" font-family="monospace" font-size="24" fill="#303a36">line-length = 100, target-version = py311</text>
+    </g>
 
-  
-  <rect x="60" y="600" width="840" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 620)">
     
-    <rect x="4" y="8" width="34" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M12 24 L18 30 L28 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="135" y="636" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">[tool.mypy] python_version 3.11, strict = true, </tspan>
-    <tspan x="135" dy="32">warn_unused_ignores = true, exclude build/</tspan>
-  </text>
+    <g transform="translate(30, 205)">
+      <rect x="0" y="0" width="820" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="40" r="14" fill="#207448"/>
+      <text x="28" y="48" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="58" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">lint select = E, F, I, B, UP, S, C4, SIM, PT, RUF, ASYNC, T20:</text>
+      <text x="58" y="86" font-size="24" fill="#303a36">pycodestyle, pyflakes, isort, bugbear,</text>
+      <text x="58" y="124" font-size="24" fill="#303a36">upgrade, bandit and more</text>
+    </g>
 
-  
-  <rect x="60" y="700" width="840" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 718)">
     
-    <circle cx="21" cy="21" r="17" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <polygon points="17,13 29,21 17,29" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-  </g>
-  <text x="135" y="734" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">[tool.coverage.run] </tspan>
-    <tspan x="135" dy="32">branch = true, source = [fleetctl]</tspan>
-  </text>
+    <g transform="translate(30, 375)">
+      <rect x="0" y="0" width="820" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="40" r="14" fill="#207448"/>
+      <text x="28" y="48" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="58" y="44" font-family="monospace" font-size="24" fill="#303a36">ignore = [S101]: asserts allowed in tests;</text>
+      <text x="58" y="86" font-family="monospace" font-size="24" fill="#303a36">per-file-ignores tests/** = [S, T20]</text>
+    </g>
 
-  
-  <rect x="60" y="795" width="840" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(75, 835)">
     
-    <circle cx="21" cy="21" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M21 11 L21 21 L29 25" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-  </g>
-  <text x="135" y="821" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">[tool.coverage.report] </tspan>
-    <tspan fill="#db8129" font-weight="bold">fail_under = 85</tspan><tspan fill="#303a36">, show_missing = true, </tspan>
-    <tspan x="135" dy="28">exclude_also: if TYPE_CHECKING, </tspan>
-    <tspan x="135" dy="28">raise NotImplementedError, </tspan>
-    <tspan x="135" dy="28">if __name__ == __main__</tspan>
-  </text>
+    <g transform="translate(30, 525)">
+      <rect x="0" y="0" width="820" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="40" r="14" fill="#207448"/>
+      <text x="28" y="48" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <text x="58" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">[tool.mypy]</text>
+      <text x="58" y="82" font-family="monospace" font-size="24" fill="#303a36">python_version 3.11, strict = true,</text>
+      <text x="58" y="116" font-family="monospace" font-size="24" fill="#303a36">warn_unused_ignores = true, exclude build/</text>
+    </g>
 
-  
-  <rect x="940" y="175" width="620" height="765" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-  
-  <rect x="965" y="195" width="570" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(985, 212)">
     
-    <path d="M6 8 L22 22 L6 36 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M20 8 L36 22 L20 36 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-  </g>
-  <text x="1035" y="244" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">ruff-pre-commit rev v0.6.9: </tspan>
-    <tspan x="985" dy="48">ruff with --fix, and ruff-format</tspan>
-  </text>
+    <g transform="translate(30, 675)">
+      <rect x="0" y="0" width="820" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="47" r="14" fill="#207448"/>
+      <text x="28" y="55" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="58" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">[tool.coverage.run]</text>
+      <text x="58" y="74" font-family="monospace" font-size="24" fill="#303a36">branch = true, source = [fleetctl]</text>
+    </g>
 
-  
-  <rect x="965" y="348" width="570" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(985, 368)">
     
-    <polygon points="21,4 36,22 21,40 6,22" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <line x1="21" y1="4" x2="21" y2="40" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(30, 785)">
+      <rect x="0" y="0" width="820" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="28" cy="42" r="14" fill="#db8129"/>
+      <text x="28" y="50" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      <text x="58" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">[tool.coverage.report]</text>
+      <text x="350" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">fail_under = 85,</text>
+      <text x="58" y="82" font-family="monospace" font-size="24" fill="#303a36">show_missing = true,</text>
+      <text x="58" y="122" font-family="monospace" font-size="24" fill="#303a36">exclude_also: if TYPE_CHECKING, raise</text>
+      <text x="58" y="152" font-family="monospace" font-size="24" fill="#303a36">NotImplementedError, if __name__ == __main__</text>
+    </g>
   </g>
-  <text x="1035" y="396" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">mirrors-mypy rev v1.11.2 </tspan>
-    <tspan x="985" dy="46">with types-PyYAML</tspan>
-  </text>
 
   
-  <rect x="965" y="480" width="570" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(985, 500)">
+  <g transform="translate(950, 100)">
     
-    <path d="M26 6 A10 10 0 0 0 16 16 L16 28 A8 8 0 0 1 8 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="26" cy="6" r="3" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="6" y1="36" x2="10" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  </g>
-  <text x="1035" y="528" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">pre-commit-hooks rev v4.6.0: </tspan>
-    <tspan x="985" dy="38">check-yaml, end-of-file-fixer, </tspan>
-    <tspan x="985" dy="38">trailing-whitespace, </tspan>
-    <tspan x="985" dy="38">detect-private-key</tspan>
-  </text>
+    <rect x="0" y="0" width="610" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
-  
-  <rect x="965" y="682" width="570" height="240" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <g transform="translate(985, 702)">
     
-    <path d="M14 30 L28 30 M16 36 L26 36 M21 6 A13 13 0 0 0 11 23 C13 26 14 27 14 30 L28 30 C28 27 29 26 31 23 A13 13 0 0 0 21 6 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="1035" y="734" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">the versions are examples; </tspan>
-    <tspan x="985" dy="46">pin the versions you have reviewed; </tspan>
-    <tspan x="985" dy="46">run the same hooks in CI </tspan>
-    <tspan x="985" dy="46">so nobody can bypass them</tspan>
-  </text>
+    <g transform="translate(30, 26)">
+      
+      <path d="M 12 12 L 28 12 C 36 12 40 18 40 26 C 40 38 24 40 24 50" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="24" cy="52" r="3" fill="#207448"/>
+      <circle cx="12" cy="12" r="4" fill="#207448"/>
+      <text x="58" y="38" font-size="30" font-weight="bold" fill="#207448">Right pre-commit panel:</text>
+    </g>
 
-  
-  <rect x="40" y="960" width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(65, 995)">
     
-    <rect x="0" y="4" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M16 20 L10 25 L16 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M36 20 L42 25 L36 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="28" y1="18" x2="24" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <g transform="translate(25, 95)">
+      <rect x="0" y="0" width="560" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <circle cx="36" cy="42" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="36" cy="42" r="6" fill="#207448"/>
+      <text x="66" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ruff-pre-commit rev v0.6.9:</text>
+      <text x="66" y="86" font-size="24" fill="#303a36">ruff with --fix, and</text>
+      <text x="66" y="122" font-size="24" fill="#303a36">ruff-format</text>
+    </g>
+
+    
+    <g transform="translate(25, 255)">
+      <rect x="0" y="0" width="560" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <rect x="22" y="28" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 28 42 L 34 48 L 44 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <text x="66" y="46" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">mirrors-mypy rev v1.11.2</text>
+      <text x="66" y="88" font-size="24" fill="#303a36">with types-PyYAML</text>
+    </g>
+
+    
+    <g transform="translate(25, 400)">
+      <rect x="0" y="0" width="560" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <path d="M 24 28 L 36 22 L 48 28 C 48 42 36 52 36 52 C 36 52 24 42 24 28 Z" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="66" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">pre-commit-hooks rev v4.6.0:</text>
+      <text x="66" y="86" font-size="24" fill="#303a36">check-yaml,</text>
+      <text x="66" y="122" font-size="24" fill="#303a36">end-of-file-fixer,</text>
+      <text x="66" y="158" font-size="24" fill="#303a36">trailing-whitespace,</text>
+      <text x="66" y="194" font-size="24" fill="#303a36">detect-private-key</text>
+    </g>
   </g>
-  <text x="140" y="996" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="140" dy="0">annotate public functions; Protocol for injected collaborators so fakes type-check; </tspan>
-    <tspan x="140" dy="36">TypedDict, dataclasses or pydantic for payloads; avoid Any creep; </tspan>
-    <tspan x="140" dy="36">type checker is a required CI check, not only an editor feature</tspan>
-  </text>
 
   
-  <rect x="40" y="1105" width="1520" height="65" rx="10" fill="#207448"/>
-  <text x="800" y="1147" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Configure the gates once in pyproject.toml and the hooks file</text>
+  <g transform="translate(950, 755)">
+    <rect x="0" y="0" width="610" height="315" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(30, 30)">
+      <circle cx="18" cy="18" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="18" y1="16" x2="18" y2="27" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="18" cy="9" r="2.5" fill="#207448"/>
+      <text x="46" y="27" font-size="28" font-weight="bold" fill="#207448">Notes</text>
+    </g>
+    <text x="30" y="105" font-size="24" fill="#303a36">the versions are examples;</text>
+    <text x="30" y="145" font-size="24" fill="#303a36">pin the versions you have reviewed;</text>
+    <text x="30" y="185" font-size="24" fill="#303a36">run the same hooks in CI</text>
+    <text x="30" y="225" font-size="24" fill="#303a36">so nobody can bypass them</text>
+  </g>
+
+  
+  <g transform="translate(40, 1095)">
+    <rect x="0" y="0" width="1520" height="205" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(30, 24)">
+      <circle cx="16" cy="16" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="40" y1="16" x2="40" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="16" x2="48" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <text x="64" y="25" font-size="28" font-weight="bold" fill="#207448">Typing strip</text>
+    </g>
+    <text x="30" y="85" font-size="24" fill="#303a36">annotate public functions; Protocol for injected collaborators so fakes type-check;</text>
+    <text x="30" y="125" font-size="24" fill="#303a36">TypedDict, dataclasses or pydantic for payloads; avoid Any creep;</text>
+    <text x="30" y="165" font-size="24" fill="#303a36">type checker is a required CI check, not only an editor feature</text>
+  </g>
+
+  
+  <g transform="translate(40, 1325)">
+    <rect x="0" y="0" width="1520" height="70" rx="10" fill="#207448"/>
+    <text x="760" y="44" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Configure the gates once in pyproject.toml and the hooks file</text>
+  </g>
 </svg>

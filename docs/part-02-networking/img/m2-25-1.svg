@@ -1,130 +1,153 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
-  <title>DNS inside: per-namespace resolv.conf under /etc/netns/&lt;ns&gt;/resolv.con</title>
-  <desc>Architecture flowchart showing container network namespaces netns c1 and netns c2 connected via veth pairs to host bridge br0, routing through the host IP stack to the physical interface and network.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980" style="background:#f5f8f5;">
+  <title>DNS inside: per-namespace resolv.conf under /etc/netns/&lt;ns&gt;/resolv.conf</title>
+  <desc>Visual topology of network namespaces c1 and c2 connected via veth pairs to host bridge br0, IP routing, host interface, and external network.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    
+    <marker id="arrowhead" markerWidth="14" markerHeight="12" refX="12" refY="6" orient="auto">
+      <path d="M 0 1 L 12 6 L 0 11 Z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="960" fill="#f5f8f5"/>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">DNS inside: per-namespace resolv.conf</text>
+  <text x="800" y="108" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">/etc/netns/&lt;ns&gt;/resolv.conf</text>
 
   
-  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">DNS inside: per-namespace resolv.conf</text>
-  <text x="800" y="112" font-family="monospace" font-size="34" font-weight="bold" fill="#207448" text-anchor="middle">under /etc/netns/&lt;ns&gt;/resolv.con</text>
-
-  
-  <rect x="40" y="160" width="220" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,5"/>
-  <text text-anchor="middle">
-    <tspan x="150" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">netns c1</tspan>
-    <tspan x="150" y="240" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">(10.10.0.11)</tspan>
+  <rect x="30" y="160" width="310" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="185" y="198" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="185" dy="0">netns c1</tspan>
+    <tspan x="185" dy="28">(10.10.0.11)</tspan>
   </text>
 
   
-  <rect x="65" y="265" width="170" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="55" y="245" width="260" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <rect x="130" y="295" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-  <path d="M138 317 v-10 M144 317 v-10 M150 317 v-10 M156 317 v-10 M162 317 v-10" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="150" y="390" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">eth0</text>
+  <g transform="translate(185, 285)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="-24" y="-16" width="48" height="32" rx="4" />
+    <line x1="-14" y1="16" x2="-14" y2="22" />
+    <line x1="-6" y1="16" x2="-6" y2="22" />
+    <line x1="2" y1="16" x2="2" y2="22" />
+    <circle cx="14" cy="-6" r="2" fill="#207448" />
+    <circle cx="14" cy="2" r="2" fill="#207448" />
+  </g>
+  <text x="185" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">eth0</text>
 
   
-  <rect x="40" y="525" width="220" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,5"/>
-  <text text-anchor="middle">
-    <tspan x="150" y="571" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">netns c2</tspan>
-    <tspan x="150" y="605" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">(10.10.0.12)</tspan>
+  <rect x="30" y="670" width="310" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="185" y="708" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="185" dy="0">netns c2</tspan>
+    <tspan x="185" dy="28">(10.10.0.12)</tspan>
   </text>
 
   
-  <rect x="65" y="630" width="170" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="55" y="755" width="260" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <rect x="130" y="660" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-  <path d="M138 682 v-10 M144 682 v-10 M150 682 v-10 M156 682 v-10 M162 682 v-10" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="150" y="755" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">eth0</text>
+  <g transform="translate(185, 795)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="-24" y="-16" width="48" height="32" rx="4" />
+    <line x1="-14" y1="16" x2="-14" y2="22" />
+    <line x1="-6" y1="16" x2="-6" y2="22" />
+    <line x1="2" y1="16" x2="2" y2="22" />
+    <circle cx="14" cy="-6" r="2" fill="#207448" />
+    <circle cx="14" cy="2" r="2" fill="#207448" />
+  </g>
+  <text x="185" y="865" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">eth0</text>
 
   
-  <rect x="295" y="160" width="1045" height="695" rx="16" fill="#e8f1ea" fill-opacity="0.65" stroke="#207448" stroke-width="2.5" stroke-dasharray="10,6"/>
-  <text x="325" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">host netns</text>
+  <rect x="365" y="160" width="960" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="395" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">host netns</text>
 
   
-  <rect x="330" y="265" width="155" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="390" y="245" width="260" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <circle cx="390" cy="312" r="12" fill="none" stroke="#207448" stroke-width="3"/>
-  <circle cx="425" cy="312" r="12" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M402 312 h11" fill="none" stroke="#207448" stroke-width="4"/>
-  <text x="407" y="390" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">veth-c1</text>
+  <g transform="translate(520, 285)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M -16 -12 L 0 -12 L 8 -4 L 8 4 L 0 12 L -16 12 Z" />
+    <line x1="8" y1="-2" x2="18" y2="-2" />
+    <line x1="8" y1="2" x2="18" y2="2" />
+  </g>
+  <text x="520" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">veth-c1</text>
 
   
-  <rect x="330" y="630" width="155" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="390" y="755" width="260" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <circle cx="390" cy="677" r="12" fill="none" stroke="#207448" stroke-width="3"/>
-  <circle cx="425" cy="677" r="12" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M402 677 h11" fill="none" stroke="#207448" stroke-width="4"/>
-  <text x="407" y="755" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">veth-c2</text>
+  <g transform="translate(520, 795)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M -16 -12 L 0 -12 L 8 -4 L 8 4 L 0 12 L -16 12 Z" />
+    <line x1="8" y1="-2" x2="18" y2="-2" />
+    <line x1="8" y1="2" x2="18" y2="2" />
+  </g>
+  <text x="520" y="865" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">veth-c2</text>
 
   
-  <rect x="525" y="425" width="265" height="235" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  <rect x="390" y="450" width="260" height="220" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
   
-  <rect x="635" y="450" width="45" height="26" rx="4" fill="none" stroke="#db8129" stroke-width="3.5"/>
-  <path d="M644 476 v12 M657 476 v12 M671 476 v12 M630 488 h55" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-  <text text-anchor="middle">
-    <tspan x="657" y="525" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">br0 10.10.0.1</tspan>
-    <tspan x="657" y="565" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(L2 bridge +</tspan>
-    <tspan x="657" y="598" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">L3 gateway)</tspan>
-  </text>
+  <g transform="translate(520, 495)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="-24" y="-12" width="48" height="24" rx="4" />
+    <line x1="-12" y1="-4" x2="12" y2="-4" />
+    <line x1="-12" y1="4" x2="12" y2="4" />
+    <circle cx="-12" cy="0" r="2" fill="#db8129" />
+    <circle cx="12" cy="0" r="2" fill="#db8129" />
+  </g>
+  <text x="520" y="555" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">br0 10.10.0.1</text>
+  <text x="520" y="595" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(L2 bridge +</text>
+  <text x="520" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">L3 gateway)</text>
 
   
-  <rect x="835" y="425" width="285" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="695" y="450" width="375" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <path d="M955 452 l22 -8 l22 8 l-22 8 z" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M955 464 l22 8 l22 -8" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M955 476 l22 8 l22 -8" fill="none" stroke="#207448" stroke-width="3"/>
-  <text text-anchor="middle">
-    <tspan x="977" y="518" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">IP stack:</tspan>
-    <tspan x="977" y="554" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">routing, netfilter</tspan>
-    <tspan x="977" y="589" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">(FORWARD,</tspan>
-    <tspan x="977" y="622" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">MASQUERADE)</tspan>
-  </text>
+  <g transform="translate(882, 495)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="0" cy="0" r="18" />
+    <line x1="-10" y1="0" x2="10" y2="0" />
+    <polyline points="5,-5 10,0 5,5" />
+    <line x1="0" y1="-10" x2="0" y2="10" />
+    <polyline points="-5,5 0,10 5,5" />
+  </g>
+  <text x="882" y="555" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IP stack:</text>
+  <text x="882" y="595" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">routing, netfilter</text>
+  <text x="882" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(FORWARD, MASQUERADE)</text>
 
   
-  <rect x="1155" y="445" width="160" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="1115" y="475" width="185" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <rect x="1215" y="475" width="40" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
-  <path d="M1223 503 v6 M1231 503 v6 M1239 503 v6 M1247 503 v6" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text text-anchor="middle">
-    <tspan x="1235" y="555" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">eth0</tspan>
-    <tspan x="1235" y="595" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(host IP)</tspan>
-  </text>
+  <g transform="translate(1207, 520)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="-24" y="-16" width="48" height="32" rx="4" />
+    <line x1="-14" y1="16" x2="-14" y2="22" />
+    <line x1="-6" y1="16" x2="-6" y2="22" />
+    <line x1="2" y1="16" x2="2" y2="22" />
+    <circle cx="14" cy="-6" r="2" fill="#207448" />
+    <circle cx="14" cy="2" r="2" fill="#207448" />
+  </g>
+  <text x="1207" y="580" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">eth0</text>
+  <text x="1207" y="618" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(host IP)</text>
 
   
-  <rect x="1385" y="455" width="165" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="1360" y="475" width="205" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <circle cx="1467" cy="495" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
-  <ellipse cx="1467" cy="495" rx="8" ry="18" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <path d="M1449 495 h36" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <text x="1467" y="575" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Network</text>
+  <g transform="translate(1462, 530)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M -22 10 A 14 14 0 0 1 -14 -12 A 20 20 0 0 1 16 -10 A 16 16 0 0 1 24 10 Z" />
+  </g>
+  <text x="1462" y="605" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Network</text>
 
   
-  
-  <path d="M 235 360 L 330 360" fill="none" stroke="#207448" stroke-width="3.5"/>
 
   
-  <path d="M 235 725 L 330 725" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="315" y1="315" x2="390" y2="315" stroke="#207448" stroke-width="4" />
 
   
-  <path d="M 485 360 H 505 V 490 H 525" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="315" y1="825" x2="390" y2="825" stroke="#207448" stroke-width="4" />
 
   
-  <path d="M 485 725 H 505 V 595 H 525" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="520" y1="385" x2="520" y2="450" stroke="#207448" stroke-width="4" />
 
   
-   RT -->
-  <path d="M 790 542 L 835 542" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="520" y1="670" x2="520" y2="755" stroke="#207448" stroke-width="4" />
 
-   NIC -->
-  <path d="M 1120 542 L 1155 542" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+   RT (arrow) -->
+  <line x1="650" y1="560" x2="695" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
 
-   Network -->
-  <path d="M 1315 542 L 1385 542" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+   NIC (arrow) -->
+  <line x1="1070" y1="560" x2="1115" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+   W (arrow) -->
+  <line x1="1300" y1="560" x2="1360" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
 </svg>

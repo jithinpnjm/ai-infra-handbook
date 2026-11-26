@@ -1,89 +1,127 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
   <title>How systemd knows a service is started</title>
-  <desc>Visual comparison table of systemd service startup types, readiness criteria, and use cases.</desc>
+  <desc>Table comparing systemd service Type values, startup criteria, and use cases.</desc>
 
-  <rect width="1600" height="1100" fill="#f5f8f5" />
-
-  
-  <text x="80" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How systemd knows a service is started</text>
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
 
   
-  <rect x="60" y="125" width="1480" height="65" rx="12" fill="#207448" />
-  <text x="180" y="168" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">Type=</text>
-  <text x="440" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Considered started when</text>
-  <text x="1140" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use</text>
+  <text x="800" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">How systemd knows a service is started</text>
 
   
-  <g transform="translate(60, 205)">
-    <rect width="1480" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="60" y="120" width="1480" height="65" rx="10" fill="#207448"/>
+  <line x1="427" y1="130" x2="427" y2="175" stroke="#3d8f63" stroke-width="2"/>
+  <line x1="1022" y1="130" x2="1022" y2="175" stroke="#3d8f63" stroke-width="2"/>
+
+  
+  <text x="90" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Type=</text>
+  <text x="465" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Considered started when</text>
+  <text x="1060" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use</text>
+
+  
+  <g id="row-simple">
+    <rect x="60" y="205" width="1480" height="125" rx="12" fill="#e8f1ea" stroke="#c4dcc9" stroke-width="1.5"/>
+    <line x1="427" y1="217" x2="427" y2="318" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="1022" y1="217" x2="1022" y2="318" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+
     
-    <g transform="translate(30, 39)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="14" />
-      <path d="M28 4 v6 M28 46 v6 M4 28 h6 M46 28 h6 M11 11 l4.2 4.2 M41 41 l4.2 4.2 M11 45 l4.2 -4.2 M41 15 l4.2 -4.2" />
+    <g transform="translate(82, 241)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="9"/>
+      <path d="M26 6 v5 M26 41 v5 M6 26 h5 M41 26 h5 M12 12 l3.5 3.5 M36.5 36.5 l3.5 3.5 M12 40 l3.5 -3.5 M36.5 15.5 l3.5 -3.5"/>
     </g>
-    <text x="105" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">simple (default)</text>
-    <text x="440" y="78" font-family="sans-serif" font-size="24" fill="#303a36">right after fork, process stays in foreground</text>
-    <text x="1140" y="78" font-family="sans-serif" font-size="24" fill="#303a36">modern foreground daemons</text>
+
+    <text x="150" y="276" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#207448">simple (default)</text>
+
+    <text x="465" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465">right after fork,</tspan>
+      <tspan x="465" dy="34">process stays in foreground</tspan>
+    </text>
+
+    <text x="1060" y="276" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">modern foreground daemons</text>
   </g>
 
   
-  <g transform="translate(60, 355)">
-    <rect width="1480" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="row-exec">
+    <rect x="60" y="346" width="1480" height="125" rx="12" fill="#e8f1ea" stroke="#c4dcc9" stroke-width="1.5"/>
+    <line x1="427" y1="358" x2="427" y2="459" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="1022" y1="358" x2="1022" y2="459" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+
     
-    <g transform="translate(30, 39)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="8" width="48" height="40" rx="6" />
-      <path d="M14 24 l8 6 l-8 6 M28 36 h14" />
+    <g transform="translate(82, 382)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="38" rx="4"/>
+      <line x1="4" y1="18" x2="48" y2="18"/>
+      <path d="M14 26 l6 5 l-6 5 M26 36 h10"/>
     </g>
-    <text x="105" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">exec</text>
-    <text x="440" y="78" font-family="sans-serif" font-size="24" fill="#303a36">after exec() succeeds</text>
-    <text x="1140" y="78" font-family="sans-serif" font-size="24" fill="#303a36">catches missing binaries</text>
+
+    <text x="150" y="417" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">exec</text>
+    <text x="465" y="417" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">after exec() succeeds</text>
+    <text x="1060" y="417" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">catches missing binaries</text>
   </g>
 
   
-  <g transform="translate(60, 505)">
-    <rect width="1480" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="row-forking">
+    <rect x="60" y="487" width="1480" height="125" rx="12" fill="#e8f1ea" stroke="#c4dcc9" stroke-width="1.5"/>
+    <line x1="427" y1="499" x2="427" y2="600" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="1022" y1="499" x2="1022" y2="600" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+
     
-    <g transform="translate(30, 39)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="14" cy="14" r="6" />
-      <circle cx="42" cy="14" r="6" />
-      <circle cx="28" cy="42" r="6" />
-      <path d="M28 36 v-8 M14 20 v4 c0 6 14 6 14 12 M42 20 v4 c0 6 -14 6 -14 12" />
+    <g transform="translate(82, 523)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="14" r="5"/>
+      <circle cx="38" cy="14" r="5"/>
+      <circle cx="26" cy="38" r="5"/>
+      <path d="M26 33 v-9 c0 -5 12 -5 12 -10 M26 24 c0 -5 -12 -5 -12 -10"/>
     </g>
-    <text x="105" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">forking</text>
-    <text x="440" y="78" font-family="sans-serif" font-size="24" fill="#303a36">parent exits, systemd tracks the child</text>
-    <text x="1140" y="78" font-family="sans-serif" font-size="24" fill="#303a36">traditional daemons</text>
+
+    <text x="150" y="558" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">forking</text>
+
+    <text x="465" y="537" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465">parent exits,</tspan>
+      <tspan x="465" dy="34">systemd tracks the child</tspan>
+    </text>
+
+    <text x="1060" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">traditional daemons</text>
   </g>
 
   
-  <g transform="translate(60, 655)">
-    <rect width="1480" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="row-oneshot">
+    <rect x="60" y="628" width="1480" height="125" rx="12" fill="#e8f1ea" stroke="#c4dcc9" stroke-width="1.5"/>
+    <line x1="427" y1="640" x2="427" y2="741" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <line x1="1022" y1="640" x2="1022" y2="741" stroke="#b8d4be" stroke-width="1.5" stroke-dasharray="4 4"/>
+
     
-    <g transform="translate(30, 39)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="22" />
-      <path d="M16 28 l8 8 l16 -16" />
+    <g transform="translate(82, 664)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="38" height="38" rx="6"/>
+      <path d="M15 25 l8 8 l14 -16"/>
     </g>
-    <text x="105" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">oneshot</text>
-    <text x="440" y="60" font-family="sans-serif" font-size="24" fill="#303a36">process runs to completion,</text>
-    <text x="440" y="96" font-family="sans-serif" font-size="24" fill="#303a36">often with <tspan font-family="monospace">RemainAfterExit=yes</tspan></text>
-    <text x="1140" y="78" font-family="sans-serif" font-size="24" fill="#303a36">setup tasks</text>
+
+    <text x="150" y="699" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">oneshot</text>
+
+    <text x="465" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465">process runs to completion,</tspan>
+      <tspan x="465" dy="34">often with RemainAfterExit=yes</tspan>
+    </text>
+
+    <text x="1060" y="699" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">setup tasks</text>
   </g>
 
   
-  <g transform="translate(60, 805)">
-    <rect width="1480" height="135" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+  <g id="row-notify">
+    <rect x="60" y="769" width="1480" height="125" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <line x1="427" y1="781" x2="427" y2="882" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 4" stroke-opacity="0.6"/>
+    <line x1="1022" y1="781" x2="1022" y2="882" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 4" stroke-opacity="0.6"/>
+
     
-    <g transform="translate(30, 39)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M28 8 a14 14 0 0 0 -14 14 c0 12 -6 16 -6 16 h40 c0 0 -6 -4 -6 -16 a14 14 0 0 0 -14 -14" />
-      <path d="M22 42 a6 6 0 0 0 12 0" />
+    <g transform="translate(82, 805)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M26 8 a12 12 0 0 0 -12 12 v9 l-4 5 h32 l-4 -5 v-9 a12 12 0 0 0 -12 -12 Z"/>
+      <path d="M22 39 a4 4 0 0 0 8 0"/>
+      <path d="M26 4 v4"/>
     </g>
-    <text x="105" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">notify</text>
-    <text x="440" y="78" font-family="sans-serif" font-size="24" fill="#303a36">service calls <tspan font-family="monospace">sd_notify("READY=1")</tspan></text>
-    <text x="1140" y="78" font-family="sans-serif" font-size="24" fill="#303a36">daemons with explicit readiness</text>
+
+    <text x="150" y="840" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#db8129">notify</text>
+    <text x="465" y="840" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">service calls sd_notify("READY=1")</text>
+    <text x="1060" y="840" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">daemons with explicit readiness</text>
   </g>
 
   
-  <g transform="translate(60, 970)">
-    <rect width="1480" height="80" rx="16" fill="#207448" />
-    <text x="740" y="50" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">systemd tracks all processes with cgroups.</text>
-  </g>
+  <rect x="60" y="925" width="1480" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="969" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">systemd tracks all processes with cgroups.</text>
 </svg>

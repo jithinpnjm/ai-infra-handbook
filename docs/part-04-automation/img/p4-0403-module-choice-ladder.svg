@@ -1,259 +1,210 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420" style="background:#f5f8f5;">
   <title>Choosing command, shell, raw, script or a real module</title>
-  <desc>A visual decision ladder explaining when to use Ansible purpose-built modules, raw, command, shell, or script, along with guard strategies and injection risks.</desc>
+  <desc>Decision ladder guiding whether to use a built-in module, raw, command, shell, or script in Ansible, with guarding best practices.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
     </marker>
-    <filter id="shadow" x="-2%" y="-3%" width="104%" height="108%" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#143020" flood-opacity="0.07" />
+    <marker id="arr-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4d5d53"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#1b3022" flood-opacity="0.08"/>
     </filter>
   </defs>
 
   
-  <rect width="1600" height="1170" fill="#f5f8f5" />
-
-  
-  <text x="60" y="62" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Choosing command, shell, raw, script or a real module</text>
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="44px" font-weight="bold" fill="#303a36" text-anchor="middle">Choosing command, shell, raw, script or a real module</text>
 
   
   
   <g filter="url(#shadow)">
-    <rect x="60" y="100" width="640" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(80, 137)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="14" />
-      <path d="M28 4 L28 10 M28 46 L28 52 M4 28 L10 28 M46 28 L52 28 M11 11 L15 15 M41 41 L45 45 M11 45 L15 41 M41 11 L45 15" />
-    </g>
-    
-    <text x="160" y="138" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      Is there a purpose-built module
-    </text>
-    <text x="160" y="172" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      (package, service, user, file, lineinfile,
-    </text>
-    <text x="160" y="204" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      template, sysctl, systemd, mount, cron)?
-    </text>
+    <rect x="70" y="95" width="760" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   </g>
+  
+  <circle cx="120" cy="162" r="28" fill="#207448"/>
+  <text x="120" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#ffffff" text-anchor="middle">?</text>
+  <text x="165" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">Is there a purpose-built module</tspan>
+    <tspan x="165" dy="34" font-size="24px" font-family="monospace" fill="#207448">(package, service, user, file, lineinfile,</tspan>
+    <tspan x="165" dy="32" font-size="24px" font-family="monospace" fill="#207448">template, sysctl, systemd, mount, cron)?</tspan>
+  </text>
 
   
-  <path d="M 700 167 L 820 167" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
-  <rect x="735" y="147" width="50" height="38" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="2" />
-  <text x="760" y="174" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">yes</text>
+  <path d="M 830 162 L 950 162" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arr-orange)"/>
+  
+  <rect x="855" y="138" width="65" height="34" rx="17" fill="#db8129"/>
+  <text x="887" y="162" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">yes</text>
 
   
   <g filter="url(#shadow)">
-    <rect x="820" y="100" width="720" height="135" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
-    
-    <g transform="translate(845, 137)" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M28 6 L48 14 L48 28 C48 42 28 50 28 50 C28 50 8 42 8 28 L8 14 Z" />
-      <path d="M19 28 L25 34 L37 20" />
-    </g>
-    
-    <text x="925" y="152" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
-      use it: idempotent,
-    </text>
-    <text x="925" y="190" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      supports check mode, returns structured results
-    </text>
+    <rect x="960" y="95" width="570" height="135" rx="14" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
   </g>
+  
+  <circle cx="1005" cy="162" r="26" fill="#db8129"/>
+  <path d="M 995 162 L 1002 170 L 1017 154" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1045" y="146" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="1045" dy="0">use it: idempotent, supports check</tspan>
+    <tspan x="1045" dy="34">mode, returns structured results</tspan>
+  </text>
 
   
-  <path d="M 380 235 L 380 270" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="360" y="240" width="42" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="381" y="263" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+  <path d="M 330 230 L 330 300" fill="none" stroke="#4d5d53" stroke-width="4" marker-end="url(#arr-grey)"/>
+  <rect x="345" y="246" width="55" height="34" rx="8" fill="#4d5d53"/>
+  <text x="372" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">no</text>
 
   
   
   <g filter="url(#shadow)">
-    <rect x="60" y="270" width="640" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(80, 297)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <rect x="6" y="8" width="44" height="40" rx="6" />
-      <path d="M15 22 L23 28 L15 34" />
-      <path d="M27 34 L37 34" />
-    </g>
-    
-    <text x="160" y="335" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      Does the target have Python?
-    </text>
+    <rect x="70" y="300" width="520" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   </g>
+  
+  <circle cx="120" cy="350" r="26" fill="#207448"/>
+  <rect x="108" y="338" width="24" height="24" rx="3" fill="#ffffff"/>
+  <text x="165" y="358" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">Does the target have Python?</text>
 
   
-  <path d="M 700 325 L 820 325" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="739" y="309" width="42" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="760" y="332" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+  <path d="M 590 350 L 720 350" fill="none" stroke="#4d5d53" stroke-width="4" marker-end="url(#arr-grey)"/>
+  <rect x="625" y="328" width="55" height="34" rx="8" fill="#4d5d53"/>
+  <text x="652" y="352" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">no</text>
 
   
   <g filter="url(#shadow)">
-    <rect x="820" y="270" width="720" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(845, 297)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <rect x="12" y="12" width="32" height="32" rx="4" />
-      <path d="M20 4 L20 12 M28 4 L28 12 M36 4 L36 12 M20 44 L20 52 M28 44 L28 52 M36 44 L36 52 M4 20 L12 20 M4 28 L12 28 M4 36 L12 36 M44 20 L52 20 M44 28 L52 28 M44 36 L52 36" />
-    </g>
-    
-    <text x="925" y="315" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      raw: plain SSH command with no module and no Python;
-    </text>
-    <text x="925" y="351" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      bootstraps Python on minimal systems and devices
-    </text>
+    <rect x="730" y="285" width="800" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   </g>
+  
+  <rect x="752" y="325" width="46" height="38" rx="5" fill="#207448"/>
+  <path d="M 760 336 L 768 344 L 760 352 M 772 352 L 784 352" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <text x="815" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="815" dy="0" font-weight="bold">raw: plain SSH command with no module</tspan>
+    <tspan x="815" dy="32" font-weight="bold">and no Python;</tspan>
+    <tspan font-weight="normal"> bootstraps Python on minimal</tspan>
+    <tspan x="815" dy="32">systems and devices</tspan>
+  </text>
 
   
-  <path d="M 380 380 L 380 415" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="357" y="386" width="46" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="380" y="409" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+  <path d="M 330 400 L 330 475" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)"/>
+  <rect x="345" y="418" width="60" height="34" rx="8" fill="#207448"/>
+  <text x="375" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">yes</text>
 
   
   
   <g filter="url(#shadow)">
-    <rect x="60" y="415" width="550" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(85, 492)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M8 28 L24 28 C34 28 40 18 48 18" />
-      <path d="M24 28 C34 28 40 38 48 38" />
-      <path d="M42 12 L48 18 L42 24" />
-      <path d="M42 32 L48 38 L42 44" />
-    </g>
-    
-    <text x="160" y="530" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      Need pipes or redirects?
-    </text>
+    <rect x="70" y="475" width="520" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   </g>
+  
+  <circle cx="120" cy="525" r="26" fill="#207448"/>
+  <text x="120" y="534" font-family="monospace" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">| &gt;</text>
+  <text x="165" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">Need pipes or redirects?</text>
 
   
-  <path d="M 610 465 L 720 465" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="645" y="449" width="42" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="666" y="472" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+  <path d="M 590 525 L 720 525" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)"/>
+  <rect x="625" y="503" width="60" height="34" rx="8" fill="#207448"/>
+  <text x="655" y="527" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">yes</text>
 
   
   <g filter="url(#shadow)">
-    <rect x="720" y="415" width="820" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(740, 437)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M28 8 L46 16 L46 28 C46 40 28 48 28 48 C28 48 10 40 10 28 L10 16 Z" />
-      <path d="M20 28 L26 34 L36 22" />
-    </g>
-    
-    <text x="815" y="456" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-      command: no shell, safest;
-    </text>
-    <text x="815" y="492" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      no pipes, redirects or expansion
-    </text>
+    <rect x="730" y="460" width="800" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   </g>
+  
+  <rect x="752" y="500" width="46" height="38" rx="5" fill="#207448"/>
+  <text x="775" y="527" font-family="monospace" font-size="22px" font-weight="bold" fill="#ffffff" text-anchor="middle">sh</text>
+  <text x="815" y="504" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="815" dy="0" font-weight="bold">shell: passes through /bin/sh;</tspan>
+    <tspan font-weight="normal"> vulnerable to</tspan>
+    <tspan x="815" dy="32">quoting and injection mistakes when variables</tspan>
+    <tspan x="815" dy="32">are untrusted</tspan>
+  </text>
 
   
-  <path d="M 610 575 L 720 575" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="643" y="559" width="46" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="666" y="582" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+  <path d="M 330 575 L 330 655" fill="none" stroke="#4d5d53" stroke-width="4" marker-end="url(#arr-grey)"/>
+  <rect x="345" y="598" width="55" height="34" rx="8" fill="#4d5d53"/>
+  <text x="372" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">no</text>
 
   
   <g filter="url(#shadow)">
-    <rect x="720" y="525" width="820" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(740, 549)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M12 18 L24 28 L12 38" />
-      <path d="M26 38 L42 38" />
-      <circle cx="28" cy="28" r="22" />
-    </g>
-    
-    <text x="815" y="563" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      shell: passes through /bin/sh; vulnerable to quoting
-    </text>
-    <text x="815" y="599" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      and injection mistakes when variables are untrusted
-    </text>
+    <rect x="70" y="655" width="600" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   </g>
-
   
-  <g filter="url(#shadow)">
-    <rect x="720" y="640" width="820" height="75" rx="8" fill="#fdf5f5" stroke="#c53030" stroke-width="2" stroke-dasharray="8 6" />
-    
-    <g transform="translate(740, 649)" stroke="#c53030" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <polygon points="28 8 50 46 6 46" />
-      <line x1="28" y1="22" x2="28" y2="32" />
-      <circle cx="28" cy="39" r="1.5" fill="#c53030" />
-    </g>
-    
-    <text x="815" y="687" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#842029">
-      a hostname from a ticket sneaks in a second command after a semicolon
-    </text>
-  </g>
+  <circle cx="120" cy="710" r="26" fill="#207448"/>
+  <path d="M 120 695 L 134 703 L 134 718 C 134 728 120 735 120 735 C 120 735 106 728 106 718 L 106 703 Z" fill="#ffffff"/>
+  <text x="165" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="165" dy="0" font-weight="bold">command: no shell, safest;</tspan>
+    <tspan x="165" dy="34">no pipes, redirects or expansion</tspan>
+  </text>
 
   
   
   <g filter="url(#shadow)">
-    <rect x="60" y="730" width="640" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(80, 757)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M12 8 L34 8 L46 20 L46 48 L12 48 Z" />
-      <path d="M34 8 L34 20 L46 20" />
-      <path d="M20 28 L38 28 M20 36 L34 36" />
-    </g>
-    
-    <text x="160" y="796" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      Need to run a local script on the target?
-    </text>
+    <rect x="730" y="655" width="410" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   </g>
+  
+  <circle cx="775" cy="710" r="24" fill="#207448"/>
+  <text x="775" y="719" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">?</text>
+  <text x="815" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="815" dy="0">Need to run a local</tspan>
+    <tspan x="815" dy="34">script on the target?</tspan>
+  </text>
 
   
-  <path d="M 700 785 L 820 785" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 1140 730 L 1180 730" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)"/>
 
   
   <g filter="url(#shadow)">
-    <rect x="820" y="730" width="720" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(845, 757)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <rect x="8" y="14" width="28" height="32" rx="4" />
-      <path d="M18 14 L18 8 L38 8 L48 18 L48 36 L36 36" />
-      <polygon points="18 24 28 30 18 36" fill="#207448" />
-    </g>
-    
-    <text x="925" y="776" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-      script: copies a local script
-    </text>
-    <text x="925" y="812" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      to the target and runs it
-    </text>
+    <rect x="1190" y="655" width="340" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   </g>
+  
+  <rect x="1208" y="705" width="36" height="46" rx="4" fill="#207448"/>
+  <path d="M 1218 722 L 1226 728 L 1218 734" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1255" y="696" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="1255" dy="0" font-weight="bold">script:</tspan>
+    <tspan font-weight="normal"> copies a</tspan>
+    <tspan x="1255" dy="32">local script to</tspan>
+    <tspan x="1255" dy="32">the target and</tspan>
+    <tspan x="1255" dy="32">runs it</tspan>
+  </text>
 
   
   <g filter="url(#shadow)">
-    <rect x="60" y="855" width="1480" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(90, 927)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M28 6 L50 14 L50 30 C50 44 28 54 28 54 C28 54 6 44 6 30 L6 14 Z" />
-      <rect x="18" y="24" width="20" height="16" rx="3" fill="#ffffff" />
-      <path d="M22 24 L22 18 C22 14 34 14 34 18 L34 24" />
-    </g>
-    
-    <text x="175" y="897" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="25" font-weight="bold" fill="#207448">
-      command and shell are not idempotent: add creates: or removes:,
-    </text>
-    <text x="175" y="937" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      a guard task (a small check that decides whether the risky step should run),
-    </text>
-    <text x="175" y="977" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      or changed_when and failed_when;
-    </text>
-    <text x="175" y="1017" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
-      a shell one-liner always reports changed, cannot be dry-run and hides intent
-    </text>
+    <rect x="70" y="845" width="1460" height="120" rx="12" fill="#fff9f5" stroke="#db8129" stroke-width="2.5" stroke-dasharray="8 6"/>
   </g>
+  
+  <polygon points="120,875 142,915 98,915" fill="#db8129"/>
+  <text x="120" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">!</text>
+  <text x="160" y="898" font-family="system-ui, -apple-system, sans-serif" font-size="25px" font-weight="bold" fill="#db8129">Injection example</text>
+  <text x="160" y="934" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan>a hostname from a ticket sneaks in a second command after a semicolon</tspan>
+  </text>
 
   
   <g filter="url(#shadow)">
-    <rect x="60" y="1075" width="1480" height="65" rx="10" fill="#207448" />
-    <text x="800" y="1117" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
-      Prefer modules, and guard what you cannot avoid
-    </text>
+    <rect x="70" y="995" width="1460" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
   </g>
+  
+  <circle cx="120" cy="1055" r="26" fill="#207448"/>
+  <rect x="108" y="1047" width="24" height="20" rx="3" fill="#ffffff"/>
+  <path d="M 113 1047 L 113 1040 C 113 1035 127 1035 127 1040 L 127 1047" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <text x="165" y="1048" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Guard strip</text>
+  <text x="165" y="1090" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="165" dy="0" font-weight="bold">command and shell are not idempotent:</tspan>
+    <tspan font-weight="normal"> add </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">creates:</tspan>
+    <tspan> or </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">removes:</tspan>
+    <tspan>, a guard task (a small</tspan>
+    <tspan x="165" dy="34">check that decides whether the risky step should run), or </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">changed_when</tspan>
+    <tspan> and </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">failed_when</tspan>
+    <tspan>; a shell</tspan>
+    <tspan x="165" dy="34">one-liner always reports changed, cannot be dry-run and hides intent</tspan>
+  </text>
+
+  
+  <rect x="70" y="1265" width="1460" height="90" rx="14" fill="#207448"/>
+  <text x="800" y="1321" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff" text-anchor="middle">Prefer modules, and guard what you cannot avoid</text>
 </svg>

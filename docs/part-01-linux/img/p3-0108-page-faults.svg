@@ -1,226 +1,223 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
   <title>Minor and major page faults: map a page, or read it from disk</title>
   <desc>Minor and major page faults: map a page, or read it from disk</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 16 8 L 0 14 z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
     </marker>
   </defs>
 
-  
-  <rect width="1600" height="1100" fill="#f5f8f5" />
+  <!-- Background -->
+  <rect width="1600" height="1000" fill="#f5f8f5" />
 
-  
+  <!-- Title -->
   <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Minor and major page faults: map a page, or read it from disk</text>
 
-  
-  <g>
-    <rect x="40" y="430" width="200" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
+  <!-- Box 1: Program touches address -->
+  <g id="box1">
+    <rect x="40" y="305" width="210" height="440" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <!-- Chip Icon -->
     <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="117" y="460" width="46" height="46" rx="6" fill="#f5f8f5" />
-      <rect x="127" y="470" width="26" height="26" rx="2" fill="#207448" fill-opacity="0.15" />
-      <line x1="126" y1="460" x2="126" y2="452" />
-      <line x1="140" y1="460" x2="140" y2="452" />
-      <line x1="154" y1="460" x2="154" y2="452" />
-      <line x1="126" y1="506" x2="126" y2="514" />
-      <line x1="140" y1="506" x2="140" y2="514" />
-      <line x1="154" y1="506" x2="154" y2="514" />
-      <line x1="117" y1="469" x2="109" y2="469" />
-      <line x1="117" y1="483" x2="109" y2="483" />
-      <line x1="117" y1="497" x2="109" y2="497" />
-      <line x1="163" y1="469" x2="171" y2="469" />
-      <line x1="163" y1="483" x2="171" y2="483" />
-      <line x1="163" y1="497" x2="171" y2="497" />
+      <rect x="122" y="357" width="46" height="46" rx="6" fill="#f5f8f5" />
+      <rect x="132" y="367" width="26" height="26" rx="2" fill="#207448" fill-opacity="0.15" />
+      <line x1="131" y1="357" x2="131" y2="349" />
+      <line x1="145" y1="357" x2="145" y2="349" />
+      <line x1="159" y1="357" x2="159" y2="349" />
+      <line x1="131" y1="403" x2="131" y2="411" />
+      <line x1="145" y1="403" x2="145" y2="411" />
+      <line x1="159" y1="403" x2="159" y2="411" />
+      <line x1="122" y1="366" x2="114" y2="366" />
+      <line x1="122" y1="380" x2="114" y2="380" />
+      <line x1="122" y1="394" x2="114" y2="394" />
+      <line x1="168" y1="366" x2="176" y2="366" />
+      <line x1="168" y1="380" x2="176" y2="380" />
+      <line x1="168" y1="394" x2="176" y2="394" />
     </g>
-    <text x="140" y="555" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="140" dy="0">Program</tspan>
-      <tspan x="140" dy="34">touches an</tspan>
-      <tspan x="140" dy="34">address that</tspan>
-      <tspan x="140" dy="34">is not</tspan>
-      <tspan x="140" dy="34">mapped yet</tspan>
+    <text x="145" y="475" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="145" dy="0">Program</tspan>
+      <tspan x="145" dy="36">touches an</tspan>
+      <tspan x="145" dy="36">address that</tspan>
+      <tspan x="145" dy="36">is not</tspan>
+      <tspan x="145" dy="36">mapped yet</tspan>
     </text>
   </g>
 
-  
-  <line x1="240" y1="590" x2="275" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Arrow 1 -> 2: Direct horizontal flow -->
+  <line x1="250" y1="525" x2="290" y2="525" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
-  
-  <g>
-    <rect x="275" y="430" width="220" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
+  <!-- Box 2: CPU raises page fault -->
+  <g id="box2">
+    <rect x="290" y="305" width="215" height="440" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <!-- CPU MMU Interrupt Icon -->
     <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="362" y="460" width="46" height="46" rx="6" fill="#f5f8f5" />
-      <path d="M 374 483 L 385 471 L 396 483 L 385 495 Z" fill="#207448" fill-opacity="0.15" />
-      <line x1="385" y1="478" x2="385" y2="484" />
-      <circle cx="385" cy="489" r="1.5" fill="#207448" />
-      <line x1="371" y1="460" x2="371" y2="452" />
-      <line x1="385" y1="460" x2="385" y2="452" />
-      <line x1="399" y1="460" x2="399" y2="452" />
-      <line x1="371" y1="506" x2="371" y2="514" />
-      <line x1="385" y1="506" x2="385" y2="514" />
-      <line x1="399" y1="506" x2="399" y2="514" />
+      <rect x="374" y="357" width="46" height="46" rx="6" fill="#f5f8f5" />
+      <path d="M 386 380 L 397 368 L 408 380 L 397 392 Z" fill="#207448" fill-opacity="0.15" />
+      <line x1="397" y1="375" x2="397" y2="381" />
+      <circle cx="397" cy="386" r="1.5" fill="#207448" />
+      <line x1="383" y1="357" x2="383" y2="349" />
+      <line x1="397" y1="357" x2="397" y2="349" />
+      <line x1="411" y1="357" x2="411" y2="349" />
+      <line x1="383" y1="403" x2="383" y2="411" />
+      <line x1="397" y1="403" x2="397" y2="411" />
+      <line x1="411" y1="403" x2="411" y2="411" />
     </g>
-    <text x="385" y="555" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="385" dy="0">CPU raises a</tspan>
-      <tspan x="385" dy="34">page fault;</tspan>
-      <tspan x="385" dy="34">MMU asked,</tspan>
-      <tspan x="385" dy="34">kernel takes</tspan>
-      <tspan x="385" dy="34">over</tspan>
+    <text x="397" y="475" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="397" dy="0">CPU raises a</tspan>
+      <tspan x="397" dy="36">page fault;</tspan>
+      <tspan x="397" dy="36">MMU asked,</tspan>
+      <tspan x="397" dy="36">kernel takes</tspan>
+      <tspan x="397" dy="36">over</tspan>
     </text>
   </g>
 
-  
-  
-  <path d="M 495 560 H 517 V 345 H 540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-  
-  <path d="M 495 620 H 517 V 835 H 540" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <!-- Split Branch Arrows from Box 2 to Lanes -->
+  <!-- Upper Branch (Green) to Minor page fault -->
+  <path d="M 505 525 C 545 525, 530 312, 570 312" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Lower Branch (Orange) to Major page fault -->
+  <path d="M 505 525 C 545 525, 530 738, 570 738" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
 
-  
-  <g>
-    <rect x="540" y="120" width="370" height="450" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <!-- Upper Lane: Minor page fault -->
+  <g id="minor-lane">
+    <rect x="570" y="115" width="370" height="395" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    
+    <!-- RAM module icon -->
     <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="560" y="145" width="56" height="30" rx="4" fill="#e8f1ea" />
-      <rect x="568" y="152" width="10" height="12" rx="1" fill="#207448" />
-      <rect x="583" y="152" width="10" height="12" rx="1" fill="#207448" />
-      <rect x="598" y="152" width="10" height="12" rx="1" fill="#207448" />
-      <line x1="565" y1="175" x2="565" y2="178" />
-      <line x1="573" y1="175" x2="573" y2="178" />
-      <line x1="581" y1="175" x2="581" y2="178" />
-      <line x1="589" y1="175" x2="589" y2="178" />
-      <line x1="597" y1="175" x2="597" y2="178" />
-      <line x1="605" y1="175" x2="605" y2="178" />
+      <rect x="590" y="137" width="54" height="28" rx="4" fill="#e8f1ea" />
+      <rect x="597" y="143" width="9" height="11" rx="1" fill="#207448" />
+      <rect x="612" y="143" width="9" height="11" rx="1" fill="#207448" />
+      <rect x="627" y="143" width="9" height="11" rx="1" fill="#207448" />
+      <line x1="595" y1="165" x2="595" y2="168" />
+      <line x1="602" y1="165" x2="602" y2="168" />
+      <line x1="609" y1="165" x2="609" y2="168" />
+      <line x1="616" y1="165" x2="616" y2="168" />
+      <line x1="623" y1="165" x2="623" y2="168" />
+      <line x1="630" y1="165" x2="630" y2="168" />
+      <line x1="637" y1="165" x2="637" y2="168" />
     </g>
-    <text x="630" y="170" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Minor page fault</text>
+    <text x="658" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Minor page fault</text>
 
-    
-    <rect x="556" y="195" width="338" height="155" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
-    <text x="572" y="225" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="572" dy="0">the page is already</tspan>
-      <tspan x="572" dy="28">in RAM (shared library</tspan>
-      <tspan x="572" dy="28">code another process</tspan>
-      <tspan x="572" dy="28">loaded, or a newly</tspan>
-      <tspan x="572" dy="28">allocated page)</tspan>
+    <!-- Detail 1: RAM resident -->
+    <rect x="586" y="180" width="338" height="150" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="602" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">the page is already</tspan>
+      <tspan x="602" dy="28">in RAM (shared library</tspan>
+      <tspan x="602" dy="28">code another process</tspan>
+      <tspan x="602" dy="28">loaded, or a newly</tspan>
+      <tspan x="602" dy="28">allocated page)</tspan>
     </text>
 
-    
-    <rect x="556" y="360" width="338" height="65" rx="10" fill="#e8f1ea" />
-    <text x="572" y="390" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="572" dy="0">kernel only updates</tspan>
-      <tspan x="572" dy="26">the mapping</tspan>
+    <!-- Detail 2: Kernel updates -->
+    <rect x="586" y="342" width="338" height="64" rx="8" fill="#e8f1ea" />
+    <text x="602" y="370" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">kernel only updates</tspan>
+      <tspan x="602" dy="26">the mapping</tspan>
     </text>
 
-    
-    <rect x="556" y="435" width="110" height="40" rx="8" fill="#207448" />
-    <text x="611" y="463" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">cheap</text>
+    <!-- Badge: cheap -->
+    <rect x="586" y="418" width="105" height="36" rx="8" fill="#207448" />
+    <text x="638" y="444" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">cheap</text>
 
-    
-    <text x="572" y="515" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="572" dy="0">thousands per second</tspan>
-      <tspan x="572" dy="30">are normal</tspan>
+    <!-- Detail 3: Rate -->
+    <text x="586" y="478" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="586" dy="0">thousands per second</tspan>
+      <tspan x="586" dy="26">are normal</tspan>
     </text>
   </g>
 
-  
-  <g>
-    <rect x="540" y="610" width="370" height="450" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <!-- Lower Lane: Major page fault -->
+  <g id="major-lane">
+    <rect x="570" y="540" width="370" height="395" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
     
-    
+    <!-- Disk Cylinder Icon -->
     <g stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="588" cy="638" rx="22" ry="8" fill="#fdf6ee" />
-      <path d="M 566 638 V 658 C 566 663, 610 663, 610 658 V 638" />
-      <path d="M 566 658 V 678 C 566 683, 610 683, 610 678 V 658" />
+      <ellipse cx="616" cy="564" rx="20" ry="7" fill="#fdf6ee" />
+      <path d="M 596 564 V 582 C 596 586, 636 586, 636 582 V 564" />
+      <path d="M 596 582 V 600 C 596 604, 636 604, 636 600 V 582" />
     </g>
-    <text x="630" y="660" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Major page fault</text>
+    <text x="654" y="587" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Major page fault</text>
 
-    
-    <rect x="556" y="690" width="338" height="165" rx="10" fill="#fdf6ee" stroke="#f5d5b5" stroke-width="2" />
-    <text x="572" y="720" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="572" dy="0">page must be read</tspan>
-      <tspan x="572" dy="28">from disk (program</tspan>
-      <tspan x="572" dy="28">code on first</tspan>
-      <tspan x="572" dy="28">execution, or memory</tspan>
-      <tspan x="572" dy="28">that was swapped out)</tspan>
+    <!-- Detail 1: Disk read -->
+    <rect x="586" y="612" width="338" height="150" rx="10" fill="#fdf6ee" stroke="#f5d5b5" stroke-width="1.5" />
+    <text x="602" y="642" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">page must be read</tspan>
+      <tspan x="602" dy="28">from disk (program code</tspan>
+      <tspan x="602" dy="28">on first execution, or</tspan>
+      <tspan x="602" dy="28">memory that was</tspan>
+      <tspan x="602" dy="28">swapped out)</tspan>
     </text>
 
-    
-    <rect x="556" y="865" width="95" height="40" rx="8" fill="#db8129" />
-    <text x="603" y="893" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">slow</text>
+    <!-- Badge: slow -->
+    <rect x="586" y="774" width="95" height="36" rx="8" fill="#db8129" />
+    <text x="633" y="800" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">slow</text>
 
-    
-    <rect x="556" y="915" width="338" height="135" rx="10" fill="#fdf6ee" />
-    <text x="572" y="942" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="572" dy="0">a burst at first run</tspan>
-      <tspan x="572" dy="26">is normal; a</tspan>
-      <tspan x="572" dy="26">continuous stream</tspan>
-      <tspan x="572" dy="26">means memory pressure</tspan>
-      <tspan x="572" dy="26">and thrashing</tspan>
+    <!-- Detail 2: Pressure note -->
+    <rect x="586" y="820" width="338" height="102" rx="8" fill="#fdf6ee" />
+    <text x="602" y="844" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">a burst at first run</tspan>
+      <tspan x="602" dy="25">is normal; a continuous</tspan>
+      <tspan x="602" dy="25">stream means memory</tspan>
+      <tspan x="602" dy="25">pressure and thrashing</tspan>
     </text>
   </g>
 
-  
-  <path d="M 910 345 H 932 V 560 H 955" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-  <path d="M 910 835 H 932 V 620 H 955" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Merge Arrows from Lanes to Program Continues -->
+  <path d="M 940 312 C 965 312, 960 485, 985 485" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 940 738 C 965 738, 960 565, 985 565" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
-  
-  <g>
-    <rect x="955" y="490" width="170" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
+  <!-- Merge Box: Program continues -->
+  <g id="rejoin">
+    <rect x="985" y="305" width="175" height="440" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <!-- Process Play / Continue Icon -->
     <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="1017" y="515" width="46" height="42" rx="6" fill="#f5f8f5" />
-      <line x1="1017" y1="527" x2="1063" y2="527" />
-      <circle cx="1025" cy="521" r="2" fill="#207448" />
-      <circle cx="1032" cy="521" r="2" fill="#207448" />
-      <polygon points="1035,535 1035,551 1048,543" fill="#207448" />
+      <rect x="1050" y="357" width="46" height="46" rx="8" fill="#f5f8f5" />
+      <polygon points="1066,370 1066,390 1083,380" fill="#207448" />
     </g>
-    <text x="1040" y="610" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="1040" dy="0">Program</tspan>
-      <tspan x="1040" dy="36">continues</tspan>
+    <text x="1072" y="515" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1072" dy="0">Program</tspan>
+      <tspan x="1072" dy="40">continues</tspan>
     </text>
   </g>
 
-  
-  <g>
-    <rect x="1155" y="120" width="405" height="940" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <!-- Right Panel: How to see it -->
+  <g id="right-panel">
+    <rect x="1190" y="115" width="370" height="820" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    
+    <!-- Terminal Icon -->
     <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="1180" y="145" width="56" height="38" rx="6" fill="#e8f1ea" />
-      <path d="M 1192 158 L 1202 164 L 1192 170" />
-      <line x1="1206" y1="170" x2="1222" y2="170" />
+      <rect x="1212" y="138" width="50" height="34" rx="6" fill="#e8f1ea" />
+      <path d="M 1222 150 L 1230 155 L 1222 160" />
+      <line x1="1234" y1="160" x2="1248" y2="160" />
     </g>
-    <text x="1250" y="174" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">How to see it</text>
+    <text x="1276" y="163" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">How to see it</text>
 
-    
-    <rect x="1175" y="205" width="365" height="150" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
-    <text x="1195" y="255" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1195" dy="0">ps -o pid,min_flt,</tspan>
-      <tspan x="1195" dy="34">maj_flt,rss,comm</tspan>
-      <tspan x="1195" dy="34">-p 1234</tspan>
+    <!-- Command 1: ps -->
+    <rect x="1206" y="195" width="338" height="180" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1222" y="250" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1222" dy="0">ps -o pid,min_flt,</tspan>
+      <tspan x="1222" dy="34">maj_flt,rss,comm</tspan>
+      <tspan x="1222" dy="34">-p 1234</tspan>
     </text>
 
-    
-    <rect x="1175" y="380" width="365" height="240" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
-    <text x="1195" y="430" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1195" dy="0">/usr/bin/time cal</tspan>
-      <tspan x="1195" dy="34">&gt; /dev/null prints</tspan>
-      <tspan x="1195" dy="34">(2major+254minor)</tspan>
-      <tspan x="1195" dy="34">pagefaults 0swaps</tspan>
+    <!-- Command 2: /usr/bin/time -->
+    <rect x="1206" y="395" width="338" height="230" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1222" y="445" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1222" dy="0">/usr/bin/time cal</tspan>
+      <tspan x="1222" dy="34">&gt; /dev/null prints</tspan>
+      <tspan x="1222" dy="34">(2major+254minor)</tspan>
+      <tspan x="1222" dy="34">pagefaults 0swaps</tspan>
     </text>
 
-    
-    <rect x="1175" y="645" width="365" height="385" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
-    <text x="1195" y="720" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1195" dy="0">free -h: read</tspan>
-      <tspan x="1195" dy="44">available, not free;</tspan>
-      <tspan x="1195" dy="44">sustained vmstat so</tspan>
-      <tspan x="1195" dy="44">means thrashing</tspan>
+    <!-- Command 3: free -h & vmstat -->
+    <rect x="1206" y="645" width="338" height="270" rx="10" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1222" y="715" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1222" dy="0">free -h: read</tspan>
+      <tspan x="1222" dy="44">available, not free;</tspan>
+      <tspan x="1222" dy="44">sustained vmstat so</tspan>
+      <tspan x="1222" dy="44">means thrashing</tspan>
     </text>
   </g>
 </svg>

@@ -1,168 +1,154 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1370" width="1600" height="1370">
   <title>Drill 2: one difference lines up with one pool</title>
-  <desc>Visual comparison of image pull behavior between old and new node pools, error event sequence, and fix list for 40 GB container image.</desc>
+  <desc>Visual comparison between old and new node pools diagnosing ImagePullBackOff caused by missing egress rules and credentials.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1370" fill="#f5f8f5"/>
 
   
-  <text x="40" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Drill 2: one difference lines up with one pool</text>
-
-  
-  <rect x="40" y="85" width="770" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="55" y="112" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Two-column comparison for the 40 GB llm-server:v3 image</text>
+  <text x="60" y="68" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Drill 2: one difference lines up with one pool</text>
+  <text x="60" y="112" font-family="sans-serif" font-size="24" fill="#303a36">Two-column comparison for the 40 GB llm-server:v3 image.</text>
 
   
   
-  <g id="col-old-pool">
-    <rect x="40" y="140" width="740" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="old-pool-column">
+    <rect x="60" y="145" width="715" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(60, 155)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="4" width="40" height="14" rx="3" fill="#ffffff" />
-      <rect x="4" y="24" width="40" height="14" rx="3" fill="#ffffff" />
-      <circle cx="12" cy="11" r="2" fill="#207448" />
-      <circle cx="12" cy="31" r="2" fill="#207448" />
-      <line x1="22" y1="11" x2="36" y2="11" />
-      <line x1="22" y1="31" x2="36" y2="31" />
+    <g transform="translate(90, 175)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="46" height="14" rx="3"/>
+      <rect x="0" y="20" width="46" height="14" rx="3"/>
+      <circle cx="8" cy="7" r="2" fill="#207448"/>
+      <circle cx="8" cy="27" r="2" fill="#207448"/>
     </g>
-    <text x="120" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Old pool (7 nodes)</text>
-    <text x="65" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="65" dy="0">pulled fine yesterday;</tspan>
-      <tspan x="65" dy="36">node-level registry credentials;</tspan>
-      <tspan x="65" dy="36">cold-node pull takes about 9 minutes</tspan>
+    
+    <text x="155" y="202" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Old pool (7 nodes):</text>
+    <text x="90" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="90" dy="0">pulled fine yesterday;</tspan>
+      <tspan x="90" dy="38">node-level registry credentials;</tspan>
+      <tspan x="90" dy="38">cold-node pull takes about 9 minutes</tspan>
     </text>
   </g>
 
   
-  <g id="col-new-pool">
-    <rect x="820" y="140" width="740" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="new-pool-column">
+    <rect x="825" y="145" width="715" height="310" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
     
-    <g transform="translate(840, 155)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="4" width="40" height="14" rx="3" fill="#ffffff" />
-      <rect x="4" y="24" width="40" height="14" rx="3" fill="#ffffff" />
-      <circle cx="12" cy="11" r="2" fill="#207448" />
-      <circle cx="12" cy="31" r="2" fill="#207448" />
-      <line x1="22" y1="11" x2="36" y2="11" />
-      <line x1="22" y1="31" x2="36" y2="31" />
+    <g transform="translate(855, 172)" stroke="#db8129" stroke-width="3" fill="none">
+      <path d="M 23 2 L 44 38 L 2 38 Z" stroke-linejoin="round"/>
+      <line x1="23" y1="15" x2="23" y2="26"/>
+      <circle cx="23" cy="32" r="1.5" fill="#db8129"/>
     </g>
-    <text x="900" y="186" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">New pool (3 of 10 new nodes) in ImagePullBackOff</text>
-    <text x="845" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="845" dy="0">service account has no imagePullSecrets;</tspan>
-      <tspan x="845" dy="36">registry host times out on port 443 from a new node</tspan>
-      <tspan x="845" dy="36">because egress rules for the new subnet are missing</tspan>
+    
+    <text x="920" y="196" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="920" dy="0">New pool (3 of 10 new nodes)</tspan>
+      <tspan x="920" dy="34" fill="#db8129">in ImagePullBackOff:</tspan>
+    </text>
+    
+    <text x="855" y="282" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">service account has no imagePullSecrets;</tspan>
+      <tspan x="855" dy="36">registry host times out on port 443 from a new</tspan>
+      <tspan x="855" dy="34">node because egress rules for the new subnet</tspan>
+      <tspan x="855" dy="34">are missing</tspan>
     </text>
   </g>
 
   
-  <g id="checks-agree">
-    <rect x="40" y="375" width="1520" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g id="checks-panel" transform="translate(60, 480)">
+    <rect x="0" y="0" width="1480" height="90" rx="14" fill="#e8f1ea" stroke="#c2d9c7" stroke-width="2"/>
     
-    <g transform="translate(60, 385)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 22 4 L 38 10 L 38 24 C 38 34 22 42 22 42 C 22 42 6 34 6 24 L 6 10 Z" fill="#ffffff" />
-      <polyline points="14,22 20,28 30,16" />
+    <g transform="translate(30, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 20 2 C 32 6 38 12 38 22 C 38 33 28 41 20 44 C 12 41 2 33 2 22 C 2 12 8 6 20 2 Z"/>
+      <path d="M 12 22 L 18 28 L 29 16" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
-    <text x="115" y="417" font-family="sans-serif" font-size="24" fill="#303a36">
+    <text x="88" y="54" font-family="sans-serif" font-size="25" fill="#303a36">
       <tspan font-weight="bold" fill="#207448">Checks that agree: </tspan>
       <tspan>image name and tag are correct, the tag exists</tspan>
     </text>
   </g>
 
   
-  <g id="event-sequence">
-    <rect x="40" y="460" width="1520" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="65" y="500" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Event sequence</text>
+  <text x="60" y="614" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Event sequence below:</text>
 
-    
-    <rect x="65" y="520" width="460" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="95" cy="550" r="16" fill="#207448" />
-    <text x="95" y="558" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-    <text x="125" y="557" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pulling image</text>
-    <text x="85" y="610" font-family="monospace" font-size="24" fill="#303a36">registry.example/llm-server:v3</text>
-
-    
-    <line x1="535" y1="592" x2="575" y2="592" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <rect x="585" y="520" width="400" height="145" rx="8" fill="#fff6ed" stroke="#db8129" stroke-width="3" />
-    <circle cx="615" cy="550" r="16" fill="#db8129" />
-    <text x="615" y="558" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-    
-    <g transform="translate(645, 532)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 16 4 L 30 28 L 2 28 Z" />
-      <line x1="16" y1="13" x2="16" y2="19" />
-      <circle cx="16" cy="24" r="1.5" fill="#db8129" />
-    </g>
-    <text x="605" y="612" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">Error: ErrImagePull</text>
-
-    
-    <line x1="995" y1="592" x2="1035" y2="592" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <rect x="1045" y="520" width="490" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <circle cx="1075" cy="550" r="16" fill="#207448" />
-    <text x="1075" y="558" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-    
-    <g transform="translate(1105, 532)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="14" />
-      <polyline points="16,8 16,16 22,20" />
-    </g>
-    <text x="1150" y="557" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Back-off pulling image</text>
-    <text x="1065" y="615" font-family="sans-serif" font-size="24" fill="#303a36">delay keeps growing up to 300 seconds</text>
+  
+  <g id="step1-card">
+    <rect x="60" y="635" width="415" height="150" rx="14" fill="#ffffff" stroke="#c2d9c7" stroke-width="2"/>
+    <circle cx="95" cy="672" r="18" fill="#207448"/>
+    <text x="95" y="679" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="125" y="678" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Pulling image</text>
+    <text x="90" y="734" font-family="monospace" font-size="24" fill="#207448">registry.example/</text>
+    <text x="90" y="762" font-family="monospace" font-size="24" fill="#207448">llm-server:v3</text>
   </g>
 
   
-  <g id="fix-list">
-    <rect x="40" y="710" width="1520" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(65, 725)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="6" />
-      <path d="M 16 2 L 16 6 M 16 26 L 16 30 M 2 16 L 6 16 M 26 16 L 30 16 M 6 6 L 9 9 M 23 23 L 26 26 M 6 26 L 9 23 M 23 9 L 26 6" />
-    </g>
-    <text x="110" y="750" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix list</text>
+  <path d="M 485 710 L 530 710" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
 
-    
-    <rect x="65" y="770" width="1470" height="65" rx="8" fill="#e8f1ea" />
-    <g transform="translate(85, 785)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6,18 14,26 26,10" />
-    </g>
-    <text x="130" y="811" font-family="sans-serif" font-size="24" fill="#303a36">fix the egress rule or the pull secret</text>
-
-    
-    <rect x="65" y="850" width="1470" height="65" rx="8" fill="#e8f1ea" />
-    <g transform="translate(85, 865)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6,18 14,26 26,10" />
-    </g>
-    <text x="130" y="891" font-family="sans-serif" font-size="24" fill="#303a36">delete stuck pods so the next pull happens now, not at the back-off ceiling</text>
-
-    
-    <rect x="65" y="930" width="1470" height="100" rx="8" fill="#e8f1ea" />
-    <g transform="translate(85, 960)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6,18 14,26 26,10" />
-    </g>
-    <text x="130" y="968" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="130" dy="0">take the pull off the critical path: bake the image into the node image</tspan>
-      <tspan x="130" dy="34">or pre-pull with a DaemonSet</tspan>
-    </text>
+  
+  <g id="step2-card">
+    <rect x="540" y="635" width="415" height="150" rx="14" fill="#ffffff" stroke="#c2d9c7" stroke-width="2"/>
+    <circle cx="575" cy="672" r="18" fill="#207448"/>
+    <text x="575" y="679" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="605" y="678" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Image Pull Fails</text>
+    <rect x="565" y="710" width="365" height="50" rx="8" fill="#fdf3eb"/>
+    <text x="580" y="744" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">Error: ErrImagePull</text>
   </g>
 
   
-  <g id="prevention-bar">
-    <rect x="40" y="1070" width="1520" height="90" rx="12" fill="#207448" />
+  <path d="M 965 710 L 1010 710" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  
+  <g id="step3-card">
+    <rect x="1020" y="635" width="520" height="150" rx="14" fill="#ffffff" stroke="#c2d9c7" stroke-width="2"/>
+    <circle cx="1055" cy="672" r="18" fill="#207448"/>
+    <text x="1055" y="679" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="1085" y="678" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Back-off pulling image</text>
     
-    <g transform="translate(65, 1088)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 22 4 L 38 10 L 38 24 C 38 34 22 42 22 42 C 22 42 6 34 6 24 L 6 10 Z" />
-      <line x1="22" y1="16" x2="22" y2="30" />
+    <g transform="translate(1048, 712)" stroke="#303a36" stroke-width="2.5" fill="none">
+      <circle cx="12" cy="12" r="12"/>
+      <polyline points="12,5 12,12 17,15"/>
     </g>
-    <text x="130" y="1110" font-family="sans-serif" font-size="24" fill="#ffffff">
-      <tspan font-weight="bold">Prevention: </tspan>
-      <tspan>cold start is a capacity number; measure pull time per pool;</tspan>
-      <tspan x="130" dy="34">never scale into a pool that has not pulled the image</tspan>
+    <text x="1085" y="733" font-family="sans-serif" font-size="24" fill="#303a36">delay keeps growing up to</text>
+    <text x="1085" y="762" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">300 seconds</text>
+  </g>
+
+  
+  <text x="60" y="830" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Fix list:</text>
+
+  <g id="fix-item-1" transform="translate(60, 848)">
+    <rect x="0" y="0" width="1480" height="64" rx="10" fill="#ffffff" stroke="#c2d9c7" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="10" fill="#207448"/>
+    <text x="58" y="40" font-family="sans-serif" font-size="24" fill="#303a36">fix the egress rule or the pull secret</text>
+  </g>
+
+  <g id="fix-item-2" transform="translate(60, 924)">
+    <rect x="0" y="0" width="1480" height="64" rx="10" fill="#ffffff" stroke="#c2d9c7" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="10" fill="#207448"/>
+    <text x="58" y="40" font-family="sans-serif" font-size="24" fill="#303a36">delete stuck pods so the next pull happens now, not at the back-off ceiling</text>
+  </g>
+
+  <g id="fix-item-3" transform="translate(60, 1000)">
+    <rect x="0" y="0" width="1480" height="64" rx="10" fill="#ffffff" stroke="#c2d9c7" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="10" fill="#207448"/>
+    <text x="58" y="40" font-family="sans-serif" font-size="24" fill="#303a36">take the pull off the critical path: bake the image into the node image or pre-pull with a DaemonSet</text>
+  </g>
+
+  
+  <g id="prevention-bar" transform="translate(60, 1095)">
+    <rect x="0" y="0" width="1480" height="195" rx="16" fill="#207448"/>
+    
+    <g transform="translate(40, 40)" stroke="#ffffff" stroke-width="3.5" fill="none">
+      <path d="M 28 4 C 45 9 52 17 52 30 C 52 46 38 57 28 62 C 18 57 4 46 4 30 C 4 17 11 9 28 4 Z"/>
+      <path d="M 18 31 L 25 38 L 38 23" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="120" y="64" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Prevention:</text>
+    <text x="120" y="112" font-family="sans-serif" font-size="25" fill="#ffffff">
+      <tspan x="120" dy="0">cold start is a capacity number; measure pull time per pool;</tspan>
+      <tspan x="120" dy="40">never scale into a pool that has not pulled the image</tspan>
     </text>
   </g>
 </svg>

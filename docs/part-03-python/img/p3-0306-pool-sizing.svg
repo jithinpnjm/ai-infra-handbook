@@ -1,213 +1,154 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Size each pool by what limits it</title>
-  <desc>Infographic explaining sizing rules for concurrency pools: threads doing I/O, processes doing CPU work, and asyncio, with bounded concurrency principles.</desc>
+  <desc>Infographic explaining pool sizing rules for threads, processes, and asyncio based on limiting resources, concurrency bounds, and semaphore usage.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title { font-family: sans-serif; font-size: 48px; font-weight: bold; fill: #207448; }
+      .th { font-family: sans-serif; font-size: 28px; font-weight: bold; fill: #ffffff; }
+      .row-title { font-family: sans-serif; font-size: 26px; font-weight: bold; fill: #303a36; }
+      .row-sub { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .code-text { font-family: monospace; font-size: 24px; fill: #303a36; }
+      .orange-code { font-family: monospace; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .side-title { font-family: sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+      .side-text { font-family: sans-serif; font-size: 24px; fill: #303a36; line-height: 1.4; }
+      .strip-text { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .bottom-text { font-family: sans-serif; font-size: 28px; font-weight: bold; fill: #ffffff; }
+      .icon-stroke { stroke: #207448; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1200" class="bg" />
 
   
-  <text x="40" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Size each pool by what limits it</text>
+  <text x="50" y="75" class="title">Size each pool by what limits it</text>
 
   
   
-  <rect x="40" y="115" width="210" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <rect x="265" y="115" width="280" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <rect x="560" y="115" width="500" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="50" y="115" width="250" height="56" rx="8" fill="#207448" />
+  <text x="70" y="153" class="th">Model</text>
 
   
-  <text x="145" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Model</text>
-  <text x="405" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">What limits it</text>
-  <text x="810" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Pool size rule</text>
+  <rect x="320" y="115" width="320" height="56" rx="8" fill="#207448" />
+  <text x="340" y="153" class="th">What limits it</text>
 
   
-  <g>
-    
-    <rect x="40" y="190" width="210" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
-    <rect x="265" y="190" width="280" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
-    <rect x="560" y="190" width="500" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
+  <rect x="660" y="115" width="530" height="56" rx="8" fill="#207448" />
+  <text x="680" y="153" class="th">Pool size rule</text>
 
-    
-    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="145" cy="222" rx="22" ry="8"/>
-      <path d="M 123 222 v 16 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -16"/>
-      <path d="M 123 238 v 16 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -16"/>
-    </g>
-
-    
-    <text x="145" y="305" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="145" dy="0">Threads</tspan>
-      <tspan x="145" dy="36">doing I/O</tspan>
-    </text>
-
-    
-    <text x="285" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="285" dy="0">what the remote</tspan>
-      <tspan x="285" dy="34">system can</tspan>
-      <tspan x="285" dy="34">tolerate</tspan>
-    </text>
-
-    
-    <text x="585" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="585" dy="0">match the concurrency the</tspan>
-      <tspan x="585" dy="32">remote tolerates, not the</tspan>
-      <tspan x="585" dy="32">largest number you can start;</tspan>
-      <tspan x="585" dy="32">10 to 200 for blocking</tspan>
-      <tspan x="585" dy="32">libraries (requests,</tspan>
-      <tspan x="585" dy="32">paramiko, boto3)</tspan>
-    </text>
+  
+  
+  
+  <rect x="50" y="185" width="250" height="230" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(70, 205)">
+    <ellipse cx="25" cy="14" rx="22" ry="9" class="icon-stroke" />
+    <path d="M 3,14 v 22 c 0,5 10,9 22,9 c 12,0 22,-4 22,-9 v -22" class="icon-stroke" />
+    <path d="M 3,25 c 0,5 10,9 22,9 c 12,0 22,-4 22,-9" class="icon-stroke" />
   </g>
+  <text x="70" y="300" class="row-title">Threads doing I/O</text>
 
   
-  <g>
-    
-    <rect x="40" y="410" width="210" height="205" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
-    <rect x="265" y="410" width="280" height="205" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
-    <rect x="560" y="410" width="500" height="205" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <rect x="320" y="185" width="320" height="230" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="2" />
+  <text x="340" y="275" class="row-sub">what the remote</text>
+  <text x="340" y="315" class="row-sub">system can tolerate</text>
 
-    
-    <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="127" y="432" width="36" height="36" rx="4"/>
-      
-      <line x1="135" y1="424" x2="135" y2="432"/>
-      <line x1="145" y1="424" x2="145" y2="432"/>
-      <line x1="155" y1="424" x2="155" y2="432"/>
-      
-      <line x1="135" y1="468" x2="135" y2="476"/>
-      <line x1="145" y1="468" x2="145" y2="476"/>
-      <line x1="155" y1="468" x2="155" y2="476"/>
-      
-      <line x1="119" y1="440" x2="127" y2="440"/>
-      <line x1="119" y1="450" x2="127" y2="450"/>
-      <line x1="119" y1="460" x2="127" y2="460"/>
-      
-      <line x1="163" y1="440" x2="171" y2="440"/>
-      <line x1="163" y1="450" x2="171" y2="450"/>
-      <line x1="163" y1="460" x2="171" y2="460"/>
-      
-      <rect x="137" y="442" width="16" height="16" rx="2"/>
-    </g>
+  
+  <rect x="660" y="185" width="530" height="230" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="2" />
+  <text x="685" y="228" class="row-sub">match the concurrency the remote</text>
+  <text x="685" y="266" class="row-sub">tolerates, not the largest number you</text>
+  <text x="685" y="304" class="row-sub">can start; 10 to 200 for blocking</text>
+  <text x="685" y="342" class="row-sub">libraries (requests, paramiko, boto3)</text>
 
-    
-    <text x="145" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="145" dy="0">Processes</tspan>
-      <tspan x="145" dy="36">doing</tspan>
-      <tspan x="145" dy="36">CPU work</tspan>
-    </text>
-
-    
-    <text x="405" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">cores</text>
-
-    
-    <text x="585" y="475" font-family="monospace, monospace" font-size="24" fill="#303a36">
-      <tspan x="585" dy="0">os.cpu_count() or</tspan>
-      <tspan x="585" dy="34">len(os.sched_getaffinity(0)),</tspan>
-      <tspan x="585" dy="34" font-family="system-ui, -apple-system, sans-serif">or the cgroup CPU limit</tspan>
-      <tspan x="585" dy="34" font-family="system-ui, -apple-system, sans-serif">in a container</tspan>
-    </text>
+  
+  
+  
+  <rect x="50" y="430" width="250" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(70, 448)">
+    <rect x="8" y="8" width="34" height="34" rx="4" class="icon-stroke" />
+    <rect x="17" y="17" width="16" height="16" fill="#207448" />
+    <path d="M 15,2 v 6 M 25,2 v 6 M 35,2 v 6" class="icon-stroke" />
+    <path d="M 15,42 v 6 M 25,42 v 6 M 35,42 v 6" class="icon-stroke" />
+    <path d="M 2,15 h 6 M 2,25 h 6 M 2,35 h 6" class="icon-stroke" />
+    <path d="M 42,15 h 6 M 42,25 h 6 M 42,35 h 6" class="icon-stroke" />
   </g>
+  <text x="70" y="535" class="row-title">Processes doing</text>
+  <text x="70" y="570" class="row-title">CPU work</text>
 
   
-  <g>
-    
-    <rect x="40" y="630" width="210" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
-    <rect x="265" y="630" width="280" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
-    <rect x="560" y="630" width="500" height="205" rx="8" fill="#ffffff" stroke="#c8decb" stroke-width="2"/>
+  <rect x="320" y="430" width="320" height="210" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="2" />
+  <text x="340" y="540" class="row-sub">cores</text>
 
-    
-    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="145" cy="672" r="22"/>
-      <polyline points="145,660 145,672 155,678"/>
-      
-      <path d="M 120 655 A 28 28 0 0 1 170 655"/>
-      <polyline points="166,647 172,655 164,661"/>
-    </g>
+  
+  <rect x="660" y="430" width="530" height="210" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  <text x="685" y="485" class="orange-code">os.cpu_count() or</text>
+  <text x="685" y="525" class="orange-code">len(os.sched_getaffinity(0)), or</text>
+  <text x="685" y="565" class="orange-code">the cgroup CPU limit in a</text>
+  <text x="685" y="605" class="orange-code">container</text>
 
-    
-    <text x="145" y="755" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">asyncio</text>
-
-    
-    <text x="285" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="285" dy="0">target and</tspan>
-      <tspan x="285" dy="34">sockets</tspan>
-    </text>
-
-    
-    <text x="585" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="585" dy="0">cap with a semaphore,</tspan>
-      <tspan x="585" dy="36">for example <tspan font-family="monospace, monospace">Semaphore(100)</tspan></tspan>
-    </text>
+  
+  
+  
+  <rect x="50" y="655" width="250" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(70, 672)">
+    <circle cx="25" cy="25" r="20" class="icon-stroke" />
+    <polygon points="35,12 45,25 25,25" fill="#207448" />
   </g>
+  <text x="70" y="765" class="row-title">asyncio</text>
 
   
-  
-  <rect x="1100" y="115" width="460" height="455" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <rect x="320" y="655" width="320" height="175" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="2" />
+  <text x="340" y="745" class="row-sub">target and sockets</text>
 
   
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 1155 142 l 24 9 v 18 c 0 18 -12 32 -24 38 c -12 -6 -24 -20 -24 -38 v -18 z"/>
-    <line x1="1143" y1="172" x2="1167" y2="172"/>
+  <rect x="660" y="655" width="530" height="175" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="2" />
+  <text x="685" y="725" class="row-sub">cap with a semaphore, for example</text>
+  <text x="685" y="768" class="code-text">Semaphore(100)</text>
+
+  
+  <rect x="1220" y="115" width="330" height="715" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1245, 140)">
+    <path d="M 25,4 L 46,12 V 28 C 46,42 25,52 25,52 C 25,52 4,42 4,28 V 12 Z" class="icon-stroke" />
+    <path d="M 25,16 V 38 M 16,27 H 34" class="icon-stroke" />
   </g>
+  <text x="1245" y="240" class="side-title">Bounded</text>
+  <text x="1245" y="278" class="side-title">concurrency first</text>
+
+  <text x="1245" y="340" class="side-text">unbounded fan-out</text>
+  <text x="1245" y="375" class="side-text">overwhelms targets</text>
+  <text x="1245" y="410" class="side-text">(thundering herd on a</text>
+  <text x="1245" y="445" class="side-text">BMC network or an</text>
+  <text x="1245" y="480" class="side-text">API, every client arrives</text>
+  <text x="1245" y="515" class="side-text">at once), exhausts file</text>
+  <text x="1245" y="550" class="side-text">descriptors and</text>
+  <text x="1245" y="585" class="side-text">memory; set the limit</text>
+  <text x="1245" y="620" class="side-text">before you write the loop</text>
 
   
-  <text x="1200" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-    <tspan x="1200" dy="0">Bounded</tspan>
-    <tspan x="1200" dy="36">concurrency first</tspan>
-  </text>
-
+  <rect x="50" y="850" width="1500" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
   
-  <text x="1130" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1130" dy="0">unbounded fan-out</tspan>
-    <tspan x="1130" dy="32">overwhelms targets</tspan>
-    <tspan x="1130" dy="32">(thundering herd on a</tspan>
-    <tspan x="1130" dy="32">BMC network or an API,</tspan>
-    <tspan x="1130" dy="32">every client arrives</tspan>
-    <tspan x="1130" dy="32">at once), exhausts file</tspan>
-    <tspan x="1130" dy="32">descriptors and memory;</tspan>
-    <tspan x="1130" dy="32">set the limit before</tspan>
-    <tspan x="1130" dy="32">you write the loop</tspan>
-  </text>
-
-  
-  <rect x="1100" y="590" width="460" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-
-  
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="1155" cy="635" r="22"/>
-    <line x1="1147" y1="626" x2="1147" y2="644"/>
-    <line x1="1155" y1="622" x2="1155" y2="648"/>
-    <line x1="1163" y1="626" x2="1163" y2="644"/>
+  <g transform="translate(75, 868)">
+    <rect x="6" y="22" width="36" height="26" rx="4" class="icon-stroke" />
+    <path d="M 14,22 V 14 C 14,8 34,8 34,14 V 22" class="icon-stroke" />
   </g>
+  <text x="140" y="905" class="row-sub">semaphore: a counter that lets at most that many tasks hold it at once</text>
 
   
-  <text x="1130" y="705" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1130" dy="0" font-weight="bold" fill="#207448">semaphore:</tspan>
-    <tspan font-weight="normal" fill="#303a36"> a counter that</tspan>
-    <tspan x="1130" dy="36">lets at most that many</tspan>
-    <tspan x="1130" dy="36">tasks hold it at once</tspan>
-  </text>
-
+  <rect x="50" y="960" width="1500" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <rect x="40" y="865" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-  
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="95" cy="940" r="18"/>
-    <path d="M 95 914 v 8"/>
-    <path d="M 95 958 v 8"/>
-    <path d="M 69 940 h 8"/>
-    <path d="M 113 940 h 8"/>
-    <circle cx="95" cy="940" r="6"/>
+  <g transform="translate(75, 980)">
+    <circle cx="10" cy="26" r="6" fill="#207448" />
+    <path d="M 16,26 H 26 C 34,26 34,14 42,14 H 48" class="icon-stroke" />
+    <path d="M 16,26 H 26 C 34,26 34,38 42,38 H 48" class="icon-stroke" />
   </g>
+  <text x="140" y="1017" class="strip-text">async server plus blocking or CPU work: asyncio with to_thread or a process pool keeps the loop free</text>
 
   
-  <text x="145" y="928" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-    <tspan x="145" dy="0">async server plus blocking or CPU work:</tspan>
-  </text>
-  <text x="145" y="972" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">asyncio with <tspan font-family="monospace, monospace">to_thread</tspan> or a process pool keeps the loop free</tspan>
-  </text>
-
-  
-  <rect x="40" y="1045" width="1520" height="100" rx="12" fill="#207448"/>
-  <text x="800" y="1107" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">The limit is what keeps the fan-out safe</text>
+  <rect x="50" y="1075" width="1500" height="75" rx="10" fill="#207448" />
+  <text x="800" y="1122" class="bottom-text" text-anchor="middle">The limit is what keeps the fan-out safe</text>
 </svg>

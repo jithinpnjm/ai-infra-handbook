@@ -1,161 +1,224 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>Why a container ignores SIGTERM: PID 1 has no default signal actions</title>
-  <desc>Visual infographic explaining why PID 1 in a container ignores SIGTERM without a handler and comparing shell vs exec with the three PID 1 rules.</desc>
+  <desc>Visual explanation of container PID 1 signal handling, zombie reaping, and clean shutdown best practices.</desc>
+
   <defs>
-    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#667770" />
     </marker>
   </defs>
+
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1350" fill="#f5f8f5" />
+
   
-  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Why a container ignores SIGTERM: </tspan>
-    <tspan x="800" dy="54">PID 1 has no default signal actions</tspan>
-  </text>
+  <text x="60" y="70" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">Why a container ignores SIGTERM: PID 1 has no default signal actions</text>
+
   
-  <g id="trigger-origin">
-    <rect x="40" y="145" width="240" height="395" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    <g transform="translate(132, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="14"/>
-      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12"/>
-    </g>
-    <text x="160" y="335" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="160" dy="0">docker stop or </tspan>
-      <tspan x="160" dy="32">kubelet sends </tspan>
-      <tspan x="160" dy="32">SIGTERM</tspan>
+  <g transform="translate(50, 110)">
+    
+    <rect x="0" y="0" width="310" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 30 50 A 24 24 0 0 1 30 90 M 42 58 A 14 14 0 0 1 42 82 M 54 66 A 4 4 0 0 1 54 74" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="54" cy="70" r="3" fill="#207448" />
+    <text x="95" y="70" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Signal Origin</text>
+    <text x="30" y="130" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="30" dy="0">docker stop or</tspan>
+      <tspan x="30" dy="32">kubelet sends</tspan>
+      <tspan x="30" dy="32">SIGTERM</tspan>
+    </text>
+
+    
+    <rect x="0" y="320" width="310" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="25" y="355" width="45" height="50" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="60" cy="380" r="3" fill="#207448" />
+    <text x="85" y="390" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Inside Namespace</text>
+    <text x="30" y="445" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">SIGTERM arrives</text>
+
+    
+    <path d="M 155 240 L 155 316" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <path d="M 360 490 L 390 490 L 390 240 L 416 240" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <path d="M 360 490 L 390 490 L 390 500 L 416 500" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(420, 110)">
+    
+    <rect x="0" y="0" width="1130" height="260" rx="14" fill="#fdf6ee" stroke="#f0be8b" stroke-width="2" />
+
+    
+    <rect x="20" y="16" width="560" height="42" rx="8" fill="#db8129" />
+    <text x="35" y="45" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">Shell script as PID 1, no SIGTERM handler</text>
+
+    
+    <rect x="20" y="75" width="245" height="165" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="36" y="112" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="36" dy="0">PID 1 has no</tspan>
+      <tspan x="36" dy="30">default action, so</tspan>
+      <tspan x="36" dy="30">with no handler the</tspan>
+      <tspan x="36" dy="30">signal is ignored</tspan>
+    </text>
+
+    
+    <path d="M 265 157 L 295 157" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="303" y="75" width="250" height="165" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    
+    <circle cx="330" cy="110" r="14" fill="none" stroke="#db8129" stroke-width="3" />
+    <polyline points="330,102 330,110 336,114" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <text x="320" y="145" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="320" dy="0">grace period, 30</tspan>
+      <tspan x="320" dy="32">seconds in</tspan>
+      <tspan x="320" dy="32">Kubernetes by</tspan>
+      <tspan x="320" dy="32">default</tspan>
+    </text>
+
+    
+    <path d="M 553 157 L 583 157" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="591" y="75" width="245" height="165" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    
+    <path d="M 618 96 L 610 114 L 622 114 L 614 132" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+    <text x="610" y="155" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="610" dy="0">SIGKILL from</tspan>
+      <tspan x="610" dy="32">the parent</tspan>
+      <tspan x="610" dy="32">namespace</tspan>
+    </text>
+
+    
+    <path d="M 836 157 L 866 157" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="874" y="75" width="240" height="165" rx="10" fill="#fff5ec" stroke="#db8129" stroke-width="3" />
+    <text x="890" y="125" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="890" dy="0">training job</tspan>
+      <tspan x="890" dy="32">loses its</tspan>
+      <tspan x="890" dy="32">chance to</tspan>
+      <tspan x="890" dy="32">checkpoint</tspan>
     </text>
   </g>
+
   
-  <line x1="280" y1="260" x2="325" y2="260" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  <g transform="translate(420, 390)">
+    
+    <rect x="0" y="0" width="1130" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="20" y="16" width="850" height="42" rx="8" fill="#207448" />
+    <text x="35" y="45" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">exec python train.py (the program is PID 1 and installs its own handler)</text>
+
+    
+    <rect x="20" y="75" width="310" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="55" cy="140" r="16" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 4" />
+    <circle cx="55" cy="140" r="6" fill="#207448" />
+    <text x="95" y="148" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">handler runs</text>
+
+    
+    <path d="M 330 140 L 375 140" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="385" y="75" width="350" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <ellipse cx="425" cy="125" rx="18" ry="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 407 125 v 25 c 0 4.4 8 8 18 8 s 18 -3.6 18 -8 v -25" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 407 137 c 0 4.4 8 8 18 8 s 18 -3.6 18 -8" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="465" y="148" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">checkpoint written</text>
+
+    
+    <path d="M 735 140 L 780 140" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="790" y="75" width="320" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="830" cy="140" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <polyline points="822,140 828,146 840,132" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="865" y="148" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">clean exit</text>
+  </g>
+
   
-  <line x1="280" y1="465" x2="325" y2="465" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-  
-  <g id="track-1">
-    <rect x="310" y="145" width="1250" height="195" rx="14" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
-    <g transform="translate(330, 156)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="36" height="26" rx="4"/>
-      <polyline points="8,12 14,17 8,22"/>
-      <line x1="18" y1="22" x2="26" y2="22"/>
+  <g transform="translate(50, 645)">
+    <text x="0" y="32" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">The three PID 1 rules</text>
+
+    
+    <g transform="translate(0, 50)">
+      <rect x="0" y="0" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 40 30 L 65 20 L 90 30 C 90 55 65 75 65 75 C 65 75 40 55 40 30 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <text x="105" y="52" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Rule 1</text>
+      <text x="30" y="105" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="30" dy="0" font-weight="bold">Signals:</tspan>
+        <tspan font-weight="normal"> from inside the namespace a</tspan>
+        <tspan x="30" dy="34">signal reaches PID 1 only if it</tspan>
+        <tspan x="30" dy="34">installed a handler; SIGKILL and</tspan>
+        <tspan x="30" dy="34">SIGSTOP from inside are ignored;</tspan>
+        <tspan x="30" dy="34">from the parent namespace they</tspan>
+        <tspan x="30" dy="34">still work</tspan>
+      </text>
     </g>
-    <text x="385" y="179" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Shell script as PID 1, no SIGTERM handler</text>
-    <rect x="325" y="194" width="330" height="132" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
-    <text x="490" y="230" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="490" dy="0">PID 1 has no default </tspan>
-      <tspan x="490" dy="26">action, so with no </tspan>
-      <tspan x="490" dy="26">handler the signal </tspan>
-      <tspan x="490" dy="26">is ignored</tspan>
-    </text>
-    <line x1="655" y1="260" x2="680" y2="260" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-    <rect x="680" y="194" width="270" height="132" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
-    <text x="815" y="230" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="815" dy="0">grace period, 30 </tspan>
-      <tspan x="815" dy="26">seconds in </tspan>
-      <tspan x="815" dy="26">Kubernetes </tspan>
-      <tspan x="815" dy="26">by default</tspan>
-    </text>
-    <line x1="950" y1="260" x2="975" y2="260" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-    <rect x="975" y="194" width="265" height="132" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1107.5" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1107.5" dy="0">SIGKILL from the </tspan>
-      <tspan x="1107.5" dy="32">parent namespace</tspan>
-    </text>
-    <line x1="1240" y1="260" x2="1265" y2="260" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-    <rect x="1265" y="194" width="295" height="132" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1412.5" y="240" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1412.5" dy="0">training job loses </tspan>
-      <tspan x="1412.5" dy="30">its chance to </tspan>
-      <tspan x="1412.5" dy="30">checkpoint</tspan>
+
+    
+    <g transform="translate(510, 50)">
+      <rect x="0" y="0" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="65" cy="30" r="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 65 40 L 65 52 M 45 68 L 45 52 L 85 52 L 85 68" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="45" cy="74" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="85" cy="74" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <text x="105" y="52" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Rule 2</text>
+      <text x="30" y="105" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="30" dy="0" font-weight="bold">Zombies:</tspan>
+        <tspan font-weight="normal"> orphans are re-parented to</tspan>
+        <tspan x="30" dy="34">PID 1, which must call wait();</tspan>
+        <tspan x="30" dy="34">otherwise zombies pile up and</tspan>
+        <tspan x="30" dy="34">can exhaust pids.max</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1020, 50)">
+      <rect x="0" y="0" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="65" cy="45" r="20" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 65 30 L 65 45" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <text x="105" y="52" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Rule 3</text>
+      <text x="30" y="105" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="30" dy="0">When PID 1 exits the kernel kills</tspan>
+        <tspan x="30" dy="34">every other process in the</tspan>
+        <tspan x="30" dy="34">namespace with SIGKILL, which</tspan>
+        <tspan x="30" dy="34">is why a container dies when its</tspan>
+        <tspan x="30" dy="34">main process dies</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1060)">
+    <rect x="0" y="0" width="1500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 45 42 C 40 32 45 22 55 22 C 60 22 65 25 68 28 L 56 40 L 62 46 L 74 34 C 77 37 80 42 80 47 C 80 57 70 62 60 57 L 35 82 C 32 85 27 85 24 82 C 21 79 21 74 24 71 Z" fill="#207448" />
+    <text x="95" y="55" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Correct PID 1 configurations:</text>
+    <text x="95" y="95" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="95" dy="0">exec in the entrypoint; tini; docker run --init; dumb-init;</tspan>
+      <tspan x="95" dy="30">Kubernetes shareProcessNamespace; exec form ["python","train.py"] not the shell form</tspan>
     </text>
   </g>
+
   
-  <g id="track-2">
-    <rect x="310" y="355" width="1250" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-    <g transform="translate(330, 366)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="18" cy="18" r="14"/>
-      <polygon points="14,11 26,18 14,25" fill="#207448"/>
-    </g>
-    <text x="385" y="389" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">exec python train.py (the program is PID 1 and installs its own handler)</text>
-    <rect x="325" y="405" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="495" y="472" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">handler runs</text>
-    <line x1="665" y1="465" x2="740" y2="465" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-    <rect x="740" y="405" width="400" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="940" y="472" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">checkpoint written</text>
-    <line x1="1140" y1="465" x2="1215" y2="465" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-    <rect x="1215" y="405" width="345" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="1387.5" y="472" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">clean exit</text>
-  </g>
-  
-  <text x="800" y="580" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">The three PID 1 rules</text>
-  
-  <g id="card-1">
-    <rect x="40" y="610" width="480" height="310" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <g transform="translate(65, 625)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 28 6 L 48 14 V 28 C 48 40 28 48 28 48 C 28 48 8 40 8 28 V 14 Z"/>
-    </g>
-    <text x="65" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="65" dy="0">Signals: from inside the </tspan>
-      <tspan x="65" dy="28">namespace a signal reaches </tspan>
-      <tspan x="65" dy="28">PID 1 only if it installed </tspan>
-      <tspan x="65" dy="28">a handler; SIGKILL and </tspan>
-      <tspan x="65" dy="28">SIGSTOP from inside are </tspan>
-      <tspan x="65" dy="28">ignored; from the parent </tspan>
-      <tspan x="65" dy="28">namespace they still work</tspan>
-    </text>
-  </g>
-  
-  <g id="card-2">
-    <rect x="560" y="610" width="480" height="310" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <g transform="translate(585, 625)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="10" width="36" height="36" rx="4"/>
-      <line x1="18" y1="22" x2="38" y2="22"/>
-      <line x1="18" y1="34" x2="30" y2="34"/>
-    </g>
-    <text x="585" y="715" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="585" dy="0">Zombies: orphans are </tspan>
-      <tspan x="585" dy="32">re-parented to PID 1, </tspan>
-      <tspan x="585" dy="32">which must call wait(); </tspan>
-      <tspan x="585" dy="32">otherwise zombies pile up </tspan>
-      <tspan x="585" dy="32">and can exhaust pids.max</tspan>
-    </text>
-  </g>
-  
-  <g id="card-3">
-    <rect x="1080" y="610" width="480" height="310" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <g transform="translate(1105, 625)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="10" width="40" height="36" rx="4"/>
-      <line x1="8" y1="22" x2="48" y2="22"/>
-      <circle cx="16" cy="16" r="2" fill="#207448"/>
-      <circle cx="24" cy="16" r="2" fill="#207448"/>
-    </g>
-    <text x="1105" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1105" dy="0">When PID 1 exits the </tspan>
-      <tspan x="1105" dy="32">kernel kills every other </tspan>
-      <tspan x="1105" dy="32">process in the namespace </tspan>
-      <tspan x="1105" dy="32">with SIGKILL, which is why </tspan>
-      <tspan x="1105" dy="32">a container dies when its </tspan>
-      <tspan x="1105" dy="32">main process dies</tspan>
-    </text>
-  </g>
-  
-  <g id="fix-strip">
-    <rect x="40" y="940" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <g transform="translate(65, 967)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="28" cy="14" rx="20" ry="8"/>
-      <path d="M 8 14 V 42 C 8 46 17 50 28 50 C 39 50 48 46 48 42 V 14"/>
-      <path d="M 8 28 C 8 32 17 36 28 36 C 39 36 48 32 48 28"/>
-    </g>
-    <text x="135" y="985" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="135" dy="0">exec in the entrypoint; tini; docker run --init; dumb-init; </tspan>
-      <tspan x="135" dy="34">Kubernetes shareProcessNamespace; exec form ["python","train.py"] not the shell form</tspan>
-    </text>
-  </g>
-  
-  <g id="bottom-bar">
-    <rect x="40" y="1075" width="1520" height="90" rx="14" fill="#207448"/>
-    <text x="800" y="1130" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">End the script with exec so the program becomes PID 1</text>
+  <g transform="translate(50, 1225)">
+    <rect x="0" y="0" width="1500" height="75" rx="10" fill="#207448" />
+    <text x="750" y="47" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">End the script with exec so the program becomes PID 1</text>
   </g>
 </svg>

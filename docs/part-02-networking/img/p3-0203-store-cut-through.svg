@@ -1,167 +1,167 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1240" width="1600" height="1240">
   <title>Store-and-forward versus cut-through: when the first bit leaves</title>
-  <desc>Two horizontal timelines for one 1500-byte frame crossing a switch.</desc>
+  <desc>Visual comparison of store-and-forward and cut-through switching mechanics, serialisation delays, and latency implications.</desc>
 
-  <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
-    </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129"/>
-    </marker>
-  </defs>
+  <style>
+    .bg { fill: #f5f8f5; }
+    .panel-bg { fill: #e8f1ea; stroke: #c2d6c6; stroke-width: 2; rx: 16; }
+    .panel-white { fill: #ffffff; stroke: #c2d6c6; stroke-width: 2; rx: 12; }
+    .title { font-family: sans-serif; font-size: 42px; font-weight: bold; fill: #207448; }
+    .section-title { font-family: sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+    .text-main { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+    .text-bold { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #303a36; }
+    .text-orange { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+    .badge-fcs { fill: #207448; rx: 8; }
+    .badge-fcs-text { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #ffffff; text-anchor: middle; }
+    .bar-ingress { fill: #88bba0; stroke: #207448; stroke-width: 2; rx: 6; }
+    .bar-egress { fill: #207448; stroke: #12452a; stroke-width: 2; rx: 6; }
+    .bar-cut { fill: #389660; stroke: #12452a; stroke-width: 2; rx: 6; }
+    .port-label { font-family: monospace; font-size: 24px; fill: #303a36; }
+    .footer-bar { fill: #207448; rx: 12; }
+    .footer-text { font-family: sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; text-anchor: middle; }
+  </style>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1240" class="bg" />
 
   
-  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Store-and-forward versus cut-through: when the first bit leaves</text>
+  <text x="60" y="65" class="title">Store-and-forward versus cut-through: when the first bit leaves</text>
 
   
+
   
+  <rect x="50" y="100" width="940" height="420" class="panel-bg" />
+
   
-  <g id="store-and-forward-panel">
-    <rect x="40" y="110" width="1010" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 125)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="150" y="162" class="section-title">Store-and-forward</text>
 
-    
-    <rect x="65" y="130" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="75" y1="145" x2="111" y2="145" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="75" y1="161" x2="111" y2="161" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="57" y1="143" x2="65" y2="143" stroke="#207448" stroke-width="3"/>
-    <line x1="57" y1="163" x2="65" y2="163" stroke="#207448" stroke-width="3"/>
-    <line x1="121" y1="143" x2="129" y2="143" stroke="#207448" stroke-width="3"/>
-    <line x1="121" y1="163" x2="129" y2="163" stroke="#207448" stroke-width="3"/>
+  
+  <text x="80" y="222" class="port-label">Ingress:</text>
+  <rect x="200" y="195" width="460" height="42" class="bar-ingress" />
+  <text x="215" y="224" class="text-bold" fill="#12452a">1500-byte frame arrival</text>
 
-    
-    <text x="135" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Store-and-forward</text>
+  
+  <rect x="675" y="193" width="190" height="46" class="badge-fcs" />
+  <text x="770" y="225" class="badge-fcs-text">FCS checked</text>
 
-    
-    <line x1="530" y1="200" x2="530" y2="350" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
-    <rect x="435" y="185" width="190" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="530" y="215" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">FCS checked</text>
+  
+  <line x1="865" y1="216" x2="865" y2="280" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" />
+  <polygon points="865,285 859,273 871,273" fill="#207448" />
 
-    
-    <rect x="180" y="235" width="350" height="52" rx="8" fill="#207448"/>
-    <text x="355" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">ingress port</text>
+  
+  <text x="80" y="312" class="port-label">Egress:</text>
+  <rect x="865" y="285" width="100" height="42" class="bar-egress" rx="6" />
+  
+  <path d="M 965,285 L 975,306 L 965,327" fill="none" stroke="#12452a" stroke-width="2" />
+  <line x1="750" y1="312" x2="855" y2="312" stroke="#a0b8a5" stroke-width="2" stroke-dasharray="4,4" />
 
-    
-    <path d="M 530 287 L 530 321 L 540 321" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  
+  <rect x="80" y="355" width="880" height="135" class="panel-white" />
+  <text x="105" y="415" class="text-main">
+    <tspan x="105" dy="0">Note: </tspan>
+    <tspan font-weight="bold">latency grows with frame size, errors are filtered out</tspan>
+  </text>
+  <text x="105" y="455" class="text-main">Entire 1500 bytes must be buffered and validated before transmission begins.</text>
 
-    
-    <rect x="550" y="295" width="350" height="52" rx="8" fill="#207448"/>
-    <text x="725" y="330" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">egress port</text>
 
-    
-    <rect x="70" y="380" width="950" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text x="545" y="418" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">latency grows with frame size, errors are filtered out</text>
+  
+  <rect x="50" y="540" width="940" height="440" class="panel-bg" />
+
+  
+  <g transform="translate(80, 565)">
+    <polygon points="12,12 32,28 12,44" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <polygon points="28,12 48,28 28,44" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  </g>
+  <text x="150" y="602" class="section-title">Cut-through</text>
+
+  
+  <text x="80" y="662" class="port-label">Ingress:</text>
+  <rect x="200" y="635" width="650" height="42" class="bar-ingress" />
+  <rect x="200" y="635" width="90" height="42" fill="#207448" rx="6" />
+  <text x="310" y="664" class="text-bold" fill="#12452a">1500-byte frame arriving</text>
+
+  
+  <line x1="290" y1="677" x2="290" y2="725" stroke="#db8129" stroke-width="3" />
+  <polygon points="290,730 284,718 296,718" fill="#db8129" />
+
+  
+  <rect x="305" y="688" width="455" height="38" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="315" y="715" class="text-orange">14 to 24 bytes (destination MAC read)</text>
+
+  
+  <text x="80" y="752" class="port-label">Egress:</text>
+  <rect x="290" y="730" width="650" height="42" class="bar-cut" />
+  <text x="310" y="760" class="text-bold" fill="#ffffff">Frame departs while tail is still arriving</text>
+
+  
+  <rect x="80" y="795" width="880" height="165" class="panel-white" />
+  <text x="105" y="830" class="text-main">
+    <tspan x="105" dy="0">latency stays at a few hundred nanoseconds whatever the frame size; </tspan>
+    <tspan x="105" dy="34" class="text-orange">a corrupted frame may already be on its way before the FCS is checked,</tspan>
+    <tspan x="105" dy="34">though some designs poison such frames at egress</tspan>
+  </text>
+
+
+  
+
+  <rect x="1020" y="100" width="530" height="880" class="panel-bg" />
+
+  
+  <g transform="translate(1050, 130)">
+    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="16" y1="22" x2="40" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="16" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
   </g>
 
   
-  
-  
-  <g id="cut-through-panel">
-    <rect x="40" y="530" width="1010" height="390" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-    
-    <rect x="65" y="550" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M 73 573 L 110 573 M 104 565 L 113 573 L 104 581" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="57" y1="563" x2="65" y2="563" stroke="#207448" stroke-width="3"/>
-    <line x1="57" y1="583" x2="65" y2="583" stroke="#207448" stroke-width="3"/>
-    <line x1="121" y1="563" x2="129" y2="563" stroke="#207448" stroke-width="3"/>
-    <line x1="121" y1="583" x2="129" y2="583" stroke="#207448" stroke-width="3"/>
-
-    
-    <text x="135" y="585" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Cut-through</text>
-
-    
-    <rect x="180" y="588" width="580" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="470" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">first 14 to 24 bytes (destination MAC read)</text>
-    <path d="M 225 630 L 225 640" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
-
-    
-    <rect x="180" y="642" width="350" height="52" rx="8" fill="#207448"/>
-    <rect x="180" y="642" width="70" height="52" rx="8" fill="#3da36d"/>
-
-    
-    <path d="M 250 694 L 250 710" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
-
-    
-    <rect x="250" y="715" width="350" height="52" rx="8" fill="#207448"/>
-
-    
-    <line x1="530" y1="642" x2="530" y2="775" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6 4"/>
-
-    
-    <rect x="55" y="795" width="980" height="110" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
-    <text x="75" y="826" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="75" dy="0">latency stays at a few hundred nanoseconds whatever the frame size;</tspan>
-      <tspan x="75" dy="32" font-weight="bold" fill="#db8129">a corrupted frame may already be on its way before the FCS is checked,</tspan>
-      <tspan x="75" dy="32">though some designs poison such frames at egress</tspan>
-    </text>
-  </g>
+  <text x="1120" y="152" class="section-title">Serialisation delay =</text>
+  <text x="1120" y="188" class="section-title">frame size / link rate</text>
 
   
-  
-  
-  <g id="right-panel">
-    <rect x="1090" y="110" width="470" height="810" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-    
-    <circle cx="1325" cy="155" r="24" fill="none" stroke="#207448" stroke-width="4"/>
-    <polyline points="1325,139 1325,155 1339,155" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="1321" y1="125" x2="1329" y2="125" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <line x1="1325" y1="125" x2="1325" y2="131" stroke="#207448" stroke-width="4"/>
-
-    
-    <text x="1325" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="1325" dy="0">Serialisation delay =</tspan>
-      <tspan x="1325" dy="38">frame size / link rate</tspan>
-    </text>
-
-    
-    <rect x="1115" y="300" width="420" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1325" y="355" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="1325" dy="0">1500-byte frame</tspan>
-      <tspan x="1325" dy="34">at 100 Gb/s: 120 ns</tspan>
-    </text>
-
-    
-    <path d="M 1325 440 L 1325 470" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
-
-    
-    <rect x="1115" y="480" width="420" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1325" y="535" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="1325" dy="0">same frame at 1 Gb/s:</tspan>
-      <tspan x="1325" dy="34">12 microseconds</tspan>
-    </text>
-
-    
-    <path d="M 1325 620 L 1325 650" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
-
-    
-    <rect x="1115" y="660" width="420" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="1325" y="710" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
-      <tspan x="1325" dy="0">about a hundred</tspan>
-      <tspan x="1325" dy="34">times longer</tspan>
-    </text>
-  </g>
+  <rect x="1050" y="235" width="470" height="180" class="panel-white" />
+  <text x="1075" y="280" class="text-bold">1500-byte frame at 100 Gb/s: 120 ns</text>
 
   
-  
-  
-  <g id="footer-panel">
-    <rect x="40" y="960" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="800" y="1000" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="800" dy="0">Data-centre switch port-to-port latency: about 300 ns to 1 microsecond with cut-through;</tspan>
-      <tspan x="800" dy="34">a multi-hop collective may cross 3 to 5 hops in a Clos fabric</tspan>
-    </text>
-  </g>
+  <rect x="1075" y="315" width="16" height="36" fill="#207448" rx="4" />
+  <line x1="1095" y1="333" x2="1350" y2="333" stroke="#88bba0" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="1105" y="340" class="text-main" fill="#50665a">tiny delay (120 ns)</text>
 
   
+  <rect x="1050" y="445" width="470" height="230" class="panel-white" />
+  <text x="1075" y="490" class="text-bold">same frame at 1 Gb/s: 12 microseconds</text>
+
   
+  <rect x="1075" y="525" width="420" height="36" fill="#88bba0" stroke="#207448" stroke-width="2" rx="4" />
+  <text x="1085" y="551" class="text-bold" fill="#12452a">100× duration</text>
+
   
-  <g id="bottom-bar">
-    <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448"/>
-    <text x="800" y="1134" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A store-and-forward hop adds the serialisation delay every time</text>
-  </g>
+  <rect x="1050" y="705" width="470" height="90" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="2" />
+  <text x="1285" y="760" class="text-orange" text-anchor="middle">about a hundred times longer</text>
+
+  
+  <rect x="1050" y="825" width="470" height="125" class="panel-white" />
+  <text x="1075" y="865" class="text-main">
+    <tspan x="1075" dy="0">12 µs vs 0.12 µs serialisation</tspan>
+    <tspan x="1075" dy="34">makes store-and-forward</tspan>
+    <tspan x="1075" dy="34">prohibitive for low-latency fabrics.</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="50" y="1005" width="1500" height="110" class="panel-bg" />
+  <text x="80" y="1048" class="text-main">
+    <tspan x="80" dy="0">Data-centre switch port-to-port latency: about 300 ns to 1 microsecond with cut-through;</tspan>
+    <tspan x="80" dy="36">a multi-hop collective may cross 3 to 5 hops in a Clos fabric</tspan>
+  </text>
+
+  
+  <rect x="50" y="1135" width="1500" height="70" class="footer-bar" />
+  <text x="800" y="1179" class="footer-text">A store-and-forward hop adds the serialisation delay every time</text>
+
 </svg>

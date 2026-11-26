@@ -1,193 +1,178 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1370" width="1600" height="1370">
   <title>Revocation is hard, so shorten lifetimes and watch expiry</title>
-  <desc>Infographic contrasting complex certificate revocation mechanisms with the modern approach of short-lived automated certificates and proactive expiry monitoring.</desc>
+  <desc>Infographic explaining revocation mechanisms, automated short lifetimes, certificate monitoring strategies, and cluster security practices.</desc>
 
   <defs>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
     </marker>
-    <filter id="shadow" x="-4%" y="-2%" width="108%" height="106%" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b3b2b" flood-opacity="0.06" />
-    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1370" fill="#f5f8f5"/>
 
   
-  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Revocation is hard, so shorten lifetimes and watch expiry</text>
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Revocation is hard, so shorten lifetimes and watch expiry</text>
 
   
-  <rect x="40" y="130" width="430" height="765" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  <rect x="40" y="110" width="425" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
   
-  <g transform="translate(64, 150)">
-    
-    <path d="M 28 6 L 50 14 C 50 36 28 50 28 50 C 28 50 6 36 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    <path d="M 18 28 L 38 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <path d="M 22 20 L 34 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <text x="68" y="38" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Revocation mechanisms</text>
+  <g transform="translate(60, 130)">
+    <path d="M 20 4 L 4 10 L 4 24 C 4 34 11 43 20 46 C 29 43 36 34 36 24 L 36 10 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 14 24 L 26 24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
+  <text x="115" y="165" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Revocation mechanisms</text>
 
   
-  <rect x="64" y="225" width="382" height="130" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="84" y="278" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="84" dy="0">CRL: large lists of</tspan>
-    <tspan x="84" dy="34">cancelled certificates</tspan>
+  <rect x="65" y="200" width="375" height="135" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="85" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">CRL:</tspan><tspan fill="#303a36"> large lists of</tspan>
+    <tspan x="85" dy="34">cancelled certificates</tspan>
   </text>
 
   
-  <rect x="64" y="375" width="382" height="160" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="84" y="420" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="84" dy="0">OCSP: online status</tspan>
-    <tspan x="84" dy="32">checks, raises privacy</tspan>
-    <tspan x="84" dy="32">and availability problems</tspan>
+  <rect x="65" y="355" width="375" height="170" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="85" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">OCSP:</tspan><tspan fill="#303a36"> online status checks,</tspan>
+    <tspan x="85" dy="34">raises privacy and</tspan>
+    <tspan x="85" dy="34">availability problems</tspan>
   </text>
 
   
-  <rect x="64" y="555" width="382" height="185" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="84" y="600" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="84" dy="0">OCSP stapling: the server</tspan>
-    <tspan x="84" dy="32">attaches a signed recent</tspan>
-    <tspan x="84" dy="32">status, helps with those</tspan>
-    <tspan x="84" dy="32">problems</tspan>
+  <rect x="65" y="545" width="375" height="210" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="85" y="595" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">OCSP stapling:</tspan><tspan fill="#303a36"> the server</tspan>
+    <tspan x="85" dy="34">attaches a signed recent</tspan>
+    <tspan x="85" dy="34">status, helps with those</tspan>
+    <tspan x="85" dy="34">problems</tspan>
   </text>
 
   
-  <rect x="64" y="760" width="382" height="115" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="84" y="808" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="84" dy="0">CRLite and pushed sets</tspan>
-    <tspan x="84" dy="34">in browsers</tspan>
-  </text>
-
-
-  
-  
-  <rect x="510" y="130" width="480" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#shadow)" />
-  <text x="530" y="172" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="530" dy="0">The modern answer: short-lived</tspan>
-    <tspan x="530" dy="32">certificates with automated</tspan>
-    <tspan x="530" dy="32">renewal, so revocation</tspan>
-    <tspan x="530" dy="32">matters less</tspan>
+  <rect x="65" y="775" width="375" height="135" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="85" y="830" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">CRLite</tspan><tspan fill="#303a36"> and pushed sets</tspan>
+    <tspan x="85" dy="34">in browsers</tspan>
   </text>
 
   
-  <path d="M 470 217 L 510 217" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-  <path d="M 750 305 L 750 348" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+  <path d="M 465 220 L 500 220" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)"/>
+  
+  <rect x="505" y="115" width="435" height="215" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <text x="525" y="160" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0" font-weight="bold" fill="#db8129">The modern answer:</tspan>
+    <tspan x="525" dy="35">short-lived certificates with</tspan>
+    <tspan x="525" dy="35">automated renewal, so</tspan>
+    <tspan x="525" dy="35">revocation matters less</tspan>
+  </text>
 
+  <path d="M 722 330 L 722 355" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)"/>
 
   
-  <rect x="510" y="350" width="480" height="545" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  <rect x="490" y="360" width="465" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g transform="translate(534, 370)">
-    
-    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
-    <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    <text x="68" y="38" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Lifetimes</text>
+  <g transform="translate(510, 378)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 20 10 L 20 20 L 27 25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
+  <text x="565" y="410" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Lifetimes</text>
 
   
-  <rect x="534" y="440" width="432" height="85" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="554" y="492" font-family="sans-serif" font-size="24px" fill="#303a36">Let's Encrypt 90 days</text>
-
-  
-  <rect x="534" y="545" width="432" height="150" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="554" y="588" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="554" dy="0">the industry is moving</tspan>
-    <tspan x="554" dy="32">toward even shorter</tspan>
-    <tspan x="554" dy="32">lifetimes, so automation</tspan>
-    <tspan x="554" dy="32">is mandatory</tspan>
+  <rect x="510" y="445" width="425" height="90" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="530" y="500" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan fill="#303a36">Let's Encrypt 90 days</tspan>
   </text>
 
   
-  <rect x="534" y="715" width="432" height="160" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="554" y="756" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="554" dy="0">kubeadm cluster</tspan>
-    <tspan x="554" dy="30">certificates mostly 1 year:</tspan>
-    <tspan x="554" dy="30">a cluster that ran a year</tspan>
-    <tspan x="554" dy="30">can stop answering on the</tspan>
-    <tspan x="554" dy="30">anniversary of installation</tspan>
+  <rect x="510" y="555" width="425" height="150" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="530" y="605" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="530" dy="0">the industry is moving toward</tspan>
+    <tspan x="530" dy="34">even shorter lifetimes, so</tspan>
+    <tspan x="530" dy="34">automation is mandatory</tspan>
   </text>
 
+  
+  <rect x="510" y="725" width="425" height="265" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="530" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="530" dy="0">kubeadm cluster certificates</tspan>
+    <tspan x="530" dy="34">mostly 1 year: a cluster that</tspan>
+    <tspan x="530" dy="34">ran a year can stop answering</tspan>
+    <tspan x="530" dy="34">on the anniversary of</tspan>
+    <tspan x="530" dy="34">installation</tspan>
+  </text>
 
   
-  <rect x="1030" y="130" width="530" height="765" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  <rect x="980" y="110" width="580" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g transform="translate(1054, 150)">
-    
-    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 12 30 L 20 30 L 25 18 L 33 40 L 38 28 L 44 28" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    <text x="68" y="38" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Monitoring panel</text>
+  <g transform="translate(1005, 130)">
+    <rect x="2" y="4" width="38" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 6 22 L 14 22 L 18 12 L 24 30 L 28 22 L 36 22" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
+  <text x="1060" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Monitoring panel</text>
 
   
-  <rect x="1054" y="220" width="482" height="64" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="260" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan font-family="sans-serif">Prometheus </tspan>
-    <tspan font-family="monospace">x509-certificate-exporter</tspan>
+  <rect x="1005" y="195" width="530" height="85" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1025" y="232" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="1025" dy="0">Prometheus</tspan>
+    <tspan x="1025" dy="32">x509-certificate-exporter</tspan>
   </text>
 
   
-  <rect x="1054" y="296" width="482" height="88" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="334" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="1074" dy="0" font-family="sans-serif">blackbox exporter</tspan>
-    <tspan x="1074" dy="32" font-family="monospace">probe_ssl_earliest_cert_expiry</tspan>
+  <rect x="1005" y="295" width="530" height="85" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1025" y="332" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1025" dy="0">blackbox exporter</tspan>
+    <tspan x="1025" dy="32" font-family="monospace" fill="#207448">probe_ssl_earliest_cert_expiry</tspan>
   </text>
 
   
-  <rect x="1054" y="396" width="482" height="110" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="434" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="1074" dy="0">alert at 21, 7 and 3 days:</tspan>
-    <tspan x="1074" dy="30">the first alert at 21 days</tspan>
-    <tspan x="1074" dy="30">leaves three weeks to renew</tspan>
+  <rect x="1005" y="395" width="530" height="125" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1025" y="435" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1025" dy="0">alert at 21, 7 and 3 days: the first</tspan>
+    <tspan x="1025" dy="34">alert at 21 days leaves three weeks</tspan>
+    <tspan x="1025" dy="34">to renew</tspan>
   </text>
 
   
-  <rect x="1054" y="518" width="482" height="54" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="554" font-family="monospace" font-size="24px" fill="#303a36">kubeadm certs check-expiration</text>
+  <rect x="1005" y="535" width="258" height="85" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1018" y="570" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="1018" dy="0">kubeadm certs</tspan>
+    <tspan x="1018" dy="32">check-expiration</tspan>
+  </text>
 
-  
-  <rect x="1054" y="584" width="482" height="54" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="620" font-family="monospace" font-size="24px" fill="#303a36">kubeadm certs renew all</text>
-
-  
-  <rect x="1054" y="650" width="482" height="132" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="686" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="1074" dy="0">kubelet client certificates</tspan>
-    <tspan x="1074" dy="30">rotate automatically if</tspan>
-    <tspan x="1074" dy="30"><tspan font-family="monospace">rotateCertificates</tspan> is enabled</tspan>
-    <tspan x="1074" dy="30">and CSRs are approved</tspan>
+  <rect x="1277" y="535" width="258" height="85" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1292" y="570" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="1292" dy="0">kubeadm certs</tspan>
+    <tspan x="1292" dy="32">renew all</tspan>
   </text>
 
   
-  <rect x="1054" y="794" width="482" height="85" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
-  <text x="1074" y="830" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="1074" dy="0">cron or shell loop with</tspan>
-    <tspan x="1074" dy="32"><tspan font-family="monospace">openssl x509 -checkend</tspan> and a threshold</tspan>
+  <rect x="1005" y="635" width="530" height="125" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1025" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1025" dy="0">kubelet client certificates rotate</tspan>
+    <tspan x="1025" dy="34">automatically if rotateCertificates</tspan>
+    <tspan x="1025" dy="34">is enabled and CSRs are approved</tspan>
   </text>
 
-
   
-  <rect x="40" y="915" width="1520" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
-  <g transform="translate(64, 940)">
-    
-    <path d="M 24 6 L 44 42 L 4 42 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    <line x1="24" y1="20" x2="24" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="24" cy="35" r="2.5" fill="#207448" />
-  </g>
-  <text x="130" y="955" font-family="sans-serif" font-size="24px" fill="#303a36">
-    <tspan x="130" dy="0">Clock skew also breaks certificates: a node a day ahead may call a good certificate expired;</tspan>
-    <tspan x="130" dy="32">install and monitor NTP or chrony (chapter 1.16); BMC, Redfish and switch</tspan>
-    <tspan x="130" dy="32">certificates often ship self-signed: replace with CA-issued certificates or pin</tspan>
-    <tspan x="130" dy="32">fingerprints, avoid blanket <tspan font-family="monospace">verify=False</tspan>; Kubernetes Secrets are only base64:</tspan>
-    <tspan x="130" dy="32">use encryption at rest, Vault or cloud KMS, short lifetimes and RBAC</tspan>
+  <rect x="1005" y="775" width="530" height="125" rx="10" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="1025" y="815" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1025" dy="0">cron or shell loop with</tspan>
+    <tspan x="1025" dy="34" font-family="monospace" fill="#207448">openssl x509 -checkend</tspan>
+    <tspan x="1025" dy="34">and a threshold</tspan>
   </text>
 
+  
+  <rect x="40" y="1040" width="1520" height="195" rx="12" fill="#ffffff" stroke="#c0d8c6" stroke-width="1.5"/>
+  <text x="65" y="1080" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">Clock skew also breaks certificates: a node a day ahead may call a good certificate expired;</tspan>
+    <tspan x="65" dy="36">install and monitor NTP or chrony (chapter 1.16); BMC, Redfish and switch certificates often ship self-signed:</tspan>
+    <tspan x="65" dy="36">replace with CA-issued certificates or pin fingerprints, avoid blanket verify=False;</tspan>
+    <tspan x="65" dy="36">Kubernetes Secrets are only base64: use encryption at rest, Vault or cloud KMS, short lifetimes and RBAC</tspan>
+  </text>
 
   
-  <rect x="40" y="1130" width="1520" height="50" rx="8" fill="#207448" />
-  <text x="800" y="1164" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Check the expiry dates of the cluster certificates now</text>
-
+  <rect x="40" y="1255" width="1520" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1300" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Check the expiry dates of the cluster certificates now</text>
 </svg>

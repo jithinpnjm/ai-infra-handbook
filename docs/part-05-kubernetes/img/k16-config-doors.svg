@@ -1,168 +1,156 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Three ways into one ConfigMap, and which ones pick up a change</title>
-  <desc>Visual comparison showing how environment variables, a volumeMount directory, and a subPath single file mount consume a Kubernetes ConfigMap, and which access methods pick up live configuration updates.</desc>
+  <desc>Visual comparison showing how environment variables, volume mounts, and subPath mounts consume a Kubernetes ConfigMap, and which mechanisms reflect live updates.</desc>
 
   <defs>
     
-    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
     </marker>
-    <marker id="arrow-grey" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#788880" />
-    </marker>
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5" />
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
-  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Three ways into one ConfigMap, </tspan>
-    <tspan x="800" dy="56">and which ones pick up a change</tspan>
-  </text>
+  <text x="80" y="75" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Three ways into one ConfigMap, and which ones pick up a change</text>
 
   
-  <g id="configmap-group">
+  <g transform="translate(70, 140)">
     
-    <rect x="60" y="325" width="380" height="390" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <rect x="0" y="0" width="370" height="790" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
 
     
-    <circle cx="105" cy="370" r="24" fill="#207448" />
-    <text x="105" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <circle cx="50" cy="50" r="24" fill="#207448"/>
+    <text x="50" y="58" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
 
     
-    <g transform="translate(150, 346)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="24" cy="12" rx="22" ry="8" fill="#ffffff" />
-      <path d="M 2 12 V 34 C 2 38.4 11.9 42 24 42 C 36.1 42 46 38.4 46 34 V 12" />
-      <path d="M 2 23 C 2 27.4 11.9 31 24 31 C 36.1 31 46 27.4 46 23" />
+    <g transform="translate(160, 26)" stroke="#207448" stroke-width="3.5" fill="none">
+      <ellipse cx="25" cy="14" rx="22" ry="9" fill="#ffffff"/>
+      <path d="M 3 14 v 28 c 0 5 10 9 22 9 s 22 -4 22 -9 v -28"/>
+      <path d="M 3 28 c 0 5 10 9 22 9 s 22 -4 22 -9"/>
     </g>
 
     
-    <text x="250" y="438" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="250" dy="0">trainer-config </tspan>
-      <tspan x="250" dy="36">(ConfigMap)</tspan>
-    </text>
+    <text x="185" y="125" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">trainer-config (ConfigMap)</text>
 
     
-    <rect x="90" y="520" width="320" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="250" y="559" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">LOG_LEVEL</text>
+    <rect x="35" y="190" width="300" height="120" rx="12" fill="#ffffff" stroke="#c0d4c4" stroke-width="2"/>
+    <text x="60" y="240" font-family="sans-serif" font-size="24" fill="#607067">key / env</text>
+    <text x="60" y="278" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">LOG_LEVEL</text>
 
     
-    <rect x="90" y="605" width="320" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="250" y="644" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">hparams.yaml</text>
+    <rect x="35" y="440" width="300" height="150" rx="12" fill="#ffffff" stroke="#c0d4c4" stroke-width="2"/>
+    <text x="60" y="490" font-family="sans-serif" font-size="24" fill="#607067">key / volume</text>
+    <text x="60" y="535" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">hparams.yaml</text>
   </g>
 
   
-
-  
-  <g id="door-1-group">
+  <g transform="translate(1010, 140)">
     
-    <path d="M 440 420 H 550 Q 580 420 580 370 V 345 Q 580 320 610 320 H 936" fill="none" stroke="#788880" stroke-width="4" marker-end="url(#arrow-grey)" />
+    <rect x="0" y="0" width="520" height="790" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
 
     
-    <rect x="610" y="250" width="260" height="44" rx="8" fill="#ffffff" stroke="#788880" stroke-width="2" />
-    <text x="740" y="280" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">envFrom or env</text>
-
-    
-    <rect x="555" y="345" width="370" height="50" rx="10" fill="#f0f3f1" stroke="#9aa8a1" stroke-width="2" />
-    <text x="740" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">no update while running</text>
-  </g>
-
-  
-  <g id="door-2-group">
-    
-    <circle cx="485" cy="460" r="24" fill="#207448" />
-    <text x="485" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-
-    
-    <line x1="440" y1="520" x2="936" y2="520" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="525" y="450" width="230" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="640" y="480" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">volumeMount</text>
-
-    
-    <rect x="480" y="545" width="420" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    <text x="690" y="580" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="690" dy="0">updates in about </tspan>
-      <tspan x="690" dy="30">1 to 2 minutes via </tspan>
-      <tspan x="690" dy="30">the ..data symlink swap</tspan>
-    </text>
-  </g>
-
-  
-  <g id="door-3-group">
-    
-    <path d="M 440 620 H 550 Q 580 620 580 670 V 700 Q 580 725 610 725 H 936" fill="none" stroke="#788880" stroke-width="4" marker-end="url(#arrow-grey)" />
-
-    
-    <rect x="620" y="655" width="160" height="44" rx="8" fill="#ffffff" stroke="#788880" stroke-width="2" />
-    <text x="700" y="685" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">subPath</text>
-
-    
-    <rect x="650" y="750" width="240" height="50" rx="10" fill="#fff6ed" stroke="#db8129" stroke-width="3" />
-    <text x="770" y="783" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">never updates</text>
-  </g>
-
-  
-  <g id="trainer-container-group">
-    
-    <rect x="940" y="160" width="600" height="695" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
-
-    
-    
-    <g transform="translate(1080, 178)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="46" height="36" rx="5" />
-      <line x1="2" y1="16" x2="48" y2="16" />
-      <circle cx="10" cy="10" r="2.5" fill="#207448" />
-      <circle cx="18" cy="10" r="2.5" fill="#207448" />
-      <circle cx="26" cy="10" r="2.5" fill="#207448" />
+    <g transform="translate(40, 32)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="48" height="40" rx="6" fill="#ffffff"/>
+      <line x1="0" y1="12" x2="48" y2="12"/>
+      <circle cx="8" cy="6" r="2" fill="#207448"/>
+      <circle cx="16" cy="6" r="2" fill="#207448"/>
     </g>
 
     
-    <text x="1240" y="210" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">trainer</text>
-
-    
-    <g transform="translate(1350, 178)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="22" cy="22" r="9" />
-      <circle cx="22" cy="22" r="3" fill="#207448" />
-      <line x1="22" y1="3" x2="22" y2="8" />
-      <line x1="22" y1="36" x2="22" y2="41" />
-      <line x1="3" y1="22" x2="8" y2="22" />
-      <line x1="36" y1="22" x2="41" y2="22" />
-      <line x1="8.5" y1="8.5" x2="12" y2="12" />
-      <line x1="32" y1="32" x2="35.5" y2="35.5" />
-      <line x1="8.5" y1="35.5" x2="12" y2="32" />
-      <line x1="32" y1="12" x2="35.5" y2="8.5" />
+    <g transform="translate(100, 30)" stroke="#207448" stroke-width="3" fill="#ffffff">
+      <path d="M22 13l2-5 5 2-1 5a14 14 0 0 1 4 2l4-3 4 4-3 4a14 14 0 0 1 2 4l5-1 2 5-5 2a14 14 0 0 1 0 4l5 2-2 5-5-1a14 14 0 0 1-2 4l3 4-4 4-4-3a14 14 0 0 1-4 2l1 5-5 2-2-5a14 14 0 0 1-4 0l-2 5-5-2 1-5a14 14 0 0 1-4-2l-4 3-4-4 3-4a14 14 0 0 1-2-4l-5 1-2-5 5-2a14 14 0 0 1 0-4l-5-2 2-5 5 1a14 14 0 0 1 2-4l-3-4 4-4 4 3a14 14 0 0 1 4-2l-1-5 5-2 2 5a14 14 0 0 1 4 0z" />
+      <circle cx="24" cy="24" r="6" fill="#e8f1ea"/>
     </g>
 
     
-    <rect x="970" y="245" width="540" height="150" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
-    <text x="1240" y="298" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">environment variables</text>
-    <text x="1240" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#506058">read at container start</text>
+    <text x="170" y="60" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">trainer container</text>
 
     
-    <rect x="970" y="445" width="540" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    <text x="1240" y="508" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1240" dy="0">file at /etc/trainer/hparams.yaml </tspan>
-      <tspan x="1240" dy="34">read-only</tspan>
-    </text>
+    <g transform="translate(30, 110)">
+      <rect x="0" y="0" width="460" height="150" rx="12" fill="#ffffff" stroke="#c0d4c4" stroke-width="2"/>
+      <text x="30" y="55" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">environment variables</text>
+      <text x="30" y="105" font-family="sans-serif" font-size="24" fill="#607067">read at container start</text>
+    </g>
 
     
-    <rect x="970" y="650" width="540" height="150" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
-    <text x="1240" y="735" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">single file bind mount</text>
+    
+    <g transform="translate(30, 340)">
+      <rect x="0" y="0" width="460" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <text x="30" y="50" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">file at</text>
+      <text x="30" y="90" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">/etc/trainer/hparams.yaml</text>
+      <text x="30" y="130" font-family="sans-serif" font-size="24" fill="#607067">read-only</text>
+    </g>
+
+    
+    <g transform="translate(30, 580)">
+      <rect x="0" y="0" width="460" height="140" rx="12" fill="#ffffff" stroke="#c0d4c4" stroke-width="2"/>
+      <text x="30" y="60" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">single file bind mount</text>
+      <text x="30" y="105" font-family="monospace" font-size="24" fill="#607067">hparams.yaml</text>
+    </g>
   </g>
 
   
-  <rect x="970" y="875" width="540" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="1240" y="908" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1240" dy="0">to pick up an env change, </tspan>
-    <tspan x="1240" dy="30">start a new container</tspan>
-  </text>
+  <text x="1270" y="970" font-family="sans-serif" font-size="24" fill="#607067" text-anchor="middle">to pick up an env change, start a new container</text>
 
   
-  <g id="takeaway-bar">
-    <rect x="50" y="975" width="1500" height="70" rx="12" fill="#207448" />
-    <text x="800" y="1019" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">env values are fixed at start, volumes refresh in place, and subPath never sees a change.</text>
+
+  
+  <g>
+    
+    <path d="M 440 330 L 1006 330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+    
+    
+    <rect x="470" y="270" width="220" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="580" y="302" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">envFrom or env</text>
+
+    
+    <rect x="715" y="270" width="265" height="46" rx="23" fill="#edf1ee" stroke="#8a968f" stroke-width="2"/>
+    <text x="847" y="302" font-family="sans-serif" font-size="24" fill="#404b46" text-anchor="middle">no update while running</text>
+  </g>
+
+  
+  <g>
+    
+    <circle cx="480" cy="520" r="24" fill="#207448"/>
+    <text x="480" y="528" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <path d="M 440 560 L 1006 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+    
+    <rect x="520" y="497" width="180" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="610" y="529" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">volumeMount</text>
+
+    
+    
+    <rect x="470" y="585" width="510" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="725" y="620" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">updates in about 1 to 2 minutes</text>
+    <text x="725" y="652" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">via the ..data symlink swap</text>
+  </g>
+
+  
+  <g>
+    
+    <path d="M 440 790 L 1006 790" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+    
+    <rect x="470" y="730" width="150" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="545" y="762" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">subPath</text>
+
+    
+    <rect x="640" y="730" width="220" height="46" rx="23" fill="#db8129" stroke="#b36214" stroke-width="2"/>
+    <text x="750" y="762" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">never updates</text>
+  </g>
+
+  
+  <g transform="translate(70, 1050)">
+    <rect x="0" y="0" width="1460" height="90" rx="16" fill="#207448"/>
+    <text x="730" y="54" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">env values are fixed at start, volumes refresh in place, and subPath never sees a change.</text>
   </g>
 </svg>

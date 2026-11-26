@@ -1,272 +1,292 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Who owns the interface: network managers, how NetworkManager chooses, and the rules for safe changes</title>
-  <desc>Visual explanation of Linux network managers and their configuration files, NetworkManager startup decision logic in four steps, and safe operational change rules.</desc>
+  <desc>Visual explanation of Linux network managers, NetworkManager startup selection order, and rules for safe network changes.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Who owns the interface: network managers,</text>
-  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">how NetworkManager chooses, and the rules for safe changes</text>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">Who owns the interface: network managers,</text>
+  <text x="800" y="115" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">how NetworkManager chooses, and the rules for safe changes</text>
 
   
-  <rect x="40" y="145" width="550" height="955" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="40" y="160" width="520" height="1210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
 
   
-  <text x="64" y="180" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">NetworkManager:</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">/etc/NetworkManager/,</tspan>
-    <tspan x="64" dy="28" font-size="24">connections in</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">/etc/NetworkManager/</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">system-connections/,</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">nmcli nmtui nm-online,</tspan>
-    <tspan x="64" dy="28" font-size="24">dispatcher scripts in <tspan font-family="monospace">dispatcher.d</tspan></tspan>
-  </text>
-  <line x1="60" y1="365" x2="570" y2="365" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="398" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">systemd-networkd:</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">/etc/systemd/network/*.network</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">.netdev .link, networkctl,</tspan>
-    <tspan x="64" dy="28" font-size="24">pairs with <tspan font-family="monospace">systemd-resolved</tspan></tspan>
-  </text>
-  <line x1="60" y1="498" x2="570" y2="498" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="530" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">Netplan:</tspan>
-    <tspan font-size="24" font-family="monospace"> /etc/netplan/*.yaml,</tspan>
-    <tspan x="64" dy="28" font-size="24">YAML front end rendering for</tspan>
-    <tspan x="64" dy="28" font-size="24">NetworkManager or networkd;</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">netplan try, apply, generate;</tspan>
-    <tspan x="64" dy="28" font-size="24">cloud-init writes it</tspan>
-  </text>
-  <line x1="60" y1="658" x2="570" y2="658" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="690" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">ifupdown:</tspan>
-    <tspan font-size="24" font-family="monospace"> /etc/network/interfaces,</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">if-up.d</tspan>
-  </text>
-  <line x1="60" y1="738" x2="570" y2="738" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="770" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">cloud-init:</tspan>
-    <tspan font-size="24" font-family="monospace"> /etc/cloud/,</tspan>
-    <tspan x="64" dy="28" font-size="24">generates Netplan, NM or networkd</tspan>
-    <tspan x="64" dy="28" font-size="24">config from metadata</tspan>
-  </text>
-  <line x1="60" y1="846" x2="570" y2="846" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="878" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">dhclient, dhcpcd or</tspan>
-    <tspan x="64" dy="32" font-size="30" font-weight="bold" fill="#207448">NM internal DHCP:</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">/var/lib/dhcp/*.leases</tspan>
-  </text>
-  <line x1="60" y1="954" x2="570" y2="954" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="986" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">wpa_supplicant or iwd:</tspan>
-    <tspan x="64" dy="28" font-size="24">Wi-Fi authentication</tspan>
-  </text>
-  <line x1="60" y1="1028" x2="570" y2="1028" stroke="#d0ded3" stroke-width="1.5" />
-
-  
-  <text x="64" y="1058" font-family="sans-serif" fill="#303a36">
-    <tspan x="64" dy="0" font-size="30" font-weight="bold" fill="#207448">udev .link files:</tspan>
-    <tspan font-size="24"> interface naming,</tspan>
-    <tspan x="64" dy="28" font-size="24" font-family="monospace">net.ifnames=0</tspan>
-  </text>
-
-
-  
-
-  
-  <rect x="630" y="145" width="420" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="666" cy="183" r="24" fill="#207448" />
-  <text x="666" y="192" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-  
-  <g transform="translate(966, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="12" width="48" height="34" rx="6" />
-    <path d="M 18 12 L 18 4 L 38 4 L 38 12" />
-    <line x1="16" y1="32" x2="16" y2="46" />
-    <line x1="24" y1="32" x2="24" y2="46" />
-    <line x1="32" y1="32" x2="32" y2="46" />
-    <line x1="40" y1="32" x2="40" y2="46" />
+  <g>
+    <rect x="60" y="180" width="480" height="240" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    
+    <path d="M 80 208 L 84 208 L 86 202 L 90 204 L 94 200 L 92 196 L 98 194 L 98 190 L 92 188 L 94 184 L 90 180 L 86 182 L 84 176 L 80 176 L 78 182 L 74 180 L 70 184 L 72 188 L 66 190 L 66 194 L 72 196 L 70 200 L 74 204 L 78 202 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="82" cy="192" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="120" y="210" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">NetworkManager:</text>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" y="246">/etc/NetworkManager/,</tspan>
+      <tspan x="80" y="278">connections in</tspan>
+      <tspan x="80" y="310">/etc/NetworkManager/</tspan>
+      <tspan x="80" y="342">system-connections/,</tspan>
+      <tspan x="80" y="374">nmcli nmtui nm-online,</tspan>
+      <tspan x="80" y="406">dispatcher scripts in dispatcher.d</tspan>
+    </text>
   </g>
-  <text x="654" y="244" font-family="sans-serif" fill="#303a36">
-    <tspan x="654" dy="0" font-size="30" font-weight="bold" fill="#207448">1 wired available:</tspan>
-    <tspan x="654" dy="30" font-size="24">use it, otherwise</tspan>
-    <tspan x="654" dy="28" font-size="24">try wireless</tspan>
-  </text>
 
   
-  <line x1="840" y1="325" x2="840" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <rect x="630" y="395" width="420" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="666" cy="433" r="24" fill="#207448" />
-  <text x="666" y="442" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-  
-  <g transform="translate(966, 405)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
-    <circle cx="28" cy="46" r="4" fill="#207448" />
-    <path d="M 16 34 A 18 18 0 0 1 40 34" />
-    <path d="M 8 24 A 28 28 0 0 1 48 24" />
-    <path d="M 2 14 A 38 38 0 0 1 54 14" />
+  <g>
+    <rect x="60" y="432" width="480" height="148" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    
+    <rect x="75" y="446" width="32" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 81 454 L 87 458 L 81 462" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="120" y="466" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">systemd-networkd:</text>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" y="500">/etc/systemd/network/*.network</tspan>
+      <tspan x="80" y="532">.netdev .link, networkctl,</tspan>
+      <tspan x="80" y="564">pairs with systemd-resolved</tspan>
+    </text>
   </g>
-  <text x="654" y="490" font-family="sans-serif" fill="#303a36">
-    <tspan x="654" dy="0" font-size="30" font-weight="bold" fill="#207448">2 scan wireless;</tspan>
-    <tspan x="654" dy="30" font-size="24">a previously used</tspan>
-    <tspan x="654" dy="28" font-size="24">network in range</tspan>
-    <tspan x="654" dy="28" font-size="24">is tried again</tspan>
-  </text>
 
   
-  <line x1="840" y1="585" x2="840" y2="655" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <rect x="630" y="655" width="420" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="666" cy="693" r="24" fill="#207448" />
-  <text x="666" y="702" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  
-  <g transform="translate(966, 665)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="24" />
-    <polyline points="28,14 28,28 38,34" />
+  <g>
+    <rect x="60" y="592" width="480" height="188" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    
+    <path d="M 77 606 L 97 606 L 105 614 L 105 634 L 77 634 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 97 606 L 97 614 L 105 614" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="120" y="626" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Netplan:</text>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" y="660">/etc/netplan/*.yaml,</tspan>
+      <tspan x="80" y="692">YAML front end rendering for</tspan>
+      <tspan x="80" y="724">NetworkManager or networkd;</tspan>
+      <tspan x="80" y="756">netplan try, apply, generate;</tspan>
+      <tspan x="80" y="788">cloud-init writes it</tspan>
+    </text>
   </g>
-  <text x="654" y="746" font-family="sans-serif" fill="#303a36">
-    <tspan x="654" dy="0" font-size="30" font-weight="bold" fill="#207448">3 several known</tspan>
-    <tspan x="654" dy="32" font-size="30" font-weight="bold" fill="#207448">networks:</tspan>
-    <tspan x="654" dy="30" font-size="24">the most recently used</tspan>
-  </text>
 
   
-  <line x1="840" y1="835" x2="840" y2="905" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <rect x="630" y="905" width="420" height="195" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="666" cy="943" r="24" fill="#207448" />
-  <text x="666" y="952" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
-  
-  <g transform="translate(966, 915)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 28 4 L 48 12 C 48 34 28 48 28 52 C 28 48 8 34 8 12 Z" />
-    <polyline points="20,28 26,34 38,20" />
+  <g>
+    <rect x="60" y="792" width="480" height="112" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    
+    <rect x="77" y="806" width="26" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="83" y1="814" x2="97" y2="814" stroke="#207448" stroke-width="2" />
+    <line x1="83" y1="822" x2="93" y2="822" stroke="#207448" stroke-width="2" />
+    <text x="120" y="826" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">ifupdown:</text>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" y="860">/etc/network/interfaces,</tspan>
+      <tspan x="80" y="892">if-up.d</tspan>
+    </text>
   </g>
-  <text x="654" y="996" font-family="sans-serif" fill="#303a36">
-    <tspan x="654" dy="0" font-size="30" font-weight="bold" fill="#207448">4 keep the</tspan>
-    <tspan x="654" dy="32" font-size="30" font-weight="bold" fill="#207448">connection</tspan>
-    <tspan x="654" dy="30" font-size="24">until it is lost, a better</tspan>
-    <tspan x="654" dy="28" font-size="24">network appears, or the</tspan>
-    <tspan x="654" dy="28" font-size="24">user changes it</tspan>
-  </text>
-
 
   
-  <rect x="1090" y="145" width="470" height="955" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-  
-  <rect x="1106" y="160" width="438" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1476, 172)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2" y="10" width="40" height="24" rx="12" />
-    <circle cx="14" cy="22" r="6" fill="#207448" />
+  <g>
+    <rect x="60" y="916" width="480" height="128" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    
+    <path d="M 76 938 C 76 932 82 926 88 928 C 91 922 99 922 102 926 C 107 926 110 930 110 936 C 110 940 106 944 102 944 L 78 944 C 74 944 76 938 76 938 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="120" y="942" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">cloud-init:</text>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" y="976">/etc/cloud/,</tspan>
+      <tspan x="80" y="1006">generates Netplan, NM or</tspan>
+      <tspan x="80" y="1036">networkd config from metadata</tspan>
+    </text>
   </g>
-  <text x="1126" y="218" font-family="sans-serif" fill="#303a36">
-    <tspan x="1126" dy="0" font-size="30" font-weight="bold" fill="#207448">Choose one manager</tspan>
-    <tspan x="1126" dy="34" font-size="24">per interface</tspan>
-  </text>
 
   
-  <rect x="1106" y="307" width="438" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1476, 319)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
-    <rect x="4" y="6" width="36" height="12" rx="4" />
-    <circle cx="12" cy="12" r="2" fill="#207448" />
-    <rect x="4" y="24" width="36" height="12" rx="4" />
-    <circle cx="12" cy="30" r="2" fill="#207448" />
+  <g>
+    <rect x="60" y="1056" width="480" height="128" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="80" y="1088">dhclient, dhcpcd or NM</tspan>
+      <tspan x="80" y="1118">internal DHCP:</tspan>
+    </text>
+    <text x="80" y="1156" font-family="monospace" font-size="24" fill="#303a36">/var/lib/dhcp/*.leases</text>
   </g>
-  <text x="1126" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1126" dy="0">keep fabric and storage</tspan>
-    <tspan x="1126" dy="30">NICs unmanaged or</tspan>
-    <tspan x="1126" dy="30">never-default</tspan>
-  </text>
 
   
-  <rect x="1106" y="454" width="438" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1476, 466)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 8 4 L 30 4 L 40 14 L 40 40 L 8 40 Z" />
-    <polyline points="30,4 30,14 40,14" />
-    <line x1="16" y1="24" x2="32" y2="24" />
-    <line x1="16" y1="32" x2="28" y2="32" />
+  <g>
+    <rect x="60" y="1196" width="480" height="80" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" y="1230" font-weight="bold" fill="#207448">wpa_supplicant or iwd:</tspan>
+      <tspan x="80" y="1260">Wi-Fi authentication</tspan>
+    </text>
   </g>
-  <text x="1126" y="496" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1126" dy="0">make configuration</tspan>
-    <tspan x="1126" dy="30">idempotent and declarative,</tspan>
-    <tspan x="1126" dy="30">rendered from inventory</tspan>
-  </text>
 
   
-  <rect x="1106" y="611" width="438" height="175" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3.5" />
-  
-  <g transform="translate(1476, 623)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="22,4 42,38 2,38" />
-    <line x1="22" y1="16" x2="22" y2="26" />
-    <circle cx="22" cy="33" r="1.5" fill="#db8129" />
+  <g>
+    <rect x="60" y="1286" width="480" height="74" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" y="1318" font-weight="bold" fill="#207448">udev .link files:</tspan>
+      <tspan font-family="monospace" font-size="24"> interface naming,</tspan>
+      <tspan x="80" y="1348" font-family="monospace" font-size="24">net.ifnames=0</tspan>
+    </text>
   </g>
-  <text x="1126" y="648" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1126" dy="0">test with <tspan font-family="monospace">netplan try</tspan> or</tspan>
-    <tspan x="1126" dy="30">with console or serial</tspan>
-    <tspan x="1126" dy="30">access before cutting</tspan>
-    <tspan x="1126" dy="30">the link you are connected</tspan>
-    <tspan x="1126" dy="30">over</tspan>
-  </text>
+
 
   
-  <rect x="1106" y="798" width="438" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="580" y="160" width="480" height="1210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
   
-  <g transform="translate(1476, 810)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="22" cy="24" r="18" />
-    <polyline points="22,14 22,24 30,24" />
-    <line x1="16" y1="2" x2="28" y2="2" />
+  <g>
+    <rect x="605" y="195" width="430" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="645" cy="235" r="22" fill="#207448" />
+    <text x="645" y="243" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="975" y="215" width="30" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="990" y1="235" x2="990" y2="250" stroke="#207448" stroke-width="3" />
+    <line x1="983" y1="210" x2="983" y2="215" stroke="#207448" stroke-width="2" />
+    <line x1="997" y1="210" x2="997" y2="215" stroke="#207448" stroke-width="2" />
+
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" y="295" font-weight="bold" fill="#207448">1 wired available: use it,</tspan>
+      <tspan x="625" y="335">otherwise try wireless</tspan>
+    </text>
   </g>
-  <text x="1126" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1126" dy="0">mark non-critical NICs</tspan>
-    <tspan x="1126" dy="30">optional so boot does</tspan>
-    <tspan x="1126" dy="30">not hang</tspan>
-  </text>
 
   
-  <rect x="1106" y="945" width="438" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <line x1="820" y1="385" x2="820" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
   
-  <g transform="translate(1476, 957)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="4" width="32" height="36" rx="4" />
-    <polyline points="14,18 20,24 30,12" />
-    <line x1="14" y1="30" x2="30" y2="30" />
+  <g>
+    <rect x="605" y="445" width="430" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="645" cy="485" r="22" fill="#207448" />
+    <text x="645" y="493" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <path d="M 975 220 A 20 20 0 0 1 1005 220" transform="translate(0, 265)" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 980 226 A 12 12 0 0 1 1000 226" transform="translate(0, 265)" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="990" cy="497" r="3" fill="#207448" />
+
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" y="545" font-weight="bold" fill="#207448">2 scan wireless; a previously</tspan>
+      <tspan x="625" y="585">used network in range</tspan>
+      <tspan x="625" y="625">is tried again</tspan>
+    </text>
   </g>
-  <text x="1126" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1126" dy="0">verify the state after boot</tspan>
-    <tspan x="1126" dy="30">with an audit script</tspan>
-  </text>
-
 
   
-  <rect x="40" y="1120" width="1520" height="60" rx="12" fill="#207448" />
+  <line x1="820" y1="655" x2="820" y2="710" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
   
-  <g transform="translate(68, 1134)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 6 16 A 12 12 0 1 1 18 28 L 6 28" />
-    <polyline points="12,22 6,28 12,34" />
+  <g>
+    <rect x="605" y="715" width="430" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="645" cy="755" r="22" fill="#207448" />
+    <text x="645" y="763" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <circle cx="990" cy="755" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="990,745 990,755 998,755" fill="none" stroke="#207448" stroke-width="3" />
+
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" y="815" font-weight="bold" fill="#207448">3 several known networks:</tspan>
+      <tspan x="625" y="855">the most recently used</tspan>
+    </text>
   </g>
-  <text x="800" y="1158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">netplan try waits for you to confirm and rolls back by itself if you lose the connection</text>
+
+  
+  <line x1="820" y1="905" x2="820" y2="960" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="605" y="965" width="430" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="645" cy="1005" r="22" fill="#207448" />
+    <text x="645" y="1013" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <path d="M 990 990 L 1005 996 L 1005 1010 C 1005 1020 990 1028 990 1028 C 990 1028 975 1020 975 1010 L 975 996 Z" fill="none" stroke="#207448" stroke-width="3" />
+
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" y="1055" font-weight="bold" fill="#207448">4 keep the connection until</tspan>
+      <tspan x="625" y="1092">it is lost, a better network</tspan>
+      <tspan x="625" y="1128">appears, or the user</tspan>
+      <tspan x="625" y="1164">changes it</tspan>
+    </text>
+  </g>
+
+
+  
+  <rect x="1080" y="160" width="480" height="1210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g>
+    <rect x="1105" y="185" width="430" height="110" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <circle cx="1135" cy="215" r="10" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1130 215 L 1134 219 L 1142 210" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1160" y="222">Choose one manager</tspan>
+      <tspan x="1160" y="258">per interface</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1105" y="310" width="430" height="120" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <rect x="1125" y="332" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="1129" y1="339" x2="1133" y2="339" stroke="#207448" stroke-width="2" />
+    <rect x="1125" y="352" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="1129" y1="359" x2="1133" y2="359" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="352">keep fabric and storage NICs</tspan>
+      <tspan x="1160" y="388">unmanaged or never-default</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1105" y="445" width="430" height="155" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <path d="M 1125 470 L 1145 470 L 1145 495 L 1125 495 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="1130" y1="478" x2="1140" y2="478" stroke="#207448" stroke-width="2" />
+    <line x1="1130" y1="486" x2="1138" y2="486" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="482">make configuration</tspan>
+      <tspan x="1160" y="518">idempotent and declarative,</tspan>
+      <tspan x="1160" y="554">rendered from inventory</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1105" y="615" width="430" height="260" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 1135 640 L 1152 670 L 1118 670 Z" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="1135" y1="652" x2="1135" y2="659" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="1135" cy="664" r="1.5" fill="#db8129" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1125" y="700">test with netplan try or with</tspan>
+      <tspan x="1125" y="736">console or serial access</tspan>
+      <tspan x="1125" y="772">before cutting the link</tspan>
+      <tspan x="1125" y="808">you are connected over</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1105" y="890" width="430" height="155" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <circle cx="1135" cy="920" r="12" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="1135" y1="912" x2="1135" y2="928" stroke="#207448" stroke-width="2.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="930">mark non-critical NICs</tspan>
+      <tspan x="1160" y="966">optional so boot</tspan>
+      <tspan x="1160" y="1002">does not hang</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1105" y="1060" width="430" height="135" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+    <path d="M 1125 1090 L 1145 1090 L 1145 1115 L 1125 1115 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1129 1102 L 1134 1107 L 1141 1098" fill="none" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="1102">verify the state after boot</tspan>
+      <tspan x="1160" y="1138">with an audit script</tspan>
+    </text>
+  </g>
+
+
+  
+  <rect x="40" y="1390" width="1520" height="80" rx="12" fill="#207448" />
+  <text x="800" y="1440" text-anchor="middle" font-family="sans-serif" font-size="27" font-weight="bold" fill="#ffffff">
+    netplan try waits for you to confirm and rolls back by itself if you lose the connection
+  </text>
 
 </svg>

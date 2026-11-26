@@ -1,183 +1,174 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
-  <title>After a reboot, wait for the GPUs to answer, not just for the host to respond</title>
-  <desc>A horizontal timeline showing reboot sequence, delay for driver loading, GPU readiness polling with nvidia-smi, and success or timeout exits.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>After a reboot, wait for the GPUs to answer</title>
+  <desc>Horizontal sequence diagram showing the host reboot timeline, driver load delay, GPU polling test loop, and outcome branches.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
-    </marker>
-    <marker id="arrow-grey" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#7a8b84" />
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5" />
+  <rect width="1600" height="1000" fill="#f5f8f5" />
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">After a reboot, wait for the GPUs to answer, not just for the host to respond</text>
+  <text x="50" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">After a reboot, wait for the GPUs to answer</text>
 
   
-  <line x1="80" y1="280" x2="1520" y2="280" stroke="#d2dfd6" stroke-width="6" stroke-dasharray="10 8" />
-
-  
-  <g transform="translate(60, 160)">
+  <g id="event-1">
+    <rect x="50" y="270" width="240" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <rect x="0" y="0" width="300" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <circle cx="36" cy="36" r="24" fill="#207448" />
-    <text x="36" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <circle cx="85" cy="305" r="20" fill="#207448" />
+    <text x="85" y="313" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">1</text>
     
-    <g transform="translate(140, 30)">
-      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="100 30" />
-      <line x1="28" y1="6" x2="28" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <g transform="translate(145, 295)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="50" height="34" rx="4" />
+      <line x1="10" y1="17" x2="20" y2="17" />
+      <circle cx="38" cy="17" r="3" fill="#207448" />
+      <path d="M 16 42 A 12 12 0 1 1 34 42" />
+      <line x1="25" y1="36" x2="25" y2="44" />
     </g>
+
     
-    <text x="150" y="145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="150" dy="0">Reboot starts,</tspan>
-      <tspan x="150" dy="42">SSH goes down</tspan>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="170" y="420">Reboot starts,</tspan>
+      <tspan x="170" y="458">SSH goes down</tspan>
     </text>
   </g>
 
   
-  <line x1="360" y1="280" x2="415" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="290" y1="395" x2="338" y2="395" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(425, 160)">
+  <g id="event-2">
+    <rect x="340" y="270" width="280" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
     
-    <rect x="0" y="0" width="370" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="375" cy="305" r="20" fill="#207448" />
+    <text x="375" y="313" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">2</text>
+
     
-    <circle cx="36" cy="36" r="24" fill="#207448" />
-    <text x="36" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-    
-    <g transform="translate(180, 24)">
-      <rect x="4" y="6" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="28" y1="40" x2="28" y2="52" stroke="#207448" stroke-width="4" />
-      <line x1="16" y1="52" x2="40" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <polyline points="14,24 22,24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <polyline points="28,24 38,24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <g transform="translate(455, 292)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="50" height="36" rx="4" />
+      <line x1="15" y1="36" x2="35" y2="36" />
+      <path d="M 10 12 L 18 18 L 10 24" />
+      <line x1="22" y1="24" x2="34" y2="24" />
     </g>
+
     
-    <text x="185" y="125" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-      <tspan x="185" dy="0">Operating system answers</tspan>
-      <tspan x="185" dy="36">on the network, login</tspan>
-      <tspan x="185" dy="36">prompt appears</tspan>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="480" y="380">Operating system</tspan>
+      <tspan x="480" y="414">answers on the</tspan>
+      <tspan x="480" y="448">network, login</tspan>
+      <tspan x="480" y="482">prompt appears</tspan>
     </text>
   </g>
 
   
-  <line x1="795" y1="280" x2="840" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <line x1="620" y1="395" x2="1008" y2="395" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(850, 160)">
-    <rect x="0" y="0" width="310" height="240" rx="16" fill="#e9ecea" stroke="#7a8b84" stroke-width="3" stroke-dasharray="8 6" />
+  <g id="grey-band">
+    <rect x="655" y="245" width="320" height="115" rx="12" fill="#e2e8e5" stroke="#78909c" stroke-width="2" stroke-dasharray="6 4" />
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#37474f">
+      <tspan x="815" y="295">NVIDIA modules may</tspan>
+      <tspan x="815" y="332">still be loading</tspan>
+    </text>
+  </g>
+
+  
+  <g id="delay-bracket">
+    <path d="M 645,435 L 645,447 L 815,447 L 815,460 L 815,447 L 985,447 L 985,435" stroke="#207448" stroke-width="2.5" fill="none" />
+    <text text-anchor="middle" fill="#303a36">
+      <tspan x="815" y="492" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">post_reboot_delay: 30 s,</tspan>
+      <tspan x="815" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="24">pause before the first test</tspan>
+    </text>
+  </g>
+
+  
+  <g id="event-3">
+    <rect x="1010" y="270" width="280" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
     
-    <g transform="translate(127, 28)">
-      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#7a8b84" stroke-width="4" />
-      <line x1="20" y1="2" x2="20" y2="8" stroke="#7a8b84" stroke-width="4" />
-      <line x1="36" y1="2" x2="36" y2="8" stroke="#7a8b84" stroke-width="4" />
-      <line x1="20" y1="48" x2="20" y2="54" stroke="#7a8b84" stroke-width="4" />
-      <line x1="36" y1="48" x2="36" y2="54" stroke="#7a8b84" stroke-width="4" />
-      <circle cx="28" cy="28" r="8" fill="none" stroke="#7a8b84" stroke-width="4" stroke-dasharray="14 10" />
+    <circle cx="1045" cy="305" r="20" fill="#207448" />
+    <text x="1045" y="313" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1125, 292)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="0" y="0" width="46" height="40" rx="4" />
+      <rect x="11" y="9" width="24" height="22" rx="2" fill="#207448" />
+      <line x1="8" y1="-5" x2="8" y2="0" stroke-width="2" />
+      <line x1="23" y1="-5" x2="23" y2="0" stroke-width="2" />
+      <line x1="38" y1="-5" x2="38" y2="0" stroke-width="2" />
+      <line x1="8" y1="40" x2="8" y2="45" stroke-width="2" />
+      <line x1="23" y1="40" x2="23" y2="45" stroke-width="2" />
+      <line x1="38" y1="40" x2="38" y2="45" stroke-width="2" />
     </g>
+
     
-    <text x="155" y="145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#46544f">
-      <tspan x="155" dy="0">NVIDIA modules may</tspan>
-      <tspan x="155" dy="38">still be loading</tspan>
+    <text text-anchor="middle">
+      <tspan x="1150" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">test_command runs:</tspan>
+      <tspan x="1150" y="430" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">nvidia-smi -L</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(850, 420)">
+  <g id="loop">
+    <path d="M 1220,270 C 1220,150 1080,150 1080,260" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
     
-    <path d="M 10 10 L 10 30 L 145 30 L 155 45 L 165 30 L 300 30 L 300 10" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="1000" y="126" width="300" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1150" y="158" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">repeat until it passes</text>
+  </g>
+
+  
+  <line x1="1290" y1="395" x2="1328" y2="395" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="exit-success">
+    <rect x="1330" y="270" width="230" height="250" rx="16" fill="#207448" />
+
     
-    <text x="155" y="82" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="155" dy="0">post_reboot_delay: 30 s,</tspan>
-      <tspan x="155" dy="32">pause before the first test</tspan>
+    <circle cx="1445" cy="325" r="22" fill="none" stroke="#ffffff" stroke-width="3" />
+    <path d="M 1435 325 L 1442 333 L 1457 317" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="1445" y="385">GPUs answer:</tspan>
+      <tspan x="1445" y="420">return the node</tspan>
+      <tspan x="1445" y="455">to service</tspan>
     </text>
   </g>
 
   
-  <line x1="1160" y1="280" x2="1205" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1150,520 L 1150,710 L 1158,710" stroke="#db8129" stroke-width="3" fill="none" marker-end="url(#arrow-orange)" />
 
   
-  <g transform="translate(1215, 160)">
+  <g id="exit-timeout">
+    <rect x="1160" y="620" width="400" height="180" rx="16" fill="#fff9f5" stroke="#db8129" stroke-width="3" />
+
     
-    <rect x="0" y="0" width="335" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    <circle cx="36" cy="36" r="24" fill="#207448" />
-    <text x="36" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-    
-    <g transform="translate(155, 26)">
-      <rect x="4" y="6" width="48" height="38" rx="5" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 14 18 L 22 25 L 14 32" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="28" y1="32" x2="40" y2="32" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <g transform="translate(1340, 642)" stroke="#db8129" stroke-width="2.5" fill="none">
+      <circle cx="20" cy="20" r="18" />
+      <polyline points="20,10 20,20 28,24" />
     </g>
+
     
-    <text x="167" y="135" text-anchor="middle" fill="#303a36">
-      <tspan x="167" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold">test_command runs:</tspan>
-      <tspan x="167" dy="44" font-family="ui-monospace, monospace" font-size="28" font-weight="bold">nvidia-smi -L</tspan>
+    <text text-anchor="middle" fill="#303a36">
+      <tspan x="1360" y="718" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">reboot_timeout: 1800 s</tspan>
+      <tspan x="1360" y="754" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">runs out: the task fails</tspan>
     </text>
   </g>
 
   
-  <g>
-    
-    <path d="M 1420 160 C 1460 90, 1340 50, 1280 90 C 1255 107, 1255 130, 1255 150" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-    
-    <rect x="1275" y="42" width="235" height="42" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
-    <text x="1392" y="71" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">repeat until it passes</text>
-  </g>
-
-  
-
-  
-  
-  <path d="M 1460 400 L 1460 560 L 1460 610" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-  <g transform="translate(1080, 620)">
-    
-    <rect x="0" y="0" width="470" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
-    
-    <g transform="translate(40, 36)">
-      <path d="M 28 6 L 50 14 L 50 32 C 50 46 28 54 28 54 C 28 54 6 46 6 32 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    
-    <text x="250" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
-      <tspan x="250" dy="0">GPUs answer:</tspan>
-      <tspan x="250" dy="44">return the node</tspan>
-      <tspan x="250" dy="44">to service</tspan>
-    </text>
-  </g>
-
-  
-  
-  <path d="M 1300 400 L 1300 530 L 760 530 L 760 610" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
-
-  <g transform="translate(520, 620)">
-    
-    <rect x="0" y="0" width="480" height="220" rx="16" fill="#fcf8f2" stroke="#db8129" stroke-width="4" />
-    
-    <g transform="translate(40, 36)">
-      <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="4" />
-      <polyline points="28,14 28,28 40,28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="46" y1="46" x2="54" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-    </g>
-    
-    <text x="260" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-      <tspan x="260" dy="0">reboot_timeout: 1800 s</tspan>
-      <tspan x="260" dy="44">runs out: the task fails</tspan>
-    </text>
-  </g>
-
-  
-  <g transform="translate(60, 930)">
-    <rect x="0" y="0" width="1480" height="90" rx="16" fill="#207448" />
-    <text x="740" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">The host answered is not the same as the GPUs answered.</text>
+  <g id="takeaway">
+    <rect x="50" y="870" width="1510" height="80" rx="12" fill="#207448" />
+    <text x="805" y="920" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The host answered is not the same as the GPUs answered.</text>
   </g>
 </svg>

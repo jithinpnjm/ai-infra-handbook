@@ -1,207 +1,236 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Generator control: prime, send, yield from, close</title>
-  <desc>Technical infographic illustrating Python classic coroutine generator control flow, priming, sending values, throwing exceptions, closing, return values, yield from delegation, and usage guidelines.</desc>
+  <desc>Visual infographic explaining Python generator and coroutine lifecycle, delegation with yield from, and best practices.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448"/>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Generator control: prime, send, yield from, close</text>
+  <g id="header-group">
+    <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Generator control: prime, send, yield from, close</text>
+    <rect x="50" y="85" width="820" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="65" y="114" font-family="monospace" font-size="24" fill="#303a36">def gen(): for i in range(10): X = yield i</text>
+    <text x="735" y="114" font-family="sans-serif" font-size="24" fill="#303a36">or</text>
+    <rect x="885" y="85" width="220" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="900" y="114" font-family="monospace" font-size="24" fill="#303a36">averager_coro()</text>
+  </g>
 
   
-  <rect x="40" y="95" width="830" height="685" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="timeline-group">
+    
+    <line x1="88" y1="218" x2="88" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="88" y1="388" x2="88" y2="465" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="88" y1="578" x2="88" y2="655" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="88" y1="748" x2="88" y2="815" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="88" y1="908" x2="88" y2="975" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="step-1">
+      <circle cx="88" cy="200" r="26" fill="#207448" />
+      <text x="88" y="209" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <rect x="140" y="145" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(156, 172)" stroke="#207448" stroke-width="3" fill="none">
+        <rect x="0" y="0" width="38" height="38" rx="6" />
+        <path d="M 19 8 L 19 30 M 8 19 L 30 19" />
+      </g>
+      <text x="215" y="190" font-family="monospace" font-size="24" fill="#303a36">G = gen()</text>
+      <text x="345" y="190" font-family="sans-serif" font-size="24" fill="#303a36">creates the generator;</text>
+      <text x="215" y="228" font-family="sans-serif" font-size="24" fill="#303a36">the body does not run</text>
+    </g>
+
+    
+    <g id="step-2">
+      <circle cx="88" cy="370" r="26" fill="#db8129" />
+      <text x="88" y="379" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <rect x="140" y="315" width="670" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      <g transform="translate(156, 342)" stroke="#db8129" stroke-width="3" fill="none">
+        <circle cx="19" cy="19" r="18" />
+        <polygon points="14,10 28,19 14,28" fill="#db8129" stroke="none" />
+      </g>
+      <text x="215" y="360" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">prime it:</text>
+      <text x="325" y="360" font-family="monospace" font-size="24" fill="#303a36">next(G)</text>
+      <text x="430" y="360" font-family="sans-serif" font-size="24" fill="#303a36">or</text>
+      <text x="465" y="360" font-family="monospace" font-size="24" fill="#303a36">G.send(None)</text>
+      <text x="215" y="398" font-family="sans-serif" font-size="24" fill="#303a36">runs to the first yield</text>
+    </g>
+
+    
+    <g id="step-3">
+      <circle cx="88" cy="550" r="26" fill="#207448" />
+      <text x="88" y="559" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <rect x="140" y="485" width="670" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(156, 522)" stroke="#207448" stroke-width="3" fill="none">
+        <rect x="0" y="4" width="40" height="28" rx="4" />
+        <polyline points="0,4 20,20 40,4" />
+      </g>
+      <text x="215" y="525" font-family="monospace" font-size="24" fill="#303a36">G.send(77)</text>
+      <text x="350" y="525" font-family="sans-serif" font-size="24" fill="#303a36">makes the paused yield return 77</text>
+      <text x="215" y="563" font-family="sans-serif" font-size="24" fill="#303a36">and runs to the next yield;</text>
+      <text x="215" y="601" font-family="sans-serif" font-size="24" fill="#303a36">a plain</text>
+      <text x="298" y="601" font-family="monospace" font-size="24" fill="#303a36">next(G)</text>
+      <text x="400" y="601" font-family="sans-serif" font-size="24" fill="#303a36">sends None</text>
+    </g>
+
+    
+    <g id="step-4">
+      <circle cx="88" cy="710" r="26" fill="#207448" />
+      <text x="88" y="719" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <rect x="140" y="655" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(156, 682)" stroke="#207448" stroke-width="3" fill="none">
+        <polygon points="19,2 36,34 2,34" />
+        <line x1="19" y1="14" x2="19" y2="22" />
+        <circle cx="19" cy="28" r="1.5" fill="#207448" />
+      </g>
+      <text x="215" y="700" font-family="monospace" font-size="24" fill="#303a36">G.throw(exc)</text>
+      <text x="375" y="700" font-family="sans-serif" font-size="24" fill="#303a36">raises inside the generator</text>
+    </g>
+
+    
+    <g id="step-5">
+      <circle cx="88" cy="870" r="26" fill="#207448" />
+      <text x="88" y="879" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <rect x="140" y="815" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(156, 842)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="19" cy="19" r="18" />
+        <line x1="10" y1="10" x2="28" y2="28" />
+        <line x1="28" y1="10" x2="10" y2="28" />
+      </g>
+      <text x="215" y="855" font-family="monospace" font-size="24" fill="#303a36">G.close()</text>
+      <text x="340" y="855" font-family="sans-serif" font-size="24" fill="#303a36">raises GeneratorExit inside it,</text>
+      <text x="215" y="895" font-family="sans-serif" font-size="24" fill="#303a36">so with blocks and try/finally clean up</text>
+    </g>
+
+    
+    <g id="step-6">
+      <circle cx="88" cy="1030" r="26" fill="#207448" />
+      <text x="88" y="1039" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      <rect x="140" y="975" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(156, 1002)" stroke="#207448" stroke-width="3" fill="none">
+        <polyline points="4,36 4,4 32,14 4,24" />
+      </g>
+      <text x="215" y="1015" font-family="sans-serif" font-size="24" fill="#303a36">function returns: StopIteration;</text>
+      <text x="215" y="1055" font-family="sans-serif" font-size="24" fill="#303a36">the return value rides on StopIteration.value</text>
+    </g>
+  </g>
 
   
-  <text x="70" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="70" dy="0">A vertical timeline for a classic coroutine</tspan>
-    <tspan x="70" dy="28" font-family="ui-monospace, monospace" font-weight="normal" fill="#207448">'def gen(): for i in range(10):</tspan>
-    <tspan x="420" dy="0" font-family="ui-monospace, monospace" font-weight="normal" fill="#207448">X = yield i' or averager_coro().</tspan>
-  </text>
+  <g id="yield-from-panel">
+    <rect x="850" y="145" width="700" height="940" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(880, 175)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="4" width="36" height="36" rx="4" />
+      <polyline points="10,22 18,30 32,12" />
+    </g>
+    <text x="935" y="205" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">yield from</text>
+
+    
+    <rect x="875" y="235" width="650" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="895" y="275" font-family="sans-serif" font-size="24" fill="#303a36">hands iteration to a sub-iterable:</text>
+    <text x="895" y="315" font-family="monospace" font-size="24" fill="#207448">def both(N): yield from range(N);</text>
+    <text x="895" y="355" font-family="monospace" font-size="24" fill="#207448">yield from map(lambda x: x ** 2, range(N))</text>
+
+    
+    <rect x="875" y="450" width="650" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(895, 477)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="8" cy="20" r="6" />
+      <line x1="14" y1="20" x2="26" y2="20" />
+      <circle cx="32" cy="20" r="6" />
+      <line x1="38" y1="20" x2="50" y2="20" />
+      <circle cx="56" cy="20" r="6" />
+    </g>
+    <text x="975" y="495" font-family="sans-serif" font-size="24" fill="#303a36">chains a to b to c</text>
+    <text x="975" y="533" font-family="sans-serif" font-size="24" fill="#303a36">pass items through each level</text>
+
+    
+    <rect x="875" y="580" width="650" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(895, 607)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="20" y="0" width="16" height="12" rx="2" />
+      <line x1="28" y1="12" x2="28" y2="24" />
+      <line x1="8" y1="24" x2="48" y2="24" />
+      <line x1="8" y1="24" x2="8" y2="34" />
+      <line x1="48" y1="24" x2="48" y2="34" />
+    </g>
+    <text x="975" y="625" font-family="monospace" font-size="24" fill="#303a36">tree(cls, level)</text>
+    <text x="1225" y="625" font-family="sans-serif" font-size="24" fill="#303a36">walks</text>
+    <text x="975" y="663" font-family="sans-serif" font-size="24" fill="#303a36">BaseException subclasses with depth</text>
+
+    
+    <rect x="875" y="710" width="650" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="895" y="750" font-family="sans-serif" font-size="24" fill="#303a36">forwards send() and throw() into the sub-generator,</text>
+    <text x="895" y="790" font-family="sans-serif" font-size="24" fill="#303a36">and</text>
+    <text x="945" y="790" font-family="monospace" font-size="24" fill="#207448">result = yield from averager_coro()</text>
+    <text x="895" y="830" font-family="sans-serif" font-size="24" fill="#303a36">captures the Result(count, average)</text>
+    <text x="895" y="870" font-family="sans-serif" font-size="24" fill="#303a36">return value</text>
+  </g>
 
   
-  <line x1="85" y1="250" x2="85" y2="284" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="85" y1="344" x2="85" y2="378" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="85" y1="454" x2="85" y2="488" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="85" y1="548" x2="85" y2="582" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
-  <line x1="85" y1="648" x2="85" y2="674" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <g id="notes-strip">
+    
+    <rect x="50" y="1115" width="725" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(70, 1145)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="14" />
+      <line x1="16" y1="10" x2="16" y2="18" />
+      <circle cx="16" cy="23" r="1.5" fill="#207448" />
+    </g>
+    <text x="120" y="1155" font-family="sans-serif" font-size="24" fill="#303a36">type is</text>
+    <text x="120" y="1195" font-family="monospace" font-size="24" fill="#207448">Generator[YieldType, SendType, ReturnType]</text>
+
+    
+    <rect x="825" y="1115" width="725" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(845, 1145)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="14" />
+      <line x1="16" y1="10" x2="16" y2="18" />
+      <circle cx="16" cy="23" r="1.5" fill="#207448" />
+    </g>
+    <text x="895" y="1155" font-family="sans-serif" font-size="24" fill="#303a36">a StopIteration raised inside a generator becomes</text>
+    <text x="895" y="1195" font-family="sans-serif" font-size="24" fill="#303a36">RuntimeError (PEP 479), use return to stop early</text>
+
+    
+    <rect x="50" y="1255" width="725" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(70, 1285)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="14" />
+      <line x1="16" y1="10" x2="16" y2="18" />
+      <circle cx="16" cy="23" r="1.5" fill="#207448" />
+    </g>
+    <text x="120" y="1295" font-family="sans-serif" font-size="24" fill="#303a36">consume the generator fully or close it yourself</text>
+    <text x="120" y="1335" font-family="sans-serif" font-size="24" fill="#303a36">when it holds a resource</text>
+
+    
+    <rect x="825" y="1255" width="725" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(845, 1285)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="14" />
+      <line x1="16" y1="10" x2="16" y2="18" />
+      <circle cx="16" cy="23" r="1.5" fill="#207448" />
+    </g>
+    <text x="895" y="1285" font-family="sans-serif" font-size="24" fill="#303a36">a generator expression drops its parentheses when it is</text>
+    <text x="895" y="1320" font-family="sans-serif" font-size="24" fill="#303a36">the only argument:</text>
+    <text x="1135" y="1320" font-family="monospace" font-size="24" fill="#207448">sum(x ** 2 for x in range(3));</text>
+    <text x="895" y="1355" font-family="sans-serif" font-size="24" fill="#303a36">keep them when more arguments follow</text>
+  </g>
 
   
-  <circle cx="85" cy="226" r="24" fill="#207448"/>
-  <text x="85" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-  <rect x="125" y="194" width="725" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <circle cx="160" cy="226" r="14" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M 160 206 L 160 212 M 160 240 L 160 246 M 140 226 L 146 226 M 174 226 L 180 226" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  <text x="195" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="195" dy="0" font-family="ui-monospace, monospace" fill="#207448">G = gen()</tspan> creates the generator;
-    <tspan x="195" dy="28">the body does not run</tspan>
-  </text>
-
-  
-  <circle cx="85" cy="320" r="24" fill="#db8129"/>
-  <text x="85" y="329" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-  <rect x="125" y="288" width="725" height="64" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
-  
-  <circle cx="160" cy="320" r="16" fill="none" stroke="#db8129" stroke-width="3"/>
-  <polygon points="156,311 168,320 156,329" fill="#db8129"/>
-  <text x="195" y="316" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="195" dy="0">prime it: <tspan font-family="ui-monospace, monospace" font-weight="normal" fill="#db8129">next(G)</tspan> or <tspan font-family="ui-monospace, monospace" font-weight="normal" fill="#db8129">G.send(None)</tspan></tspan>
-    <tspan x="195" dy="28" font-weight="normal">runs to the first yield</tspan>
-  </text>
-
-  
-  <circle cx="85" cy="424" r="24" fill="#207448"/>
-  <text x="85" y="433" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  <rect x="125" y="382" width="725" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="145" y="412" width="30" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M 152 424 L 168 424 M 164 419 L 169 424 L 164 429" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="195" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="195" dy="0"><tspan font-family="ui-monospace, monospace" fill="#207448">G.send(77)</tspan> makes the paused yield return 77</tspan>
-    <tspan x="195" dy="28">and runs to the next yield; a plain <tspan font-family="ui-monospace, monospace" fill="#207448">next(G)</tspan></tspan>
-    <tspan x="195" dy="28">sends None</tspan>
-  </text>
-
-  
-  <circle cx="85" cy="524" r="24" fill="#207448"/>
-  <text x="85" y="533" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
-  <rect x="125" y="492" width="725" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <polygon points="160,509 174,535 146,535" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-  <line x1="160" y1="518" x2="160" y2="526" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="160" cy="531" r="1.5" fill="#207448"/>
-  <text x="195" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="195" dy="0"><tspan font-family="ui-monospace, monospace" fill="#207448">G.throw(exc)</tspan> raises inside</tspan>
-    <tspan x="195" dy="28">the generator</tspan>
-  </text>
-
-  
-  <circle cx="85" cy="624" r="24" fill="#207448"/>
-  <text x="85" y="633" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
-  <rect x="125" y="586" width="725" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <path d="M 148 612 L 172 612 C 172 628 160 637 160 637 C 160 637 148 628 148 612 Z" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="155" y1="620" x2="165" y2="630" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="165" y1="620" x2="155" y2="630" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="195" y="614" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="195" dy="0"><tspan font-family="ui-monospace, monospace" fill="#207448">G.close()</tspan> raises GeneratorExit inside it,</tspan>
-    <tspan x="195" dy="28">so with blocks and try/finally clean up</tspan>
-  </text>
-
-  
-  <circle cx="85" cy="724" r="24" fill="#207448"/>
-  <text x="85" y="733" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
-  <rect x="125" y="678" width="725" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <line x1="150" y1="708" x2="150" y2="742" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  <polygon points="150,710 172,720 150,730" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-  <text x="195" y="704" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="195" dy="0">function returns: StopIteration; the return</tspan>
-    <tspan x="195" dy="28">value rides on</tspan>
-    <tspan x="195" dy="28" font-family="ui-monospace, monospace" fill="#207448">StopIteration.value</tspan>
-  </text>
-
-  
-  <rect x="890" y="95" width="670" height="685" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="1225" y="142" text-anchor="middle" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#207448">yield from</text>
-
-  
-  <rect x="910" y="165" width="630" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  
-  <rect x="1465" y="180" width="26" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <rect x="1477" y="192" width="26" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <text x="930" y="194" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="930" dy="0">hands iteration to a sub-iterable:</tspan>
-    <tspan x="930" dy="28" font-family="ui-monospace, monospace" fill="#207448">def both(N): yield from range(N);</tspan>
-    <tspan x="930" dy="28" font-family="ui-monospace, monospace" fill="#207448">yield from map(lambda x: x ** 2,</tspan>
-    <tspan x="930" dy="28" font-family="ui-monospace, monospace" fill="#207448">range(N))</tspan>
-  </text>
-
-  
-  <rect x="910" y="310" width="630" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  
-  <rect x="1462" y="342" width="24" height="14" rx="7" fill="none" stroke="#207448" stroke-width="3" transform="rotate(-30 1474 349)"/>
-  <rect x="1476" y="342" width="24" height="14" rx="7" fill="none" stroke="#207448" stroke-width="3" transform="rotate(-30 1488 349)"/>
-  <text x="930" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="930" dy="0">chains a to b to c pass items</tspan>
-    <tspan x="930" dy="28">through each level</tspan>
-  </text>
-
-  
-  <rect x="910" y="410" width="630" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  
-  <circle cx="1485" cy="432" r="5" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <line x1="1485" y1="437" x2="1472" y2="452" stroke="#207448" stroke-width="2.5"/>
-  <line x1="1485" y1="437" x2="1498" y2="452" stroke="#207448" stroke-width="2.5"/>
-  <circle cx="1472" cy="454" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <circle cx="1498" cy="454" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <text x="930" y="444" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="930" dy="0"><tspan font-family="ui-monospace, monospace" fill="#207448">tree(cls, level)</tspan> walks BaseException</tspan>
-    <tspan x="930" dy="28">subclasses with depth</tspan>
-  </text>
-
-  
-  <rect x="910" y="510" width="630" height="255" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  
-  <path d="M 1465 532 L 1500 532 M 1494 526 L 1500 532 L 1494 538" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 1500 548 L 1465 548 M 1471 542 L 1465 548 L 1471 554" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="930" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="930" dy="0">forwards send() and throw() into</tspan>
-    <tspan x="930" dy="28">the sub-generator, and</tspan>
-    <tspan x="930" dy="28" font-family="ui-monospace, monospace" fill="#207448">result = yield from averager_coro()</tspan>
-    <tspan x="930" dy="28">captures the <tspan font-family="ui-monospace, monospace" fill="#207448">Result(count, average)</tspan></tspan>
-    <tspan x="930" dy="28">return value</tspan>
-  </text>
-
-  
-  
-  <rect x="40" y="805" width="740" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  
-  <path d="M 66 845 L 56 860 L 66 875 M 80 845 L 90 860 L 80 875" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="110" y="848" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="110" dy="0">type is</tspan>
-    <tspan x="110" dy="28" font-family="ui-monospace, monospace" fill="#207448">Generator[YieldType, SendType, ReturnType]</tspan>
-  </text>
-
-  
-  <rect x="820" y="805" width="740" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  
-  <circle cx="856" cy="860" r="16" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="845" y1="849" x2="867" y2="871" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  <text x="890" y="838" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="890" dy="0">a StopIteration raised inside a generator</tspan>
-    <tspan x="890" dy="28">becomes RuntimeError (PEP 479),</tspan>
-    <tspan x="890" dy="28">use return to stop early</tspan>
-  </text>
-
-  
-  <rect x="40" y="930" width="740" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  
-  <rect x="60" y="985" width="24" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M 65 985 L 65 977 C 65 972 79 972 79 977 L 79 985" fill="none" stroke="#207448" stroke-width="3"/>
-  <text x="110" y="985" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="110" dy="0">consume the generator fully or close it</tspan>
-    <tspan x="110" dy="28">yourself when it holds a resource</tspan>
-  </text>
-
-  
-  <rect x="820" y="930" width="740" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  
-  <path d="M 850 978 C 843 988 843 1002 850 1012 M 864 978 C 871 988 871 1002 864 1012" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  <text x="890" y="958" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="890" dy="0">a generator expression drops its parentheses</tspan>
-    <tspan x="890" dy="28">when it is the only argument:</tspan>
-    <tspan x="890" dy="28" font-family="ui-monospace, monospace" fill="#207448">sum(x ** 2 for x in range(3));</tspan>
-    <tspan x="890" dy="28">keep them when more arguments follow</tspan>
-  </text>
-
-  
-  <rect x="40" y="1085" width="1520" height="75" rx="10" fill="#207448"/>
-  <text x="800" y="1132" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Modern async I/O uses native async def and await instead (chapter 3.6)</text>
+  <g id="bottom-bar">
+    <rect x="50" y="1400" width="1500" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1445" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Modern async I/O uses native async def and await instead (chapter 3.6)</text>
+  </g>
 </svg>

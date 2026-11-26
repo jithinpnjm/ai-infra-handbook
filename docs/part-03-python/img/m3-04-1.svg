@@ -1,13 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
   <title>Abstract base classes</title>
-  <desc>Visual comparison of Python interface and type checking models: Duck Typing, Goose Typing with ABCs, Static Nominal Typing, and Static Duck Typing.</desc>
+  <desc>Visual flowchart of Python interface and type checking models from Fluent Python Chapter 13</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
     </marker>
   </defs>
 
@@ -15,112 +15,95 @@
   <rect width="1600" height="980" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Abstract base classes</text>
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Abstract base classes</text>
 
   
-  <rect x="240" y="105" width="1120" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
   
+  <path d="M 405 225 L 405 321" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
   
-  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="282" y="138" width="44" height="26" rx="4" fill="#e8f1ea" />
-    <path d="M 304 164 L 304 182 M 274 182 L 334 182 M 274 182 L 274 194 M 304 182 L 304 194 M 334 182 L 334 194" />
-    <circle cx="274" cy="200" r="5" fill="#207448" />
-    <circle cx="304" cy="200" r="5" fill="#207448" />
-    <circle cx="334" cy="200" r="5" fill="#207448" />
+  <path d="M 1195 225 L 1195 321" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 780 225 L 780 630 L 405 630 L 405 671" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 820 225 L 820 630 L 1195 630 L 1195 671" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-typing">
+    <rect x="250" y="100" width="1100" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="285" y="135" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="285" y1="153" x2="341" y2="153" stroke="#207448" stroke-width="3" />
+    <path d="M 300 171 L 308 177 L 300 183 M 317 183 L 327 183" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="370" y="152" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Python Interface &amp; Type Checking Models</text>
+    <text x="370" y="194" font-family="sans-serif" font-size="25" fill="#303a36">(Fluent Python Chapter 13)</text>
   </g>
 
   
-  <text x="365" y="158" font-family="sans-serif" fill="#303a36">
-    <tspan x="365" dy="0" font-size="32" font-weight="bold">Python Interface &amp; Type Checking Models</tspan>
-    <tspan x="365" dy="44" font-size="26" font-weight="bold" fill="#207448">(Fluent Python Chapter 13)</tspan>
-  </text>
-
-  
-  
-  <path d="M 420 240 L 420 340" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1180 240 L 1180 340" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)" />
-
-  
-  <path d="M 780 240 L 780 777 Q 780 797 760 797" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 820 240 L 820 777 Q 820 797 840 797" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="80" y="340" width="680" height="245" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-  
-  
-  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M 125 390 L 110 395 L 125 400" />
-    <path d="M 125 390 C 125 378 138 374 146 378 C 153 382 155 390 155 398 C 164 401 178 402 184 394 C 183 410 172 418 156 418 L 132 418 C 122 418 118 410 122 402 Z" />
-    <circle cx="138" cy="385" r="2.5" fill="#207448" />
-    <path d="M 112 428 C 128 424 140 432 156 428 C 168 424 178 430 186 428" />
+  <g id="node-duck">
+    <rect x="70" y="325" width="670" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 135 375 C 130 363 118 360 110 364 C 103 368 102 374 104 380 C 98 382 92 384 88 384 C 94 388 101 389 106 388 C 108 396 114 402 122 405 C 116 410 108 412 102 413 C 114 418 136 418 145 407 C 151 398 147 385 135 375 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="118" cy="372" r="2.5" fill="#207448" />
+    
+    <text x="180" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">1. Duck Typing</text>
+    <text x="180" y="412" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Runtime)</text>
+    
+    <line x1="105" y1="440" x2="705" y2="440" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    
+    <text x="105" y="495" font-family="sans-serif" font-size="25" fill="#303a36">Call methods directly (len, __getitem__)</text>
   </g>
 
   
-  <text x="205" y="390" font-family="sans-serif">
-    <tspan x="205" dy="0" font-size="30" font-weight="bold" fill="#303a36">1. Duck Typing</tspan>
-    <tspan x="205" dy="36" font-size="26" font-weight="bold" fill="#207448">(Runtime)</tspan>
-    <tspan x="205" dy="50" font-size="24" fill="#303a36">Call methods directly</tspan>
-    <tspan x="205" dy="36" font-size="24" font-family="monospace" fill="#207448">(len, __getitem__)</tspan>
-  </text>
-
-  
-  <rect x="840" y="340" width="680" height="245" rx="16" fill="#fdf6ee" stroke="#db8129" stroke-width="3.5" />
-  
-  
-  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M 885 380 L 870 383 L 884 388" />
-    <path d="M 885 380 C 886 369 898 369 902 376 C 906 384 898 396 900 406 C 903 414 912 418 925 418 L 942 418 C 950 412 951 402 946 394 C 944 412 932 422 916 422 L 898 422 C 886 422 882 412 885 402 C 888 392 893 382 888 380" />
-    <circle cx="894" cy="375" r="2.5" fill="#db8129" />
-    <path d="M 872 430 C 890 426 905 434 922 430 C 936 426 946 432 956 430" />
+  <g id="node-goose">
+    <rect x="860" y="325" width="670" height="250" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+    
+    <path d="M 915 415 C 925 415 940 412 947 400 C 945 385 935 380 930 375 C 928 368 932 360 926 356 C 920 352 912 355 908 360 C 902 362 895 363 892 363 C 897 367 904 368 908 368 C 910 378 916 392 910 405 C 905 408 900 410 895 412 C 901 414 908 415 915 415 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="920" cy="360" r="2.5" fill="#db8129" />
+    
+    <text x="970" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">2. Goose Typing</text>
+    <text x="970" y="412" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Runtime ABCs)</text>
+    
+    <line x1="895" y1="440" x2="1495" y2="440" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5" />
+    
+    <text x="895" y="482" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">abc.ABC, @abstractmethod,</text>
+    <text x="895" y="522" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">isinstance(x, Sequence)</text>
   </g>
 
   
-  <text x="965" y="390" font-family="sans-serif">
-    <tspan x="965" dy="0" font-size="30" font-weight="bold" fill="#303a36">2. Goose Typing</tspan>
-    <tspan x="965" dy="36" font-size="26" font-weight="bold" fill="#db8129">(Runtime ABCs)</tspan>
-    <tspan x="965" dy="50" font-size="24" font-family="monospace" fill="#303a36">abc.ABC, @abstractmethod,</tspan>
-    <tspan x="965" dy="36" font-size="24" font-family="monospace" fill="#db8129">isinstance(x, Sequence)</tspan>
-  </text>
-
-  
-  <rect x="80" y="675" width="680" height="245" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-  
-  
-  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="118" y="722" width="48" height="28" rx="4" />
-    <path d="M 142 750 L 142 770" />
-    <polygon points="142,750 135,762 149,762" fill="#e8f1ea" />
-    <path d="M 118 780 L 166 780 M 118 780 L 118 790 M 166 780 L 166 790" />
-    <rect x="106" y="790" width="24" height="20" rx="3" />
-    <rect x="154" y="790" width="24" height="20" rx="3" />
+  <g id="node-nominal">
+    <rect x="70" y="675" width="670" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="105" y="705" width="46" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="117" y1="723" x2="139" y2="723" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="117" y1="735" x2="139" y2="735" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 116 748 L 123 754 L 136 743" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="180" y="725" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">3. Static Nominal Typing</text>
+    <text x="180" y="762" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(mypy/pyright)</text>
+    
+    <line x1="105" y1="790" x2="705" y2="790" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    
+    <text x="105" y="845" font-family="sans-serif" font-size="25" fill="#303a36">Explicit class/ABC inheritance &amp; annotations</text>
   </g>
 
   
-  <text x="205" y="725" font-family="sans-serif">
-    <tspan x="205" dy="0" font-size="30" font-weight="bold" fill="#303a36">3. Static Nominal Typing</tspan>
-    <tspan x="205" dy="36" font-size="26" font-family="monospace" font-weight="bold" fill="#207448">(mypy/pyright)</tspan>
-    <tspan x="205" dy="50" font-size="24" fill="#303a36">Explicit class/ABC</tspan>
-    <tspan x="205" dy="36" font-size="24" fill="#303a36">inheritance &amp; annotations</tspan>
-  </text>
-
-  
-  <rect x="840" y="675" width="680" height="245" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-  
-  
-  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="870" y="725" width="60" height="60" rx="8" stroke-dasharray="6 4" />
-    <path d="M 886 741 H 904 V 749 C 909 749 913 752 913 756 C 913 760 909 763 904 763 V 771 H 886 Z" fill="#e8f1ea" />
+  <g id="node-staticduck">
+    <rect x="860" y="675" width="670" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="895" y="705" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 910 733 L 923 733 C 923 727 927 723 932 723 C 937 723 941 727 941 733 L 951 733" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="918" cy="746" r="3.5" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="934" cy="746" r="3.5" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="970" y="725" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">4. Static Duck Typing</text>
+    <text x="970" y="762" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(typing.Protocol)</text>
+    
+    <line x1="895" y1="790" x2="1495" y2="790" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    
+    <text x="895" y="845" font-family="sans-serif" font-size="25" fill="#303a36">Structural conformance without inheritance</text>
   </g>
-
-  
-  <text x="965" y="725" font-family="sans-serif">
-    <tspan x="965" dy="0" font-size="30" font-weight="bold" fill="#303a36">4. Static Duck Typing</tspan>
-    <tspan x="965" dy="36" font-size="26" font-family="monospace" font-weight="bold" fill="#207448">(typing.Protocol)</tspan>
-    <tspan x="965" dy="50" font-size="24" fill="#303a36">Structural conformance</tspan>
-    <tspan x="965" dy="36" font-size="24" fill="#303a36">without inheritance</tspan>
-  </text>
 </svg>

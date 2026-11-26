@@ -1,134 +1,181 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>From symptom to likely cause, with the first tool to use</title>
-  <desc>A three-column diagnostic ladder mapping seventeen concurrency symptoms to their likely causes and remedies.</desc>
-  
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <desc>A three-column diagnostic guide matching concurrency symptoms to their root causes and first-line remedies.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="46" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">From symptom to likely cause, </tspan><tspan x="800" dy="50">with the first tool to use</tspan></text>
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">From symptom to likely cause, with the first tool to use</text>
 
   
-  <rect x="40" y="104" width="1520" height="926" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="40" y="76" width="1520" height="52" rx="8" fill="#fff5ec" stroke="#db8129" stroke-width="2.5" />
+  <circle cx="70" cy="102" r="14" fill="#db8129" />
+  <path d="M64 102 L68 106 L76 96" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">a timeout on every wait, a bound on every queue and pool</text>
 
   
-  <rect x="40" y="104" width="1520" height="78" fill="#ffffff"/>
-  <line x1="40" y1="182" x2="1560" y2="182" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="128.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">Tasks stall, timeouts </tspan><tspan x="60" dy="24">everywhere, slow callback </tspan><tspan x="60" dy="24">warnings</tspan></text>
-  <text x="520" y="151.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">blocking the event loop</text>
-  <text x="940" y="151.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">async APIs or to_thread</text>
-  
-  <rect x="40" y="182" width="1520" height="54" fill="#e8f1ea"/>
-  <line x1="40" y1="236" x2="1560" y2="236" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="205.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">Work never happens; </tspan><tspan x="60" dy="24">was never awaited warning</tspan></text>
-  <text x="520" y="217.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">un-awaited coroutine</text>
-  <text x="940" y="217.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">await or create_task</text>
-  
-  <rect x="40" y="236" width="1520" height="54" fill="#ffffff"/>
-  <line x1="40" y1="290" x2="1560" y2="290" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="259.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">Task exception was </tspan><tspan x="60" dy="24">never retrieved</tspan></text>
-  <text x="520" y="271.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">dropped task reference</text>
-  <text x="940" y="259.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">keep references, await or add </tspan><tspan x="940" dy="24">done callbacks</tspan></text>
-  
-  <rect x="40" y="290" width="1520" height="44" fill="#e8f1ea"/>
-  <line x1="40" y1="334" x2="1560" y2="334" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="320.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Cannot cancel or shut down</text>
-  <text x="520" y="320.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">swallowed CancelledError</text>
-  <text x="940" y="320.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">re-raise it, no bare except</text>
-  
-  <rect x="40" y="334" width="1520" height="54" fill="#ffffff"/>
-  <line x1="40" y1="388" x2="1560" y2="388" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="369.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Hangs after network blips</text>
-  <text x="520" y="369.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">missing timeouts</text>
-  <text x="940" y="357.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">wait_for or timeout on every await; </tspan><tspan x="940" dy="24">client timeout=</tspan></text>
-  
-  <rect x="40" y="388" width="1520" height="54" fill="#e8f1ea"/>
-  <line x1="40" y1="442" x2="1560" y2="442" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="411.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">OOM, too many open files, </tspan><tspan x="60" dy="24">target overload</tspan></text>
-  <text x="520" y="423.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">unbounded fan-out</text>
-  <text x="940" y="411.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">semaphores, bounded queues, </tspan><tspan x="940" dy="24">islice feeding</tspan></text>
-  
-  <rect x="40" y="442" width="1520" height="54" fill="#ffffff"/>
-  <line x1="40" y1="496" x2="1560" y2="496" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="477.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Rare wrong results</text>
-  <text x="520" y="477.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">thread-unsafe shared state</text>
-  <text x="940" y="465.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">locks, queues, thread-local, </tspan><tspan x="940" dy="24">immutable data</tspan></text>
-  
-  <rect x="40" y="496" width="1520" height="78" fill="#e8f1ea"/>
-  <line x1="40" y1="574" x2="1560" y2="574" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="543.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Everything idle forever</text>
-  <text x="520" y="543.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">deadlock</text>
-  <text x="940" y="520.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">lock ordering, timeouts; </tspan><tspan x="940" dy="24">faulthandler.dump_traceback_later(60); </tspan><tspan x="940" dy="24">py-spy dump</tspan></text>
-  
-  <rect x="40" y="574" width="1520" height="54" fill="#ffffff"/>
-  <line x1="40" y1="628" x2="1560" y2="628" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="597.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">Hangs in children, </tspan><tspan x="60" dy="24">CUDA errors</tspan></text>
-  <text x="520" y="597.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="520" dy="0">fork with threads, </tspan><tspan x="520" dy="24">CUDA or locks</tspan></text>
-  <text x="940" y="609.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">spawn or forkserver</text>
-  
-  <rect x="40" y="628" width="1520" height="44" fill="#e8f1ea"/>
-  <line x1="40" y1="672" x2="1560" y2="672" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="658.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Can't pickle local object</text>
-  <text x="520" y="658.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pickle errors</text>
-  <text x="940" y="658.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">top-level functions</text>
-  
-  <rect x="40" y="672" width="1520" height="44" fill="#ffffff"/>
-  <line x1="40" y1="716" x2="1560" y2="716" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="702.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Memory growth in pools</text>
-  <text x="520" y="702.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">worker leaks</text>
-  <text x="940" y="702.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">maxtasksperchild, tracemalloc</text>
-  
-  <rect x="40" y="716" width="1520" height="54" fill="#e8f1ea"/>
-  <line x1="40" y1="770" x2="1560" y2="770" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="739.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">Defunct processes, </tspan><tspan x="60" dy="24">leftover workers</tspan></text>
-  <text x="520" y="751.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">zombies or orphans</text>
-  <text x="940" y="739.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">wait(), context managers, </tspan><tspan x="940" dy="24">process groups, supervisors</tspan></text>
-  
-  <rect x="40" y="770" width="1520" height="54" fill="#ffffff"/>
-  <line x1="40" y1="824" x2="1560" y2="824" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="805.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">CPU throttling, slow runs</text>
-  <text x="520" y="805.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">oversubscription</text>
-  <text x="940" y="793.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">match cgroup limits, </tspan><tspan x="940" dy="24">OMP_NUM_THREADS=1</tspan></text>
-  
-  <rect x="40" y="824" width="1520" height="54" fill="#e8f1ea"/>
-  <line x1="40" y1="878" x2="1560" y2="878" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="859.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Target collapse</text>
-  <text x="520" y="847.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="520" dy="0">thundering herd or </tspan><tspan x="520" dy="24">retry storm</tspan></text>
-  <text x="940" y="847.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">jittered backoff, limits, </tspan><tspan x="940" dy="24">circuit breakers</tspan></text>
-  
-  <rect x="40" y="878" width="1520" height="44" fill="#ffffff"/>
-  <line x1="40" y1="922" x2="1560" y2="922" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="908.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Silent partial results</text>
-  <text x="520" y="908.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">lost exceptions in threads</text>
-  <text x="940" y="908.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">futures, threading.excepthook</text>
-  
-  <rect x="40" y="922" width="1520" height="54" fill="#e8f1ea"/>
-  <line x1="40" y1="976" x2="1560" y2="976" stroke="#207448" stroke-width="1" opacity="0.25"/>
-  <text x="60" y="945.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="60" dy="0">ValueError: signal only </tspan><tspan x="60" dy="24">works in main thread</tspan></text>
-  <text x="520" y="945.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="520" dy="0">signal in a non-main </tspan><tspan x="520" dy="24">thread</tspan></text>
-  <text x="940" y="945.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">install handlers in the main thread </tspan><tspan x="940" dy="24">or loop.add_signal_handler</tspan></text>
-  
-  <rect x="40" y="976" width="1520" height="54" fill="#ffffff"/>
-  <text x="60" y="1011.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">RuntimeError</text>
-  <text x="520" y="999.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="520" dy="0">asyncio.run() inside a </tspan><tspan x="520" dy="24">running loop (Jupyter)</tspan></text>
-  <text x="940" y="999.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="940" dy="0">await instead; nest_asyncio only </tspan><tspan x="940" dy="24">for notebooks</tspan></text>
-  
-  <line x1="500" y1="104" x2="500" y2="1030" stroke="#207448" stroke-width="1.5" opacity="0.35"/>
-  <line x1="920" y1="104" x2="920" y2="1030" stroke="#207448" stroke-width="1.5" opacity="0.35"/>
+  <rect x="40" y="142" width="460" height="42" rx="6" fill="#207448" />
+  <text x="270" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">symptom</text>
+
+  <rect x="510" y="142" width="390" height="42" rx="6" fill="#207448" />
+  <text x="705" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">cause</text>
+
+  <rect x="910" y="142" width="650" height="42" rx="6" fill="#207448" />
+  <text x="1235" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">remedy</text>
 
   
-  <rect x="40" y="1046" width="1520" height="58" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2.5"/>
-  <g transform="translate(68, 1057)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="18" cy="18" r="14"/>
-    <polyline points="18,10 18,18 24,18"/>
-  </g>
-  <g transform="translate(1480, 1057)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="4" width="28" height="28" rx="5"/>
-    <line x1="4" y1="18" x2="32" y2="18"/>
-    <line x1="18" y1="4" x2="18" y2="32"/>
-  </g>
-  <text x="800" y="1081" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#db8129">a timeout on every wait, a bound on every queue and pool</text>
+  <rect x="40" y="190" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="218" font-family="sans-serif" font-size="24" fill="#303a36">Tasks stall, timeouts everywhere,</text>
+  <text x="60" y="245" font-family="sans-serif" font-size="24" fill="#303a36">slow callback warnings</text>
+  <rect x="510" y="190" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="231" font-family="sans-serif" font-size="24" fill="#303a36">blocking the event loop</text>
+  <rect x="910" y="190" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="231" font-family="monospace" font-size="24" fill="#207448">async APIs or to_thread</text>
 
   
-  <rect x="40" y="1118" width="1520" height="64" rx="8" fill="#207448"/>
-  <text x="800" y="1157" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Start from the symptom you see</text>
+  <rect x="40" y="259" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="287" font-family="sans-serif" font-size="24" fill="#303a36">Work never happens;</text>
+  <text x="60" y="314" font-family="sans-serif" font-size="24" fill="#303a36">was never awaited warning</text>
+  <rect x="510" y="259" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="300" font-family="sans-serif" font-size="24" fill="#303a36">un-awaited coroutine</text>
+  <rect x="910" y="259" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="300" font-family="monospace" font-size="24" fill="#207448">await or create_task</text>
+
+  
+  <rect x="40" y="328" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="369" font-family="sans-serif" font-size="24" fill="#303a36">Task exception was never retrieved</text>
+  <rect x="510" y="328" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="369" font-family="sans-serif" font-size="24" fill="#303a36">dropped task reference</text>
+  <rect x="910" y="328" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="356" font-family="sans-serif" font-size="24" fill="#207448">keep references, await or</text>
+  <text x="930" y="383" font-family="sans-serif" font-size="24" fill="#207448">add done callbacks</text>
+
+  
+  <rect x="40" y="397" width="460" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="434" font-family="sans-serif" font-size="24" fill="#303a36">Cannot cancel or shut down</text>
+  <rect x="510" y="397" width="390" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="434" font-family="sans-serif" font-size="24" fill="#303a36">swallowed CancelledError</text>
+  <rect x="910" y="397" width="650" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="434" font-family="sans-serif" font-size="24" fill="#207448">re-raise it, no bare except</text>
+
+  
+  <rect x="40" y="458" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="499" font-family="sans-serif" font-size="24" fill="#303a36">Hangs after network blips</text>
+  <rect x="510" y="458" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="499" font-family="sans-serif" font-size="24" fill="#303a36">missing timeouts</text>
+  <rect x="910" y="458" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="486" font-family="monospace" font-size="24" fill="#207448">wait_for or timeout on every await;</text>
+  <text x="930" y="513" font-family="monospace" font-size="24" fill="#207448">client timeout=</text>
+
+  
+  <rect x="40" y="527" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="555" font-family="sans-serif" font-size="24" fill="#303a36">OOM, too many open files,</text>
+  <text x="60" y="582" font-family="sans-serif" font-size="24" fill="#303a36">target overload</text>
+  <rect x="510" y="527" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="568" font-family="sans-serif" font-size="24" fill="#303a36">unbounded fan-out</text>
+  <rect x="910" y="527" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="568" font-family="sans-serif" font-size="24" fill="#207448">semaphores, bounded queues, islice feeding</text>
+
+  
+  <rect x="40" y="596" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="633" font-family="sans-serif" font-size="24" fill="#303a36">Rare wrong results</text>
+  <rect x="510" y="596" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="633" font-family="sans-serif" font-size="24" fill="#303a36">thread-unsafe shared state</text>
+  <rect x="910" y="596" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="633" font-family="sans-serif" font-size="24" fill="#207448">locks, queues, thread-local, immutable data</text>
+
+  
+  <rect x="40" y="657" width="460" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="708" font-family="sans-serif" font-size="24" fill="#303a36">Everything idle forever</text>
+  <rect x="510" y="657" width="390" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="708" font-family="sans-serif" font-size="24" fill="#303a36">deadlock</text>
+  <rect x="910" y="657" width="650" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="684" font-family="sans-serif" font-size="24" fill="#207448">lock ordering, timeouts;</text>
+  <text x="930" y="711" font-family="monospace" font-size="24" fill="#207448">faulthandler.dump_traceback_later(60);</text>
+  <text x="930" y="738" font-family="monospace" font-size="24" fill="#207448">py-spy dump</text>
+
+  
+  <rect x="40" y="748" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="789" font-family="sans-serif" font-size="24" fill="#303a36">Hangs in children, CUDA errors</text>
+  <rect x="510" y="748" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="776" font-family="sans-serif" font-size="24" fill="#303a36">fork with threads,</text>
+  <text x="530" y="803" font-family="sans-serif" font-size="24" fill="#303a36">CUDA or locks</text>
+  <rect x="910" y="748" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="789" font-family="monospace" font-size="24" fill="#207448">spawn or forkserver</text>
+
+  
+  <rect x="40" y="817" width="460" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="854" font-family="sans-serif" font-size="24" fill="#303a36">Can't pickle local object</text>
+  <rect x="510" y="817" width="390" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="854" font-family="sans-serif" font-size="24" fill="#303a36">pickle errors</text>
+  <rect x="910" y="817" width="650" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="854" font-family="sans-serif" font-size="24" fill="#207448">top-level functions</text>
+
+  
+  <rect x="40" y="878" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="915" font-family="sans-serif" font-size="24" fill="#303a36">Memory growth in pools</text>
+  <rect x="510" y="878" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="915" font-family="sans-serif" font-size="24" fill="#303a36">worker leaks</text>
+  <rect x="910" y="878" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="915" font-family="monospace" font-size="24" fill="#207448">maxtasksperchild, tracemalloc</text>
+
+  
+  <rect x="40" y="939" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="967" font-family="sans-serif" font-size="24" fill="#303a36">Defunct processes,</text>
+  <text x="60" y="994" font-family="sans-serif" font-size="24" fill="#303a36">leftover workers</text>
+  <rect x="510" y="939" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="980" font-family="sans-serif" font-size="24" fill="#303a36">zombies or orphans</text>
+  <rect x="910" y="939" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="967" font-family="sans-serif" font-size="24" fill="#207448">wait(), context managers,</text>
+  <text x="930" y="994" font-family="sans-serif" font-size="24" fill="#207448">process groups, supervisors</text>
+
+  
+  <rect x="40" y="1008" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1045" font-family="sans-serif" font-size="24" fill="#303a36">CPU throttling, slow runs</text>
+  <rect x="510" y="1008" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1045" font-family="sans-serif" font-size="24" fill="#303a36">oversubscription</text>
+  <rect x="910" y="1008" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1045" font-family="monospace" font-size="24" fill="#207448">match cgroup limits, OMP_NUM_THREADS=1</text>
+
+  
+  <rect x="40" y="1069" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1110" font-family="sans-serif" font-size="24" fill="#303a36">Target collapse</text>
+  <rect x="510" y="1069" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1097" font-family="sans-serif" font-size="24" fill="#303a36">thundering herd or</text>
+  <text x="530" y="1124" font-family="sans-serif" font-size="24" fill="#303a36">retry storm</text>
+  <rect x="910" y="1069" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1110" font-family="sans-serif" font-size="24" fill="#207448">jittered backoff, limits, circuit breakers</text>
+
+  
+  <rect x="40" y="1138" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1175" font-family="sans-serif" font-size="24" fill="#303a36">Silent partial results</text>
+  <rect x="510" y="1138" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1175" font-family="sans-serif" font-size="24" fill="#303a36">lost exceptions in threads</text>
+  <rect x="910" y="1138" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1175" font-family="monospace" font-size="24" fill="#207448">futures, threading.excepthook</text>
+
+  
+  <rect x="40" y="1199" width="460" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1227" font-family="sans-serif" font-size="24" fill="#303a36">ValueError: signal only works</text>
+  <text x="60" y="1254" font-family="sans-serif" font-size="24" fill="#303a36">in main thread</text>
+  <rect x="510" y="1199" width="390" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1227" font-family="sans-serif" font-size="24" fill="#303a36">signal in a</text>
+  <text x="530" y="1254" font-family="sans-serif" font-size="24" fill="#303a36">non-main thread</text>
+  <rect x="910" y="1199" width="650" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1227" font-family="sans-serif" font-size="24" fill="#207448">install handlers in the main thread or</text>
+  <text x="930" y="1254" font-family="monospace" font-size="24" fill="#207448">loop.add_signal_handler</text>
+
+  
+  <rect x="40" y="1270" width="460" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1312" font-family="sans-serif" font-size="24" fill="#303a36">RuntimeError</text>
+  <rect x="510" y="1270" width="390" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1298" font-family="sans-serif" font-size="24" fill="#303a36">asyncio.run() inside a</text>
+  <text x="530" y="1325" font-family="sans-serif" font-size="24" fill="#303a36">running loop (Jupyter)</text>
+  <rect x="910" y="1270" width="650" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1298" font-family="sans-serif" font-size="24" fill="#207448">await instead;</text>
+  <text x="930" y="1325" font-family="sans-serif" font-size="24" fill="#207448">nest_asyncio only for notebooks</text>
+
+  
+  <rect x="40" y="1380" width="1520" height="68" rx="8" fill="#207448" />
+  <text x="800" y="1424" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Start from the symptom you see</text>
 </svg>

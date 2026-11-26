@@ -1,170 +1,178 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
   <title>Which cgroup version does this node run?</title>
-  <desc>Decision flow and compatibility guide to determine whether a Linux node runs cgroups v1, v2, or a hybrid configuration.</desc>
+  <desc>Decision flow to determine whether a Linux node runs cgroup v1, v2, or hybrid hierarchy, with verification commands and tooling compatibility notes.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1190" fill="#f5f8f5" />
 
   
-  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Which cgroup version does this node run?</text>
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which cgroup version does this node run?</text>
 
   
-  <rect x="180" y="130" width="660" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
-  
-  <g transform="translate(205, 145)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="0" width="56" height="56" rx="8" />
-    <line x1="0" y1="16" x2="56" y2="16" />
-    <path d="M 12 28 L 22 36 L 12 44" />
-    <line x1="28" y1="44" x2="44" y2="44" />
-  </g>
-  <text x="285" y="183" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">Run: stat -fc %T /sys/fs/cgroup/</text>
 
   
-  <line x1="510" y1="215" x2="510" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
+  <rect x="50" y="110" width="375" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
   
-  <polygon points="510,265 730,320 510,375 290,320" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-  <text x="510" y="329" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does it print?</text>
-
-  
-  <path d="M 290 320 L 250 320 L 250 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="175" y="278" width="150" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="250" y="303" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">cgroup2fs</text>
-
-  
-  <path d="M 730 320 L 770 320 L 770 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="715" y="278" width="110" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="770" y="303" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tmpfs</text>
-
-  
-  <rect x="40" y="415" width="430" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <g transform="translate(65, 435)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="18" y="0" width="20" height="16" rx="4" />
-    <line x1="28" y1="16" x2="28" y2="34" />
-    <line x1="8" y1="34" x2="48" y2="34" />
-    <line x1="8" y1="34" x2="8" y2="42" />
-    <line x1="48" y1="34" x2="48" y2="42" />
-    <rect x="0" y="42" width="16" height="14" rx="3" />
-    <rect x="40" y="42" width="16" height="14" rx="3" />
-  </g>
-  <text x="65" y="535" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
-    <tspan x="65" dy="0">Pure v2: one unified hierarchy,</tspan>
-    <tspan x="65" dy="42" font-size="24" font-weight="normal" fill="#303a36">one cgroup2 mount at</tspan>
-    <tspan x="65" dy="38" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">/sys/fs/cgroup</tspan>
+  <rect x="70" y="133" width="46" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 78 147 L 87 154 L 78 161" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="92" y1="163" x2="105" y2="163" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="130" y="148">Run: stat -fc %T</tspan>
+    <tspan x="130" y="180">/sys/fs/cgroup/</tspan>
   </text>
 
   
-  <rect x="500" y="415" width="530" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(525, 428)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="0" width="18" height="16" rx="3" />
-    <rect x="34" y="0" width="18" height="16" rx="3" />
-    <line x1="13" y1="16" x2="13" y2="34" />
-    <line x1="43" y1="16" x2="43" y2="34" />
-    <rect x="4" y="34" width="18" height="16" rx="3" />
-    <rect x="34" y="34" width="18" height="16" rx="3" />
-  </g>
-  <text x="595" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">v1 or hybrid</text>
+  <line x1="237" y1="200" x2="237" y2="230" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <rect x="520" y="490" width="490" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="765" y="522" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">cat /proc/self/cgroup</text>
-
-  
-  <rect x="520" y="546" width="490" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
-  <text x="535" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">one line 0::/path</tspan> means v2
+  <polygon points="237,232 370,290 237,348 104,290" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="237" y="282">What does</tspan>
+    <tspan x="237" y="316">it print?</tspan>
   </text>
 
   
-  <rect x="520" y="598" width="490" height="66" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
-  <text x="535" y="625" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan font-family="monospace" font-weight="bold" fill="#303a36">many lines N:controller:/path</tspan>
-    <tspan x="535" dy="28">means v1</tspan>
+  <line x1="237" y1="348" x2="237" y2="440" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="252" y="398" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">cgroup2fs</text>
+
+  
+  <rect x="50" y="442" width="375" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <path d="M 237 465 L 267 477 C 267 507 237 525 237 525 C 237 525 207 507 207 477 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <path d="M 223 493 L 233 503 L 253 483" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="72" y="562" font-size="30" font-weight="bold" fill="#207448">Pure v2:</tspan>
+    <tspan x="72" y="608" font-size="24">one unified hierarchy,</tspan>
+    <tspan x="72" y="648" font-size="24">one cgroup2 mount at</tspan>
+    <tspan x="72" y="688" font-family="monospace" font-size="24" fill="#207448">/sys/fs/cgroup</tspan>
   </text>
 
   
-  <rect x="520" y="674" width="490" height="68" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="535" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="535" dy="0">Hybrid systems mount both,</tspan>
-    <tspan x="535" dy="30" font-family="monospace" font-size="24" fill="#207448">usually v2 at /sys/fs/cgroup/unified</tspan>
+  <line x1="370" y1="290" x2="475" y2="290" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="390" y="278" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">tmpfs</text>
+
+
+  
+
+  
+  <rect x="477" y="110" width="633" height="632" rx="16" fill="#fcfdfc" stroke="#207448" stroke-width="2.5" />
+
+  
+  
+  <path d="M 505 148 L 525 148 M 515 138 L 515 158 M 525 138 L 535 138 M 525 158 L 535 158" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <rect x="535" y="132" width="16" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="535" y="152" width="16" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="495" y="142" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="562" y="156" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">v1 or hybrid</text>
+
+  
+  <rect x="502" y="185" width="583" height="72" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="522" y="230" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">cat /proc/self/cgroup</text>
+
+  
+  <path d="M 793 257 L 793 285 L 632 285 L 632 315" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <path d="M 793 285 L 945 285 L 945 315" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="502" y="318" width="260" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="524" y="362" font-size="24" font-weight="bold">one line</tspan>
+    <tspan x="524" y="405" font-family="monospace" font-size="24" fill="#207448">0::/path</tspan>
+    <tspan x="524" y="458" font-size="28" font-weight="bold" fill="#207448">means v2</tspan>
   </text>
 
   
-  <rect x="1060" y="130" width="500" height="625" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1085, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="8" width="44" height="48" rx="6" />
-    <path d="M 18 8 V 4 H 38 V 8" />
-    <path d="M 16 26 L 24 34 L 40 18" />
-    <line x1="16" y1="44" x2="38" y2="44" />
-  </g>
-  <text x="1160" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">More checks</text>
-
-  
-  <rect x="1085" y="225" width="450" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <g transform="translate(1105, 252)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
-    <path d="M 0 0 L 10 10 L 0 20" />
-    <line x1="14" y1="20" x2="28" y2="20" />
-  </g>
-  <text x="1145" y="280" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">mount | grep cgroup</text>
-
-  
-  <rect x="1085" y="340" width="450" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <g transform="translate(1105, 380)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
-    <path d="M 0 0 L 10 10 L 0 20" />
-    <line x1="14" y1="20" x2="28" y2="20" />
-  </g>
-  <text x="1145" y="392" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1145" dy="0">cat /sys/fs/cgroup/</tspan>
-    <tspan x="1145" dy="34">cgroup.controllers</tspan>
+  <rect x="782" y="318" width="303" height="185" rx="12" fill="#ffffff" stroke="#789084" stroke-width="2" />
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="800" y="362" font-size="24" font-weight="bold">many lines</tspan>
+    <tspan x="800" y="405" font-family="monospace" font-size="24">N:controller:/path</tspan>
+    <tspan x="800" y="458" font-size="28" font-weight="bold">means v1</tspan>
   </text>
 
   
-  <rect x="1085" y="480" width="450" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <g transform="translate(1105, 520)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
-    <path d="M 0 0 L 10 10 L 0 20" />
-    <line x1="14" y1="20" x2="28" y2="20" />
-  </g>
-  <text x="1145" y="532" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1145" dy="0">grep cgroup</tspan>
-    <tspan x="1145" dy="34">/proc/filesystems</tspan>
+  <rect x="502" y="525" width="583" height="195" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="524" y="548" width="40" height="18" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 524 574 C 536 578, 552 578, 564 574" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 524 582 C 536 586, 552 586, 564 582" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="578" y="572" font-size="26" font-weight="bold">Hybrid systems mount both,</tspan>
+    <tspan x="578" y="618" font-size="24">usually v2 at</tspan>
+    <tspan x="578" y="658" font-family="monospace" font-size="24" fill="#207448">/sys/fs/cgroup/unified</tspan>
+  </text>
+
+
+  
+
+  <rect x="1135" y="110" width="415" height="632" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  
+  <circle cx="1165" cy="150" r="14" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1175" y1="160" x2="1187" y2="172" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1200" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">More checks</text>
+
+  
+  <rect x="1155" y="195" width="375" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1180" cy="255" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <path d="M 1176 255 L 1179 258 L 1185 252" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text x="1205" y="263" font-family="monospace" font-size="24" fill="#303a36">mount | grep cgroup</text>
+
+  
+  <rect x="1155" y="340" width="375" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1180" cy="405" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <path d="M 1176 405 L 1179 408 L 1185 402" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1205" y="405">cat /sys/fs/cgroup/</tspan>
+    <tspan x="1205" y="442">cgroup.controllers</tspan>
   </text>
 
   
-  <rect x="40" y="780" width="1520" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(65, 797)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="10" width="56" height="36" rx="18" />
-    <circle cx="38" cy="28" r="10" fill="#207448" />
-  </g>
-  <text x="145" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0" font-family="monospace" font-weight="bold" fill="#207448">boot parameter systemd.unified_cgroup_hierarchy=1 (v2) or =0 (v1);</tspan>
-    <tspan x="145" dy="34">RHEL 8 defaulted to v1, RHEL 9 is v2</tspan>
+  <rect x="1155" y="530" width="375" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1180" cy="595" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <path d="M 1176 595 L 1179 598 L 1185 592" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1205" y="595">grep cgroup</tspan>
+    <tspan x="1205" y="632">/proc/filesystems</tspan>
   </text>
 
-  
-  <rect x="40" y="890" width="1520" height="180" rx="10" fill="#fffdf9" stroke="#db8129" stroke-width="3" />
-  
-  <g transform="translate(65, 942)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="28,4 54,50 2,50" />
-    <line x1="28" y1="20" x2="28" y2="34" />
-    <circle cx="28" cy="42" r="2" fill="#db8129" />
-  </g>
-  <text x="145" y="942" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0" font-weight="bold" fill="#db8129">Older tooling expects v1: </tspan><tspan font-weight="normal">old Docker, Kubernetes before 1.25 v2 support,</tspan>
-    <tspan x="145" dy="36">some NVIDIA container toolkit and GPU monitoring tools, old cAdvisor,</tspan>
-    <tspan x="145" dy="36">Java before 15 or jdk8u372 container awareness; check compatibility before moving a fleet to v2</tspan>
-  </text>
 
   
-  <rect x="40" y="1090" width="1520" height="70" rx="8" fill="#207448" />
-  <text x="800" y="1135" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Run the version check on every node you touch</text>
+
+  <rect x="50" y="765" width="1500" height="98" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="75" y="794" width="48" height="26" rx="13" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="109" cy="807" r="9" fill="#207448" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" y="805">boot parameter systemd.unified_cgroup_hierarchy=1 (v2) or =0 (v1);</tspan>
+    <tspan x="145" y="842">RHEL 8 defaulted to v1, RHEL 9 is v2</tspan>
+  </text>
+
+
+  
+
+  <rect x="50" y="885" width="1500" height="195" rx="16" fill="#fffcf8" stroke="#db8129" stroke-width="3" />
+  
+  <polygon points="100,948 126,998 74,998" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="100" y1="966" x2="100" y2="982" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="100" cy="991" r="2" fill="#db8129" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="148" y="932">Older tooling expects v1: old Docker, Kubernetes before 1.25 v2 support,</tspan>
+    <tspan x="148" y="970">some NVIDIA container toolkit and GPU monitoring tools, old cAdvisor,</tspan>
+    <tspan x="148" y="1008">Java before 15 or jdk8u372 container awareness;</tspan>
+    <tspan x="148" y="1046">check compatibility before moving a fleet to v2</tspan>
+  </text>
+
+
+  
+
+  <rect x="50" y="1102" width="1500" height="66" rx="12" fill="#207448" />
+  <text x="800" y="1144" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Run the version check on every node you touch</text>
+
 </svg>

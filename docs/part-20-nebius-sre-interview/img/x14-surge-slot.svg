@@ -1,135 +1,243 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
   <title>With one spare GPU, the surge slot is the only room for a new pod</title>
-  <desc>SVG infographic showing rolling pod replacement with one spare GPU surge slot.</desc>
+  <desc>Visual explanation of Kubernetes surge slot limitation with a single spare GPU during pod rollout.</desc>
+
   <defs>
-    <pattern id="hatched-loading" width="12" height="12" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-      <line x1="0" y1="0" x2="0" y2="12" stroke="#db8129" stroke-width="3"/>
-      <line x1="6" y1="0" x2="6" y2="12" stroke="#f5e6d3" stroke-width="3"/>
+    
+    <pattern id="loadingHatch" width="16" height="16" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#db8129" stroke-width="4" />
+      <line x1="8" y1="0" x2="8" y2="16" stroke="#db8129" stroke-width="4" opacity="0.3" />
     </pattern>
-    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+
+    
+    <marker id="arrowGreen" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrowOrange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1160" fill="#f5f8f5"/>
+  <rect width="1600" height="1380" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">
-    <tspan x="800" dy="0">With one spare GPU, the surge slot </tspan>
-    <tspan x="800" dy="56">is the only room for a new pod</tspan>
+  <text x="80" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    With one spare GPU, the surge slot is the only room for a new pod
   </text>
 
   
-  
-  <rect x="170" y="162" width="1070" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <g transform="translate(190, 160)">
-    <rect x="6" y="14" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="12" y1="6" x2="12" y2="14" stroke="#207448" stroke-width="4"/>
-    <line x1="20" y1="6" x2="20" y2="14" stroke="#207448" stroke-width="4"/>
-    <line x1="28" y1="6" x2="28" y2="14" stroke="#207448" stroke-width="4"/>
-    <line x1="12" y1="42" x2="12" y2="50" stroke="#207448" stroke-width="4"/>
-    <line x1="20" y1="42" x2="20" y2="50" stroke="#207448" stroke-width="4"/>
-    <line x1="28" y1="42" x2="28" y2="50" stroke="#207448" stroke-width="4"/>
-    <line x1="0" y1="20" x2="6" y2="20" stroke="#207448" stroke-width="4"/>
-    <line x1="0" y1="28" x2="6" y2="28" stroke="#207448" stroke-width="4"/>
-    <line x1="0" y1="36" x2="6" y2="36" stroke="#207448" stroke-width="4"/>
-    <line x1="34" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="4"/>
-    <line x1="34" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4"/>
-    <line x1="34" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="4"/>
-  </g>
-  <text x="705" y="198" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Replicas 1 to 8</text>
-
-  
-  <rect x="1270" y="162" width="220" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="1380" y="198" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Spare GPU</text>
-
-  
-  <g transform="translate(0, 240)">
+  <g id="initial-layout" transform="translate(80, 110)">
     
-    <circle cx="130" cy="25" r="24" fill="#207448"/>
-    <path d="M 125 18 L 131 13 L 131 35 M 125 35 L 137 35" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    
-    <text x="170" y="34" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Step 1: a new pod loads into the spare slot</text>
+    <rect x="0" y="0" width="1440" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
     
-    <rect x="180" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="314" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="448" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="582" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="716" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="850" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="984" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="1118" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
+    <text x="30" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      Replicas 1 to 8
+    </text>
 
     
-    <rect x="1305" y="60" width="150" height="64" rx="8" fill="url(#hatched-loading)" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6"/>
-    <text x="1380" y="100" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129" font-family="sans-serif">loading</text>
+    
+    
+    <g transform="translate(30, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    </g>
+    
+    <g transform="translate(156, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    </g>
+    
+    <g transform="translate(282, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    </g>
+    
+    <g transform="translate(408, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    </g>
+    
+    <g transform="translate(534, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    </g>
+    
+    <g transform="translate(660, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    </g>
+    
+    <g transform="translate(786, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    </g>
+    
+    <g transform="translate(912, 64)">
+      <rect width="112" height="82" rx="10" fill="#207448" />
+      <text x="56" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    </g>
 
     
-    <rect x="1140" y="136" width="350" height="42" rx="6" fill="#e8f1ea"/>
-    <text x="1315" y="165" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">holds its slot while loading</text>
-  </g>
-
-  
-  <line x1="240" y1="364" x2="240" y2="496" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
-
-  
-  <g transform="translate(0, 440)">
-    
-    <circle cx="130" cy="25" r="24" fill="#207448"/>
-    <path d="M 124 18 C 124 13 136 13 136 20 C 136 26 123 31 123 35 L 137 35" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-
-    <text x="170" y="34" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Step 2: when the new pod is ready, one old pod drains and its slot is freed</text>
+    <line x1="1060" y1="25" x2="1060" y2="150" stroke="#a2c2ad" stroke-width="2" stroke-dasharray="6 6" />
 
     
-    <rect x="180" y="60" width="120" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
-
-    
-    <rect x="314" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="448" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="582" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="716" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="850" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="984" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="1118" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-
-    
-    <rect x="1305" y="60" width="150" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
+    <g transform="translate(1095, 64)">
+      <rect width="310" height="82" rx="10" fill="#ffffff" stroke="#303a36" stroke-width="3" stroke-dasharray="8 6" />
+      <text x="155" y="50" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">Spare GPU</text>
+    </g>
   </g>
 
   
-  <g transform="translate(0, 630)">
+  <g id="step-1" transform="translate(80, 315)">
     
-    <circle cx="130" cy="25" r="24" fill="#207448"/>
-    <path d="M 124 16 L 136 16 L 129 23 C 135 23 137 27 137 31 C 137 36 132 37 124 36" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-
-    <text x="170" y="34" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Step 3: the freed slot takes the next new pod, repeated until all eight are new</text>
-
+    <rect x="0" y="0" width="1440" height="210" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="3" />
     
-    <rect x="180" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="314" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="448" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="582" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="716" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="850" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="984" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
-    <rect x="1118" y="60" width="120" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
+    
+    <circle cx="50" cy="45" r="24" fill="#207448" />
+    <text x="50" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text x="90" y="45" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Step 1:</text>
+    <text x="200" y="45" font-family="sans-serif" font-size="25" fill="#303a36">
+      a new pod loads into the spare slot
+    </text>
 
     
-    <rect x="1305" y="60" width="150" height="64" rx="8" fill="#207448" stroke="#165233" stroke-width="2"/>
+    <g transform="translate(30, 95)">
+      
+      <rect x="0" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="119" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="238" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="357" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="476" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="595" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="714" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="833" y="0" width="105" height="75" rx="8" fill="#207448" />
+
+      
+      <g transform="translate(970, 0)">
+        
+        <rect x="-4" y="-4" width="414" height="83" rx="12" fill="none" stroke="#db8129" stroke-width="4" />
+        <rect x="0" y="0" width="406" height="75" rx="8" fill="#fff5ec" />
+        <rect x="0" y="0" width="406" height="75" rx="8" fill="url(#loadingHatch)" />
+        <rect x="15" y="16" width="376" height="43" rx="6" fill="#ffffff" opacity="0.92" />
+        <text x="203" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+          loading, holds its slot while loading
+        </text>
+      </g>
+    </g>
   </g>
 
   
-  <rect x="110" y="825" width="1380" height="54" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="860" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">surge 1 and unavailable 0 finishes with at least 8 available and a peak of 9 GPUs</text>
+  <g id="step-2" transform="translate(80, 555)">
+    
+    <rect x="0" y="0" width="1440" height="225" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="3" />
+    
+    
+    <circle cx="50" cy="45" r="24" fill="#207448" />
+    <text x="50" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="90" y="45" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Step 2:</text>
+    <text x="200" y="45" font-family="sans-serif" font-size="25" fill="#303a36">
+      when the new pod is ready, one old pod drains and its slot is freed
+    </text>
+
+    
+    <g transform="translate(30, 95)">
+      
+      <g id="freed-slot-step2">
+        <rect x="0" y="0" width="105" height="75" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="3" stroke-dasharray="6 5" />
+      </g>
+
+      
+      <rect x="119" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="238" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="357" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="476" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="595" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="714" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="833" y="0" width="105" height="75" rx="8" fill="#207448" />
+
+      
+      <g transform="translate(970, 0)">
+        <rect x="0" y="0" width="406" height="75" rx="8" fill="#207448" />
+        <circle cx="40" cy="37" r="16" fill="#ffffff" />
+        <path d="M 33 37 L 38 42 L 48 32" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <rect x="70" y="16" width="315" height="43" rx="6" fill="#ffffff" opacity="0.15" />
+        <text x="230" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Ready</text>
+      </g>
+    </g>
+
+    
+    <path d="M 82, 62 L 82, 90" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrowOrange)" />
+  </g>
 
   
-  <rect x="110" y="905" width="1380" height="54" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="941" text-anchor="middle" font-size="26" font-family="monospace" fill="#303a36">pod cap = min(replicas + surge, replicas + spare GPU slots)</text>
+  <g id="step-3" transform="translate(80, 810)">
+    
+    <rect x="0" y="0" width="1440" height="210" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="3" />
+    
+    
+    <circle cx="50" cy="45" r="24" fill="#207448" />
+    <text x="50" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <text x="90" y="45" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Step 3:</text>
+    <text x="200" y="45" font-family="sans-serif" font-size="25" fill="#303a36">
+      the freed slot takes the next new pod, repeated until all eight are new
+    </text>
+
+    
+    <g transform="translate(30, 95)">
+      
+      <g>
+        <rect x="0" y="0" width="105" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <rect x="15" y="15" width="75" height="45" rx="6" fill="url(#loadingHatch)" />
+      </g>
+
+      
+      <rect x="119" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="238" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="357" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="476" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="595" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="714" y="0" width="105" height="75" rx="8" fill="#207448" />
+      <rect x="833" y="0" width="105" height="75" rx="8" fill="#207448" />
+
+      
+      <g transform="translate(970, 0)">
+        <rect x="0" y="0" width="406" height="75" rx="8" fill="#207448" />
+        <circle cx="40" cy="37" r="16" fill="#ffffff" />
+        <path d="M 33 37 L 38 42 L 48 32" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        <text x="230" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Active</text>
+      </g>
+    </g>
+  </g>
 
   
-  <rect x="110" y="985" width="1380" height="80" rx="12" fill="#207448"/>
-  <text x="800" y="1035" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif">Surge above the spare GPU count buys nothing, because extra pods stay pending.</text>
+  
+  <g transform="translate(80, 1050)">
+    <rect x="0" y="0" width="1440" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="40" cy="38" r="16" fill="#207448" />
+    <text x="40" y="46" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">i</text>
+    <text x="75" y="46" font-family="sans-serif" font-size="25" fill="#303a36">
+      surge 1 and unavailable 0 finishes with at least 8 available and a peak of 9 GPUs
+    </text>
+  </g>
+
+  
+  <g transform="translate(80, 1150)">
+    <rect x="0" y="0" width="1440" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="720" y="50" font-family="monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+      pod cap = min(replicas + surge, replicas + spare GPU slots)
+    </text>
+  </g>
+
+  
+  <g transform="translate(80, 1255)">
+    <rect x="0" y="0" width="1440" height="84" rx="14" fill="#207448" />
+    <text x="720" y="52" font-family="sans-serif" font-size="27" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Surge above the spare GPU count buys nothing, because extra pods stay pending.
+    </text>
+  </g>
 </svg>

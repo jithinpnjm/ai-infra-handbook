@@ -1,144 +1,140 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
   <title>A full stderr pipe deadlocks a parent that reads only stdout</title>
-  <desc>Diagram showing how a child process blocks when stderr pipe fills up while the parent waits for stdout EOF, causing a deadlock.</desc>
+  <desc>Infographic illustrating how a full stderr pipe causes a deadlock between a Python parent process and a child process, and how to fix it.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
     </marker>
-
-    
-    <pattern id="full-buffer-pattern" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="10" height="20" fill="#f87171" fill-opacity="0.3" />
-      <rect x="10" width="10" height="20" fill="#ef4444" fill-opacity="0.5" />
-    </pattern>
   </defs>
 
   
-  <rect width="1600" height="960" fill="#f5f8f5" />
+  <rect width="1600" height="1100" fill="#f5f8f5" />
 
   
-  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A full stderr pipe deadlocks a parent that reads only stdout</text>
+  <text x="800" y="85" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">A full stderr pipe deadlocks a parent that reads only stdout</text>
 
   
-  <g id="parent-box">
-    <rect x="40" y="160" width="310" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(40, 180)">
+    
+    <rect x="0" y="0" width="270" height="710" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
     
-    <g transform="translate(167, 195)">
-      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4" />
-      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
-      <circle cx="12" cy="9" r="3.5" fill="#207448" />
-      <circle cx="22" cy="9" r="3.5" fill="#207448" />
-      <circle cx="32" cy="9" r="3.5" fill="#207448" />
-      <polyline points="14,36 24,36 28,44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-
-    <text x="195" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Parent (Python)</text>
+    <rect x="107" y="36" width="56" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <line x1="107" y1="52" x2="163" y2="52" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="44" r="2.5" fill="#207448" />
+    <circle cx="127" cy="44" r="2.5" fill="#207448" />
 
     
-    <rect x="65" y="450" width="260" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="195" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#303a36">waiting for stdout EOF</text>
-  </g>
-
-  
-
-  
-  <g id="stdout-pipe">
-    
-    <rect x="350" y="210" width="410" height="110" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    <ellipse cx="355" cy="265" rx="8" ry="45" fill="#207448" fill-opacity="0.2" stroke="#207448" stroke-width="3" />
-    <ellipse cx="755" cy="265" rx="8" ry="45" fill="#207448" fill-opacity="0.2" stroke="#207448" stroke-width="3" />
+    <text x="135" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Parent (Python)</text>
 
     
-    <line x1="720" y1="265" x2="385" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-    
-    <rect x="400" y="225" width="310" height="40" rx="8" fill="#ffffff" fill-opacity="0.95" stroke="#207448" stroke-width="1.5" />
-    <text x="555" y="253" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">parent reads stdout until EOF</text>
-  </g>
-
-  
-  <g id="stderr-pipe">
-    
-    <rect x="350" y="360" width="410" height="130" rx="20" fill="#fee2e2" stroke="#dc2626" stroke-width="3" />
-    
-    <rect x="360" y="370" width="390" height="110" rx="14" fill="url(#full-buffer-pattern)" stroke="#ef4444" stroke-width="1.5" />
-    
-    <ellipse cx="355" cy="425" rx="8" ry="50" fill="#dc2626" fill-opacity="0.3" stroke="#dc2626" stroke-width="3" />
-    <ellipse cx="755" cy="425" rx="8" ry="50" fill="#dc2626" fill-opacity="0.3" stroke="#dc2626" stroke-width="3" />
-
-    
-    <rect x="375" y="400" width="360" height="50" rx="8" fill="#ffffff" fill-opacity="0.95" stroke="#dc2626" stroke-width="2" />
-    <text x="555" y="434" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b91c1c">stderr pipe buffer full, about 64 KB</text>
-  </g>
-
-  
-  <g id="deadlock-cycle">
-    
-    
-    <path d="M 430,555 C 500,520 610,520 680,555" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)" />
-    
-    <path d="M 680,705 C 610,740 500,740 430,705" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)" />
-
-    
-    <rect x="370" y="580" width="370" height="100" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2" />
-    <text x="555" y="622" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="555" dy="0">each waits for the other:</tspan>
-      <tspan x="555" dy="34">deadlock, no error printed</tspan>
+    <rect x="20" y="270" width="230" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="310" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="135" dy="0">waiting for</tspan>
+      <tspan x="135" dy="32">stdout EOF</tspan>
     </text>
   </g>
 
   
-  <g id="child-box">
-    <rect x="760" y="160" width="310" height="600" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
 
+  
+  <g transform="translate(330, 240)">
     
-    <g transform="translate(887, 195)">
-      <circle cx="28" cy="28" r="22" fill="#fffaf5" stroke="#db8129" stroke-width="4" />
-      <circle cx="28" cy="28" r="9" fill="#ffffff" stroke="#db8129" stroke-width="4" />
-      <line x1="28" y1="2" x2="28" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="28" y1="46" x2="28" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="2" y1="28" x2="10" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="46" y1="28" x2="54" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-    </g>
-
-    <text x="915" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Child process</text>
-
+    <rect x="0" y="0" width="460" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <rect x="785" y="450" width="260" height="130" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="2" />
-    <text x="915" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#c2410c">blocked on write to stderr</text>
+    
+    <line x1="420" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    
+    <rect x="55" y="52" width="350" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="230" y="87" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">parent reads stdout until EOF</text>
   </g>
 
   
-  <g id="fixes-box">
-    <rect x="1120" y="160" width="440" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(330, 420)">
+    
+    <path d="M 200 35 A 40 40 0 1 1 250 55" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 4" marker-end="url(#arrow-orange)" />
 
     
-    <g transform="translate(1312, 195)">
-      <path d="M 28 4 L 50 14 C 50 36 28 52 28 52 C 28 52 6 36 6 14 Z" fill="#ffffff" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-      <polyline points="18,27 25,34 38,19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-
-    
-    <rect x="1145" y="340" width="390" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    
-    <text x="1340" y="430" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">
-      <tspan x="1340" dy="0">communicate(timeout=...),</tspan>
-      <tspan x="1340" dy="48">capture_output=True, or</tspan>
-      <tspan x="1340" dy="48">stderr=subprocess.STDOUT</tspan>
+    <rect x="25" y="75" width="410" height="96" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="230" y="115" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="230" dy="0">each waits for the other:</tspan>
+      <tspan x="230" dy="34">deadlock, no error printed</tspan>
     </text>
   </g>
 
   
-  <g id="caption-bar">
-    <rect x="40" y="830" width="1520" height="85" rx="14" fill="#207448" />
-    <text x="800" y="883" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Drain both pipes at once, and the child never blocks.</text>
+  <g transform="translate(330, 660)">
+    
+    <rect x="0" y="0" width="460" height="120" rx="16" fill="#fee2e2" stroke="#dc2626" stroke-width="3" />
+    
+    
+    <rect x="15" y="12" width="430" height="24" rx="6" fill="#fca5a5" />
+
+    
+    <rect x="30" y="44" width="400" height="64" rx="10" fill="#ffffff" stroke="#dc2626" stroke-width="2" />
+    <text x="230" y="74" font-family="sans-serif" font-size="24" font-weight="bold" fill="#dc2626" text-anchor="middle">
+      <tspan x="230" dy="0">stderr pipe buffer full,</tspan>
+      <tspan x="230" dy="26">about 64 KB</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(810, 180)">
+    
+    <rect x="0" y="0" width="270" height="710" rx="16" fill="#fffbf7" stroke="#db8129" stroke-width="4" />
+    
+    
+    <circle cx="135" cy="59" r="20" fill="none" stroke="#db8129" stroke-width="4" />
+    <circle cx="135" cy="59" r="9" fill="#db8129" />
+    <line x1="135" y1="31" x2="135" y2="40" stroke="#db8129" stroke-width="4" />
+    <line x1="135" y1="78" x2="135" y2="87" stroke="#db8129" stroke-width="4" />
+    <line x1="107" y1="59" x2="116" y2="59" stroke="#db8129" stroke-width="4" />
+    <line x1="154" y1="59" x2="163" y2="59" stroke="#db8129" stroke-width="4" />
+
+    
+    <text x="135" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Child process</text>
+
+    
+    <rect x="20" y="490" width="230" height="90" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="135" y="530" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="135" dy="0">blocked on</tspan>
+      <tspan x="135" dy="32">write to stderr</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1110, 180)">
+    
+    <rect x="0" y="0" width="450" height="710" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <path d="M 225 38 L 253 48 C 253 72 241 94 225 102 C 209 94 197 72 197 48 Z" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <path d="M 215 68 L 222 75 L 237 58" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <rect x="25" y="240" width="400" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <text x="225" y="305" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="225" dy="0">communicate(timeout=...),</tspan>
+      <tspan x="225" dy="50">capture_output=True, or</tspan>
+      <tspan x="225" dy="50">stderr=subprocess.STDOUT</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(100, 960)">
+    <rect x="0" y="0" width="1400" height="72" rx="14" fill="#207448" />
+    
+    <circle cx="50" cy="36" r="18" fill="#ffffff" />
+    <path d="M 42 36 L 47 42 L 58 29" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="720" y="45" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Drain both pipes at once, and the child never blocks.</text>
   </g>
 </svg>

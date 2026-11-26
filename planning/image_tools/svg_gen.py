@@ -9,7 +9,21 @@ spec = sys.argv[4]
 if spec.startswith('@'): spec = pathlib.Path(spec[1:]).read_text()
 rules = (root/'planning/luna_rules.md').read_text()
 prompt = (f"IMPORTANT: words like orange, green, grey, bold, monospace, arrow in the content are STYLE INSTRUCTIONS, never print them as text. Print only the labels.\n\nDraw an SVG infographic that explains the concept below visually.\nTitle: {title}\n\nCONTENT (use exactly these labels, each once, spelled exactly; add nothing else):\n{spec}\n\n{rules}")
-out = subprocess.run(['opencode','run','-m',__import__('os').environ.get('SVG_MODEL','google/gemini-3.8-flash'),prompt],capture_output=True,text=True,timeout=600).stdout
+import os
+if os.environ.get('SVG_API'):
+    import json,urllib.request
+    key=[l.split('=',1)[1].strip().strip('"').strip("'") for l in open(os.path.expanduser('~/.config/handbook/gemini.env')) if l.startswith('GEMINI_API_KEY=')][0]
+    model=os.environ.get('SVG_API_MODEL','gemini-3.8-flash')
+    body=json.dumps({'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'maxOutputTokens':32768}}).encode()
+    req=urllib.request.Request(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',data=body,headers={'x-goog-api-key':key,'Content-Type':'application/json'})
+    try:
+        r=json.load(urllib.request.urlopen(req,timeout=600))
+        out=''.join(pt.get('text','') for pt in r['candidates'][0]['content']['parts'])
+        open('/tmp/svg_api_usage.jsonl','a').write(json.dumps({'name':name,**r.get('usageMetadata',{})})+'\n')
+    except Exception as e:
+        print('API_ERR',str(e)[:200]); sys.exit(1)
+else:
+    out = subprocess.run(['opencode','run','-m',os.environ.get('SVG_MODEL','google/gemini-3.8-flash'),prompt],capture_output=True,text=True,timeout=600).stdout
 m = re.search(r'<svg.*</svg>', out, re.S)
 if not m: print('NO_SVG', out[-300:]); sys.exit(1)
 svg = re.sub(r'<!--.*?-->','',m.group(0),flags=re.S)

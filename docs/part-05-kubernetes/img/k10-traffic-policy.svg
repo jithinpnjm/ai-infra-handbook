@@ -1,228 +1,199 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
   <title>externalTrafficPolicy Cluster versus Local</title>
-  <desc>Visual comparison of Kubernetes externalTrafficPolicy Cluster mode versus Local mode, illustrating packet hops, SNAT behavior, endpoint health checks, and traffic distribution.</desc>
+  <desc>Visual comparison of Kubernetes externalTrafficPolicy Cluster versus Local, showing packet paths, SNAT behavior, hop counts, and health check handling.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#207448" />
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#db8129" />
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#db8129" />
     </marker>
-    <marker id="arrow-dark" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#303a36" />
+    <marker id="arrow-grey" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#7a8b84" />
     </marker>
-    <marker id="arrow-grey" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#9ca3af" />
+    <marker id="arrow-return" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#52635c" />
     </marker>
+
+    
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#14281e" flood-opacity="0.08" />
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1380" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">externalTrafficPolicy Cluster versus Local</text>
+  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">externalTrafficPolicy Cluster versus Local</text>
 
   
   
   
-  <g id="cluster-lane">
+  <g transform="translate(60, 110)">
     
-    <rect x="50" y="100" width="1500" height="460" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="0" y="0" width="1480" height="520" rx="16" fill="#e8f1ea" stroke="#c0d7c6" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <rect x="24" y="24" width="310" height="48" rx="8" fill="#207448" />
+    <text x="40" y="57" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Cluster (default)</text>
 
     
-    <rect x="75" y="120" width="300" height="46" rx="8" fill="#e8f1ea" />
-    <text x="225" y="153" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Cluster (default)</text>
-
+    <rect x="30" y="100" width="220" height="320" rx="12" fill="#ffffff" stroke="#c0d7c6" stroke-width="2" />
     
-    <g id="cluster-client">
-      <rect x="75" y="185" width="190" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(136, 235)">
-        <rect x="0" y="0" width="68" height="46" rx="4" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
-        <rect x="8" y="8" width="52" height="30" rx="2" fill="#e8f1ea" />
-        <path d="M -14 54 L 82 54 L 74 62 L -6 62 Z" fill="#207448" />
-      </g>
-      <text x="170" y="355" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">client</text>
+    <g transform="translate(106, 150)">
+      <rect x="4" y="0" width="60" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="34" x2="52" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M -6 48 L 74 48 C 76 48 78 50 76 53 L 70 56 L -2 56 L -8 53 C -10 50 -8 48 -6 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
     </g>
+    <text x="140" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">client</text>
 
     
-    <g id="cluster-node-1">
-      <rect x="345" y="185" width="480" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(375, 210)">
-        <rect x="0" y="0" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="9" r="2.5" fill="#207448" />
-        <line x1="20" y1="9" x2="46" y2="9" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-        <rect x="0" y="24" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="33" r="2.5" fill="#207448" />
-        <line x1="20" y1="33" x2="46" y2="33" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      </g>
-      <text x="450" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 1</text>
+    <line x1="250" y1="260" x2="356" y2="260" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
 
-      
-      <rect x="665" y="235" width="135" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(712, 265)">
-        <rect x="0" y="0" width="42" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-        <line x1="8" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="30" x2="26" y2="30" stroke="#207448" stroke-width="2" />
-      </g>
-      <text x="732" y="365" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">pod</text>
+    
+    <rect x="370" y="100" width="460" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(400, 130)">
+      <rect x="0" y="0" width="48" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="10" cy="10" r="2.5" fill="#207448" />
+      <line x1="22" y1="10" x2="38" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <rect x="0" y="26" width="48" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="10" cy="36" r="2.5" fill="#207448" />
+      <line x1="22" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
     </g>
+    <text x="465" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">node 1</text>
+    
+    
+    <rect x="400" y="210" width="400" height="180" rx="8" fill="#f5f8f5" stroke="#a3c4ad" stroke-width="2" />
+    <text x="420" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">pod</text>
+    <rect x="420" y="270" width="360" height="96" rx="6" fill="#e8f1ea" />
+    <text x="440" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">receives NodePort traffic</text>
+    <text x="440" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#52635c">(routes to pod on node 2)</text>
 
     
-    <line x1="862" y1="180" x2="862" y2="470" stroke="#207448" stroke-width="3" stroke-dasharray="8,8" />
+    <line x1="865" y1="90" x2="865" y2="430" stroke="#7a8b84" stroke-width="2.5" stroke-dasharray="8 8" />
 
     
-    <g id="cluster-node-2">
-      <rect x="895" y="185" width="625" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(925, 210)">
-        <rect x="0" y="0" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="9" r="2.5" fill="#207448" />
-        <line x1="20" y1="9" x2="46" y2="9" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-        <rect x="0" y="24" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="33" r="2.5" fill="#207448" />
-        <line x1="20" y1="33" x2="46" y2="33" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      </g>
-      <text x="1000" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 2</text>
-
-      
-      <rect x="1345" y="235" width="145" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-      
-      <g transform="translate(1396, 265)">
-        <rect x="0" y="0" width="42" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-        <line x1="8" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="30" x2="26" y2="30" stroke="#207448" stroke-width="2" />
-      </g>
-      <text x="1417" y="365" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">pod</text>
+    <rect x="900" y="100" width="550" height="320" rx="12" fill="#ffffff" stroke="#7a8b84" stroke-width="2" />
+    
+    <g transform="translate(930, 130)">
+      <rect x="0" y="0" width="48" height="20" rx="3" fill="none" stroke="#7a8b84" stroke-width="3.5" />
+      <circle cx="10" cy="10" r="2.5" fill="#7a8b84" />
+      <line x1="22" y1="10" x2="38" y2="10" stroke="#7a8b84" stroke-width="3" stroke-linecap="round" />
+      <rect x="0" y="26" width="48" height="20" rx="3" fill="none" stroke="#7a8b84" stroke-width="3.5" />
+      <circle cx="10" cy="36" r="2.5" fill="#7a8b84" />
+      <line x1="22" y1="36" x2="38" y2="36" stroke="#7a8b84" stroke-width="3" stroke-linecap="round" />
     </g>
+    <text x="995" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 2</text>
 
     
-    
-    <line x1="265" y1="290" x2="340" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <rect x="1100" y="130" width="320" height="260" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1126" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">pod</text>
+    <text x="1126" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">target endpoint</text>
 
     
-    <path d="M 540 290 L 1340 290" stroke="#db8129" stroke-width="4.5" fill="none" marker-end="url(#arrow-orange)" />
+    <path d="M 830 180 L 1086 180" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)" />
     
-    <rect x="870" y="248" width="430" height="36" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-    <text x="1085" y="274" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">SNAT, source becomes node IP</text>
+    <rect x="730" y="130" width="330" height="42" rx="21" fill="#fff5ec" stroke="#db8129" stroke-width="2" />
+    <text x="895" y="159" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">SNAT, source becomes node IP</text>
 
     
-    <path d="M 1417 415 L 1417 435 L 300 435 L 300 330 L 270 330" stroke="#303a36" stroke-width="3.5" stroke-dasharray="8,5" fill="none" marker-end="url(#arrow-dark)" />
+    <path d="M 1100 350 L 844 350" stroke="#52635c" stroke-width="4" stroke-dasharray="6 6" fill="none" marker-end="url(#arrow-return)" />
     
-    <rect x="520" y="415" width="670" height="36" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="1.5" />
-    <text x="855" y="441" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">reply returns through the node that took the request</text>
+    <rect x="580" y="370" width="670" height="42" rx="21" fill="#ffffff" stroke="#52635c" stroke-width="1.5" />
+    <text x="915" y="399" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">reply returns through the node that took the request</text>
 
     
-    <rect x="475" y="495" width="650" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <text x="800" y="525" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">client IP is lost and there is one extra hop</text>
+    <text x="30" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">• client IP is lost and there is one extra hop</text>
   </g>
 
   
   
   
-  <g id="local-lane">
+  <g transform="translate(60, 680)">
     
-    <rect x="50" y="590" width="1500" height="460" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="0" y="0" width="1480" height="520" rx="16" fill="#e8f1ea" stroke="#c0d7c6" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <rect x="24" y="24" width="150" height="48" rx="8" fill="#207448" />
+    <text x="40" y="57" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Local</text>
 
     
-    <rect x="75" y="610" width="180" height="46" rx="8" fill="#e8f1ea" />
-    <text x="165" y="643" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Local</text>
-
+    <rect x="30" y="100" width="220" height="320" rx="12" fill="#ffffff" stroke="#c0d7c6" stroke-width="2" />
     
-    <g id="local-client">
-      <rect x="75" y="675" width="190" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(136, 725)">
-        <rect x="0" y="0" width="68" height="46" rx="4" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
-        <rect x="8" y="8" width="52" height="30" rx="2" fill="#e8f1ea" />
-        <path d="M -14 54 L 82 54 L 74 62 L -6 62 Z" fill="#207448" />
-      </g>
-      <text x="170" y="845" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">client</text>
+    <g transform="translate(106, 150)">
+      <rect x="4" y="0" width="60" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="34" x2="52" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M -6 48 L 74 48 C 76 48 78 50 76 53 L 70 56 L -2 56 L -8 53 C -10 50 -8 48 -6 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
     </g>
+    <text x="140" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">client</text>
 
     
-    <g id="local-node-1">
-      <rect x="345" y="675" width="480" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(375, 700)">
-        <rect x="0" y="0" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="9" r="2.5" fill="#207448" />
-        <line x1="20" y1="9" x2="46" y2="9" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-        <rect x="0" y="24" width="56" height="18" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-        <circle cx="10" cy="33" r="2.5" fill="#207448" />
-        <line x1="20" y1="33" x2="46" y2="33" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      </g>
-      <text x="450" y="735" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 1</text>
+    
+    <line x1="250" y1="200" x2="356" y2="200" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+    
+    
+    <path d="M 250 320 L 886 320" stroke="#a3b3ac" stroke-width="4" stroke-dasharray="6 6" fill="none" marker-end="url(#arrow-grey)" />
+    
+    <circle cx="580" cy="320" r="26" fill="#ffffff" stroke="#c93b2b" stroke-width="3.5" />
+    <line x1="562" y1="302" x2="598" y2="338" stroke="#c93b2b" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="598" y1="302" x2="562" y2="338" stroke="#c93b2b" stroke-width="4.5" stroke-linecap="round" />
 
-      
-      <rect x="665" y="725" width="135" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-      
-      <g transform="translate(712, 755)">
-        <rect x="0" y="0" width="42" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-        <line x1="8" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="2" />
-        <line x1="8" y1="30" x2="26" y2="30" stroke="#207448" stroke-width="2" />
-      </g>
-      <text x="732" y="855" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">pod</text>
-
-      
-      <path d="M 405 815 L 655 815" stroke="#207448" stroke-width="4.5" fill="none" marker-end="url(#arrow-green)" />
-      
-      <rect x="365" y="770" width="280" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-      <text x="505" y="796" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no SNAT, client IP kept</text>
+    
+    <rect x="370" y="100" width="460" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(400, 130)">
+      <rect x="0" y="0" width="48" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="10" cy="10" r="2.5" fill="#207448" />
+      <line x1="22" y1="10" x2="38" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <rect x="0" y="26" width="48" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="10" cy="36" r="2.5" fill="#207448" />
+      <line x1="22" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
     </g>
+    <text x="465" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">node 1</text>
 
     
-    <g id="local-node-2">
-      <rect x="895" y="675" width="625" height="280" rx="12" fill="#f5f8f5" stroke="#9ca3af" stroke-width="2" />
-      
-      <g transform="translate(925, 700)">
-        <rect x="0" y="0" width="56" height="18" rx="3" fill="#ffffff" stroke="#9ca3af" stroke-width="3" />
-        <circle cx="10" cy="9" r="2.5" fill="#9ca3af" />
-        <line x1="20" y1="9" x2="46" y2="9" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" />
-        <rect x="0" y="24" width="56" height="18" rx="3" fill="#ffffff" stroke="#9ca3af" stroke-width="3" />
-        <circle cx="10" cy="33" r="2.5" fill="#9ca3af" />
-        <line x1="20" y1="33" x2="46" y2="33" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" />
-      </g>
-      <text x="1000" y="735" font-family="sans-serif" font-size="30" font-weight="bold" fill="#6b7280">node 2</text>
+    <rect x="400" y="210" width="400" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="424" y="254" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">pod</text>
 
-      
-      <rect x="925" y="760" width="565" height="160" rx="10" fill="#ffffff" stroke="#9ca3af" stroke-width="2.5" stroke-dasharray="8,6" />
-      <text x="1207" y="825" font-family="sans-serif" font-size="24" font-weight="bold" fill="#4b5563" text-anchor="middle">
-        <tspan x="1207" dy="0">no local endpoint, fails health check</tspan>
-        <tspan x="1207" dy="38">on healthCheckNodePort</tspan>
-      </text>
+    
+    <line x1="500" y1="246" x2="620" y2="246" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    <rect x="420" y="284" width="360" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="600" y="318" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">no SNAT, client IP kept</text>
+    <text x="600" y="346" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(forwards only to local pod)</text>
+
+    
+    <rect x="900" y="100" width="550" height="320" rx="12" fill="#ffffff" stroke="#a3b3ac" stroke-width="2" stroke-dasharray="6 6" />
+    
+    <g transform="translate(930, 130)">
+      <rect x="0" y="0" width="48" height="20" rx="3" fill="none" stroke="#7a8b84" stroke-width="3.5" />
+      <circle cx="10" cy="10" r="2.5" fill="#7a8b84" />
+      <line x1="22" y1="10" x2="38" y2="10" stroke="#7a8b84" stroke-width="3" stroke-linecap="round" />
+      <rect x="0" y="26" width="48" height="20" rx="3" fill="none" stroke="#7a8b84" stroke-width="3.5" />
+      <circle cx="10" cy="36" r="2.5" fill="#7a8b84" />
+      <line x1="22" y1="36" x2="38" y2="36" stroke="#7a8b84" stroke-width="3" stroke-linecap="round" />
     </g>
+    <text x="995" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#7a8b84">node 2</text>
 
     
-    
-    <line x1="265" y1="815" x2="340" y2="815" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <rect x="930" y="200" width="490" height="190" rx="8" fill="#f8faf8" stroke="#7a8b84" stroke-width="2.5" stroke-dasharray="6 6" />
+    <text x="955" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">no local endpoint,</text>
+    <text x="955" y="286" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">fails health check on healthCheckNodePort</text>
+    <text x="955" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#52635c">(external balancer sends no traffic)</text>
 
     
-    <path d="M 235 675 C 235 635, 700 635, 890 710" stroke="#9ca3af" stroke-width="3.5" stroke-dasharray="6,4" fill="none" marker-end="url(#arrow-grey)" />
-    
-    <g transform="translate(620, 635)">
-      <circle cx="0" cy="0" r="22" fill="#ffffff" stroke="#d9383a" stroke-width="2.5" />
-      <line x1="-14" y1="-14" x2="14" y2="14" stroke="#d9383a" stroke-width="4.5" stroke-linecap="round" />
-      <line x1="14" y1="-14" x2="-14" y2="14" stroke="#d9383a" stroke-width="4.5" stroke-linecap="round" />
-    </g>
-
-    
-    <rect x="250" y="985" width="1100" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
-    <text x="800" y="1015" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">client IP is kept, no extra hop, and load can be uneven when pods are spread unevenly</text>
+    <text x="30" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">• client IP is kept, no extra hop, and load can be uneven when pods are spread unevenly</text>
   </g>
 
   
   
   
-  <g id="takeaway-bar">
-    <rect x="50" y="1075" width="1500" height="95" rx="12" fill="#207448" />
-    <text x="800" y="1132" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Cluster spreads load but hides the client IP, while Local keeps the client IP and drops nodes that have no pod</text>
+  <g transform="translate(60, 1240)">
+    <rect x="0" y="0" width="1480" height="84" rx="14" fill="#207448" />
+    <text x="740" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Cluster spreads load but hides the client IP, while Local keeps the client IP and drops nodes that have no pod.</text>
   </g>
 </svg>

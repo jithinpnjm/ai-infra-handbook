@@ -1,251 +1,221 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1330" width="1600" height="1330">
   <title>The NUMA trap: loader memory on node 0, GPU on node 1</title>
-  <desc>Visual comparison showing performance penalties when data loader memory crosses socket interconnect to reach a GPU on another NUMA node, contrasted with proper CPU and memory binding on the same node.</desc>
+  <desc>Infographic explaining NUMA architecture node affinity pitfalls between host CPU memory and PCIe GPU devices, along with diagnosis and binding commands.</desc>
 
   <defs>
     
-    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 16 8 L 0 14 z" fill="#db8129" />
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
     </marker>
-    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448" />
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1330" fill="#f5f8f5" />
 
   
-  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The NUMA trap: loader memory on node 0, GPU on node 1</text>
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">The NUMA trap: loader memory on node 0, GPU on node 1</text>
 
-  
-  
   
 
   
   <g id="socket-0">
-    <rect x="50" y="110" width="450" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
+    <rect x="60" y="105" width="440" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(70, 126)">
-      <rect x="0" y="0" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="10" y="10" width="24" height="24" rx="2" fill="#207448" opacity="0.2" />
-      <line x1="8" y1="-5" x2="8" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="22" y1="-5" x2="22" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="36" y1="-5" x2="36" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="8" y1="44" x2="8" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="22" y1="44" x2="22" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="36" y1="44" x2="36" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="8" x2="0" y2="8" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="22" x2="0" y2="22" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="36" x2="0" y2="36" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="8" x2="49" y2="8" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="22" x2="49" y2="22" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="36" x2="49" y2="36" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 125)">
+      <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="12" y="12" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="0" x2="12" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="24" y1="0" x2="24" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="36" y1="0" x2="36" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="48" x2="12" y2="54" stroke="#207448" stroke-width="3" />
+      <line x1="24" y1="48" x2="24" y2="54" stroke="#207448" stroke-width="3" />
+      <line x1="36" y1="48" x2="36" y2="54" stroke="#207448" stroke-width="3" />
     </g>
 
-    <text x="130" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Socket 0 (NUMA node 0)</text>
+    
+    <text x="145" y="157" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Socket 0 (NUMA node 0)</text>
 
     
-    <rect x="70" y="185" width="410" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 207)">
-      <rect x="0" y="0" width="36" height="32" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
-      <line x1="0" y1="10" x2="36" y2="10" stroke="#207448" stroke-width="2" />
-      <circle cx="6" cy="5" r="2" fill="#207448" />
-      <circle cx="13" cy="5" r="2" fill="#207448" />
-      <line x1="8" y1="20" x2="22" y2="20" stroke="#207448" stroke-width="2" />
-    </g>
-    <text x="135" y="224" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="135" dy="0">data-loading process</tspan>
-      <tspan x="135" dy="28">(running here)</tspan>
+    <rect x="80" y="195" width="400" height="88" rx="10" fill="#ffffff" stroke="#c2d8c7" stroke-width="2" />
+    <text x="280" y="233" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">data-loading process</tspan>
+      <tspan x="280" dy="30">(running here)</tspan>
     </text>
 
     
-    <rect x="70" y="290" width="410" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 314)">
-      <rect x="0" y="0" width="36" height="22" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
-      <line x1="6" y1="22" x2="6" y2="28" stroke="#207448" stroke-width="2" />
-      <line x1="14" y1="22" x2="14" y2="28" stroke="#207448" stroke-width="2" />
-      <line x1="22" y1="22" x2="22" y2="28" stroke="#207448" stroke-width="2" />
-      <line x1="30" y1="22" x2="30" y2="28" stroke="#207448" stroke-width="2" />
-      <circle cx="10" cy="11" r="3" fill="#207448" />
-      <circle cx="26" cy="11" r="3" fill="#207448" />
-    </g>
-    <text x="135" y="328" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="135" dy="0">its buffers</tspan>
-      <tspan x="135" dy="28">(allocated on node 0 DRAM)</tspan>
+    <rect x="80" y="298" width="400" height="88" rx="10" fill="#ffffff" stroke="#c2d8c7" stroke-width="2" />
+    <text x="280" y="336" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">its buffers</tspan>
+      <tspan x="280" dy="30">(allocated on node 0 DRAM)</tspan>
     </text>
   </g>
 
   
-  <g id="interconnect">
-    <text x="800" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
-      <tspan x="800" dy="0">interconnect (UPI, or</tspan>
-      <tspan x="800" dy="30">Infinity Fabric or xGMI on AMD):</tspan>
-      <tspan x="800" dy="30">every host-to-device copy</tspan>
-      <tspan x="800" dy="30">crosses it</tspan>
-    </text>
+  <line x1="500" y1="255" x2="1100" y2="255" stroke="#db8129" stroke-width="8" stroke-dasharray="14 8" marker-end="url(#arrow-orange)" />
 
-    
-    <line x1="505" y1="337" x2="1080" y2="337" stroke="#db8129" stroke-width="12" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+  
+  <g id="interconnect-pill">
+    <rect x="525" y="160" width="550" height="190" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    <text x="800" y="206" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="800" dy="0">interconnect (UPI, or</tspan>
+      <tspan x="800" dy="32">Infinity Fabric or xGMI on AMD):</tspan>
+      <tspan x="800" dy="32">every host-to-device</tspan>
+      <tspan x="800" dy="32">copy crosses it</tspan>
+    </text>
   </g>
 
   
   <g id="socket-1">
-    <rect x="1100" y="110" width="450" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1100" y="105" width="440" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <g transform="translate(1120, 126)">
-      <rect x="0" y="0" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="10" y="10" width="24" height="24" rx="2" fill="#207448" opacity="0.2" />
-      <line x1="8" y1="-5" x2="8" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="22" y1="-5" x2="22" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="36" y1="-5" x2="36" y2="0" stroke="#207448" stroke-width="3" />
-      <line x1="8" y1="44" x2="8" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="22" y1="44" x2="22" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="36" y1="44" x2="36" y2="49" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="8" x2="0" y2="8" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="22" x2="0" y2="22" stroke="#207448" stroke-width="3" />
-      <line x1="-5" y1="36" x2="0" y2="36" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="8" x2="49" y2="8" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="22" x2="49" y2="22" stroke="#207448" stroke-width="3" />
-      <line x1="44" y1="36" x2="49" y2="36" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1125, 125)">
+      <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="12" y="12" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="0" x2="12" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="24" y1="0" x2="24" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="36" y1="0" x2="36" y2="-6" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="48" x2="12" y2="54" stroke="#207448" stroke-width="3" />
+      <line x1="24" y1="48" x2="24" y2="54" stroke="#207448" stroke-width="3" />
+      <line x1="36" y1="48" x2="36" y2="54" stroke="#207448" stroke-width="3" />
     </g>
-
-    <text x="1180" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Socket 1 (NUMA node 1)</text>
 
     
-    <rect x="1120" y="235" width="410" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(1135, 267)">
-      <rect x="0" y="0" width="48" height="32" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
-      <circle cx="16" cy="16" r="8" fill="none" stroke="#207448" stroke-width="2" />
-      <circle cx="34" cy="16" r="8" fill="none" stroke="#207448" stroke-width="2" />
-      <line x1="8" y1="32" x2="8" y2="38" stroke="#207448" stroke-width="3" />
-      <line x1="14" y1="32" x2="14" y2="38" stroke="#207448" stroke-width="3" />
-      <line x1="20" y1="32" x2="20" y2="38" stroke="#207448" stroke-width="3" />
+    <text x="1185" y="157" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Socket 1 (NUMA node 1)</text>
+
+    
+    <rect x="1120" y="195" width="400" height="191" rx="10" fill="#ffffff" stroke="#c2d8c7" stroke-width="2" />
+    
+    
+    <g transform="translate(1296, 215)">
+      <rect x="0" y="0" width="48" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="16" cy="16" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="32" cy="16" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="6" y1="32" x2="6" y2="40" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="32" x2="16" y2="40" stroke="#207448" stroke-width="4" />
     </g>
-    <text x="1200" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1200" dy="0">GPU attached to</tspan>
-      <tspan x="1200" dy="30">node 1's PCIe root</tspan>
+
+    <text x="1320" y="310" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" dy="0">GPU attached to</tspan>
+      <tspan x="1320" dy="30">node 1's PCIe root</tspan>
     </text>
   </g>
 
   
-  
-  
 
-  <g id="after-fix">
-    <rect x="50" y="440" width="1500" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g id="after-the-fix-panel">
+    <rect x="60" y="430" width="1480" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <g transform="translate(70, 460)">
-      <circle cx="16" cy="16" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-      <path d="M 9 16 L 14 21 L 23 11" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <g transform="translate(85, 452)">
+      
+      <path d="M 24 4 L 44 12 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 12 Z" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="14,24 22,32 34,18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
     </g>
-    <text x="115" y="485" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">After the fix</text>
+    <text x="145" y="485" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">After the fix</text>
 
     
-    <rect x="70" y="515" width="410" height="160" rx="8" fill="#e8f1ea" opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6" />
-    <g transform="translate(95, 570)" opacity="0.5">
-      <rect x="0" y="0" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
-      <circle cx="20" cy="20" r="10" fill="none" stroke="#207448" stroke-width="2" />
+    <rect x="85" y="520" width="400" height="120" rx="10" fill="#f8faf8" stroke="#a0b8a5" stroke-dasharray="8 6" stroke-width="2" />
+    <g transform="translate(115, 555)">
+      <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#a0b8a5" stroke-width="3" />
+      <rect x="12" y="12" width="24" height="24" rx="3" fill="none" stroke="#a0b8a5" stroke-width="2" />
     </g>
+    <line x1="200" y1="580" x2="450" y2="580" stroke="#a0b8a5" stroke-width="3" stroke-dasharray="6 6" />
 
     
-    <rect x="510" y="515" width="1020" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <path d="M 485 580 L 590 580" stroke="#a0b8a5" stroke-width="3" stroke-dasharray="6 6" />
 
     
-    <rect x="535" y="535" width="410" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="600" y="505" width="915" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
     
-    <g transform="translate(555, 550)">
-      <rect x="0" y="0" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
-      <rect x="10" y="10" width="20" height="20" rx="2" fill="#207448" opacity="0.2" />
-      <line x1="8" y1="-4" x2="8" y2="0" stroke="#207448" stroke-width="2" />
-      <line x1="20" y1="-4" x2="20" y2="0" stroke="#207448" stroke-width="2" />
-      <line x1="32" y1="-4" x2="32" y2="0" stroke="#207448" stroke-width="2" />
-      <line x1="8" y1="40" x2="8" y2="44" stroke="#207448" stroke-width="2" />
-      <line x1="20" y1="40" x2="20" y2="44" stroke="#207448" stroke-width="2" />
-      <line x1="32" y1="40" x2="32" y2="44" stroke="#207448" stroke-width="2" />
+    <rect x="625" y="525" width="370" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(645, 550)">
+      
+      <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="12" y="12" width="20" height="20" fill="none" stroke="#207448" stroke-width="2" />
     </g>
-    
-    <g transform="translate(555, 608)">
-      <rect x="0" y="0" width="40" height="22" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
-      <circle cx="10" cy="11" r="3" fill="#207448" />
-      <circle cx="20" cy="11" r="3" fill="#207448" />
-      <circle cx="30" cy="11" r="3" fill="#207448" />
+    <g transform="translate(710, 550)">
+      
+      <rect x="0" y="4" width="60" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="12" x2="12" y2="32" stroke="#207448" stroke-width="2" />
+      <line x1="24" y1="12" x2="24" y2="32" stroke="#207448" stroke-width="2" />
+      <line x1="36" y1="12" x2="36" y2="32" stroke="#207448" stroke-width="2" />
+      <line x1="48" y1="12" x2="48" y2="32" stroke="#207448" stroke-width="2" />
     </g>
 
     
-    <line x1="970" y1="595" x2="1080" y2="595" stroke="#207448" stroke-width="8" stroke-linecap="round" marker-end="url(#arrow-green)" />
+    <line x1="1005" y1="577" x2="1115" y2="577" stroke="#207448" stroke-width="8" marker-end="url(#arrow-green)" />
 
     
-    <rect x="1100" y="535" width="410" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    
-    <g transform="translate(1125, 570)">
+    <rect x="1125" y="525" width="365" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1280, 552)">
       <rect x="0" y="0" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <circle cx="18" cy="19" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-      <circle cx="38" cy="19" r="10" fill="none" stroke="#207448" stroke-width="2.5" />
-      <line x1="10" y1="38" x2="10" y2="44" stroke="#207448" stroke-width="3" />
-      <line x1="18" y1="38" x2="18" y2="44" stroke="#207448" stroke-width="3" />
-      <line x1="26" y1="38" x2="26" y2="44" stroke="#207448" stroke-width="3" />
-      <line x1="34" y1="38" x2="34" y2="44" stroke="#207448" stroke-width="3" />
+      <circle cx="18" cy="19" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="38" cy="19" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="38" x2="8" y2="48" stroke="#207448" stroke-width="4" />
+      <line x1="20" y1="38" x2="20" y2="48" stroke="#207448" stroke-width="4" />
     </g>
   </g>
 
   
-  
-  
+
+  <g id="side-note-panel">
+    <rect x="60" y="685" width="1480" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(85, 710)">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="24" cy="14" r="3" fill="#207448" />
+      <line x1="24" y1="22" x2="24" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    <text x="150" y="728" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" dy="0">PCIe devices such as GPUs, NICs and NVMe drives hang off one socket's root complex, so they have a home node too</tspan>
+    </text>
+  </g>
 
   
+
   <g id="command-panel">
-    <rect x="50" y="730" width="1020" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="60" y="805" width="1480" height="385" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <g transform="translate(70, 750)">
-      <rect x="0" y="0" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 8 12 L 16 18 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="19" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <g transform="translate(85, 825)">
+      <rect x="0" y="0" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="10,12 18,18 10,24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="24" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
     </g>
 
-    <text x="130" y="778" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Check and bind</text>
+    <text x="145" y="852" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Check and bind</text>
 
     
-    <text font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="80" y="830">nvidia-smi topo -m (each GPU's CPU and NUMA affinity)</tspan>
-      <tspan x="80" y="880">cat /sys/bus/pci/devices/0000:3b:00.0/numa_node</tspan>
-      <tspan x="100" y="910">(a device's home node, -1 = unknown)</tspan>
-      <tspan x="80" y="965">numastat -p PID</tspan>
-      <tspan x="80" y="1020">numactl --cpunodebind=1 --membind=1 python train.py --gpu 4</tspan>
-    </text>
-  </g>
-
-  
-  <g id="side-note">
-    <rect x="1090" y="730" width="460" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="85" y="875" width="1430" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="110" y="913" font-family="monospace" font-size="24" fill="#303a36">nvidia-smi topo -m (each GPU's CPU and NUMA affinity)</text>
 
     
-    <g transform="translate(1115, 750)">
-      <circle cx="18" cy="18" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-      <line x1="18" y1="8" x2="18" y2="28" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="10" y1="14" x2="26" y2="14" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <circle cx="18" cy="28" r="3" fill="#207448" />
-    </g>
+    <rect x="85" y="948" width="1430" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="110" y="986" font-family="monospace" font-size="24" fill="#303a36">cat /sys/bus/pci/devices/0000:3b:00.0/numa_node (a device's home node, -1 = unknown)</text>
 
-    <text x="1115" y="830" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1115" dy="0">PCIe devices such as GPUs,</tspan>
-      <tspan x="1115" dy="36">NICs and NVMe drives</tspan>
-      <tspan x="1115" dy="36">hang off one socket's</tspan>
-      <tspan x="1115" dy="36">root complex, so they</tspan>
-      <tspan x="1115" dy="36">have a home node too</tspan>
-    </text>
+    
+    <rect x="85" y="1021" width="1430" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="110" y="1059" font-family="monospace" font-size="24" fill="#303a36">numastat -p PID</text>
+
+    
+    <rect x="85" y="1094" width="1430" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="110" y="1132" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">numactl --cpunodebind=1 --membind=1 python train.py --gpu 4</text>
   </g>
 
   
-  
-  
 
-  <g id="bottom-bar">
-    <rect x="50" y="1085" width="1500" height="75" rx="10" fill="#207448" />
-    <text x="800" y="1132" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Before you start a loader, check which node the GPU lives on, and bind to that node</text>
+  <g id="takeaway-bar">
+    <rect x="60" y="1215" width="1480" height="85" rx="12" fill="#207448" />
+    <text x="800" y="1267" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Before you start a loader, check which node the GPU lives on, and bind to that node</text>
   </g>
+
 </svg>

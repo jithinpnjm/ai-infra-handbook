@@ -1,184 +1,111 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1400" width="1600" height="1400">
   <title>How Calico compiles a policy into iptables and ipsets</title>
-  <desc>Architecture infographic illustrating Calico policy compilation into iptables chains and ipsets, including workload dispatchers, per-policy chains, match rules, ipset updates, and dataplane performance tradeoffs.</desc>
+  <desc>Visual diagram showing how Calico compiles policies into iptables chains and ipsets, including workload dispatch, per-policy chains, match rules, ipset updates, and dataplane considerations.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 12 6 L 0 11 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
-    </marker>
-    <filter id="card-shadow" x="-4%" y="-3%" width="108%" height="108%" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#204030" flood-opacity="0.06"/>
-    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect x="0" y="0" width="1600" height="1400" fill="#f5f8f5" />
 
   
-  <text x="50" y="65" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">How Calico compiles a policy into iptables and ipsets</text>
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">How Calico compiles a policy into iptables and ipsets</text>
 
   
-  <g id="flow-of-chains">
-    <rect x="40" y="105" width="1020" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
-    <text x="70" y="152" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">Flow of chains</text>
-
-    
-    <g id="node-cali-forward">
-      <rect x="360" y="180" width="380" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(382, 197)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 28 6 L 50 14 V 30 C 50 44 28 54 28 54 C 28 54 6 44 6 30 V 14 Z"/>
-        <path d="M 28 18 V 40 M 18 29 H 38"/>
-      </g>
-      <text x="456" y="236" font-family="monospace" font-size="28px" font-weight="bold" fill="#303a36">cali-FORWARD</text>
-    </g>
-
-    
-    <path d="M 450 270 L 450 315 L 290 315 L 290 345" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-    <path d="M 650 270 L 650 315 L 810 315 L 810 345" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="node-cali-from-wl-dispatch">
-      <rect x="70" y="348" width="440" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(88, 366)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="44" height="40" rx="6"/>
-        <path d="M 28 20 L 38 28 L 28 36 M 16 28 H 38"/>
-      </g>
-      <text x="160" y="398" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">cali-from-wl-dispatch</text>
-      <text x="94" y="440" font-family="monospace" font-size="24px" fill="#207448">-&gt; cali-fw-iface</text>
-      <text x="94" y="475" font-family="sans-serif" font-size="24px" fill="#303a36">(traffic from workload, applies</text>
-      <text x="94" y="506" font-family="sans-serif" font-size="24px" fill="#303a36">the pod&apos;s egress policies)</text>
-    </g>
-
-    
-    <g id="node-cali-to-wl-dispatch">
-      <rect x="590" y="348" width="440" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(608, 366)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="44" height="40" rx="6"/>
-        <path d="M 26 20 L 16 28 L 26 36 M 38 28 H 16"/>
-      </g>
-      <text x="680" y="398" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">cali-to-wl-dispatch</text>
-      <text x="614" y="440" font-family="monospace" font-size="24px" fill="#207448">-&gt; cali-tw-iface</text>
-      <text x="614" y="475" font-family="sans-serif" font-size="24px" fill="#303a36">(traffic to workload, applies</text>
-      <text x="614" y="506" font-family="sans-serif" font-size="24px" fill="#303a36">ingress policies)</text>
-    </g>
-
-    
-    <path d="M 290 535 L 290 565 L 470 565 L 470 598" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-    <path d="M 810 535 L 810 565 L 630 565 L 630 598" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="node-per-policy-chains">
-      <rect x="70" y="602" width="960" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(95, 622)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="8" y="16" width="22" height="14" rx="7"/>
-        <rect x="26" y="26" width="22" height="14" rx="7"/>
-        <path d="M 22 26 L 30 26"/>
-      </g>
-      <text x="165" y="650" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Per-policy chains</text>
-      <text x="165" y="694" font-family="monospace" font-size="25px" font-weight="bold" fill="#303a36">cali-pi-policy <tspan font-family="sans-serif" font-weight="normal" fill="#303a36">(ingress rules) and</tspan> cali-po-policy <tspan font-family="sans-serif" font-weight="normal" fill="#303a36">(egress rules)</tspan></text>
-      <text x="165" y="728" font-family="sans-serif" font-size="24px" fill="#506259">Evaluated in tiered sequence per policy specification</text>
-    </g>
-
-    
-    <path d="M 550 752 L 550 788" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-
-    
-    <g id="node-rule-form">
-      <rect x="70" y="792" width="960" height="200" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-      
-      <g transform="translate(95, 810)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="10" y="24" width="36" height="28" rx="6"/>
-        <path d="M 18 24 V 16 C 18 10 38 10 38 16 V 24"/>
-        <circle cx="28" cy="38" r="3" fill="#db8129"/>
-      </g>
-      <text x="165" y="842" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#db8129">Rule form:</text>
-      <text x="95" y="890" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">-m set --match-set cali40s:hash src -p tcp --dport 8000</text>
-      <text x="95" y="930" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">-j MARK --set-xmark 0x10000/0x10000 <tspan font-family="sans-serif" font-weight="normal" fill="#207448">(allow mark),</tspan></text>
-      <text x="95" y="968" font-family="sans-serif" font-size="24px" fill="#303a36">drop at the end of the profile chain</text>
-    </g>
-  </g>
+  <rect x="40" y="130" width="1010" height="940" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="70" y="180" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">Flow of chains</text>
 
   
-  <g id="side-panel-ipset-update">
-    <rect x="1080" y="105" width="480" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
-
-    
-    <g transform="translate(1110, 128)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="28" cy="14" rx="20" ry="8"/>
-      <path d="M 8 14 V 38 C 8 44 48 44 48 38 V 14"/>
-      <path d="M 8 26 C 8 32 48 32 48 26"/>
-    </g>
-    <text x="1178" y="162" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">ipset update</text>
-
-    
-    <rect x="1106" y="196" width="428" height="796" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-
-    
-    
-    <g transform="translate(1130, 222)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="10"/>
-      <path d="M 28 6 V 14 M 28 42 V 50 M 6 28 H 14 M 42 28 H 50 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12"/>
-    </g>
-    <text x="1196" y="258" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Felix Controller</text>
-
-    
-    <text x="1130" y="316" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Felix agent compiles policy;</text>
-    <text x="1130" y="354" font-family="sans-serif" font-size="24px" fill="#303a36">each selector becomes an</text>
-    <text x="1130" y="390" font-family="sans-serif" font-size="24px" fill="#303a36">ipset of pod IPs;</text>
-
-    <line x1="1130" y1="424" x2="1504" y2="424" stroke="#e8f1ea" stroke-width="2"/>
-
-    
-    <text x="1130" y="468" font-family="sans-serif" font-size="24px" fill="#303a36">a new labelled pod is just</text>
-    <rect x="1130" y="484" width="168" height="38" rx="6" fill="#e8f1ea"/>
-    <text x="1142" y="512" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">ipset add</text>
-    <text x="1308" y="512" font-family="sans-serif" font-size="24px" fill="#303a36">, a deleted</text>
-    <text x="1130" y="556" font-family="sans-serif" font-size="24px" fill="#303a36">pod is</text>
-    <rect x="1208" y="528" width="168" height="38" rx="6" fill="#e8f1ea"/>
-    <text x="1220" y="556" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">ipset del</text>
-    <text x="1386" y="556" font-family="sans-serif" font-size="24px" fill="#303a36">;</text>
-
-    <line x1="1130" y1="592" x2="1504" y2="592" stroke="#e8f1ea" stroke-width="2"/>
-
-    
-    
-    <g transform="translate(1130, 620)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="20" cy="20" r="16"/>
-      <path d="M 12 20 L 17 25 L 28 14"/>
-    </g>
-    <text x="1182" y="648" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448">rules stay unchanged;</text>
-
-    
-    <text x="1130" y="704" font-family="sans-serif" font-size="24px" fill="#303a36">rule count grows with</text>
-    <text x="1130" y="742" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">policies times ports,</text>
-    <text x="1130" y="780" font-family="sans-serif" font-size="24px" fill="#303a36">not with pod count</text>
-
-    
-    <rect x="1130" y="824" width="380" height="142" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
-    <text x="1148" y="860" font-family="monospace" font-size="24px" fill="#207448">ipset: cali40s:hash</text>
-    <text x="1148" y="896" font-family="monospace" font-size="24px" fill="#303a36">  10.244.0.12</text>
-    <text x="1148" y="932" font-family="monospace" font-size="24px" fill="#303a36">  10.244.1.45</text>
-  </g>
+  <rect x="320" y="210" width="450" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 345 235 L 365 225 L 385 235 L 385 255 C 385 270 365 280 365 280 C 365 280 345 270 345 255 Z" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="560" y="260" text-anchor="middle" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">cali-FORWARD</text>
 
   
-  <g id="footer">
-    <rect x="40" y="1035" width="1520" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
-    
-    <g transform="translate(62, 1056)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="10" width="36" height="36" rx="6"/>
-      <path d="M 4 20 H 10 M 4 36 H 10 M 46 20 H 52 M 46 36 H 52 M 20 4 V 10 M 36 4 V 10 M 20 46 V 52 M 36 46 V 52"/>
-      <circle cx="28" cy="28" r="6"/>
-    </g>
-    
-    <text x="134" y="1076" font-family="sans-serif" font-size="24px" fill="#303a36">ipset lookup O(1) per set, but evaluation of rules is O(number of rules) per new connection;</text>
-    <text x="134" y="1112" font-family="sans-serif" font-size="24px" fill="#303a36">Calico eBPF dataplane replaces the chains with BPF programs and maps;</text>
-    <text x="134" y="1148" font-family="sans-serif" font-size="24px" fill="#303a36">churn (one policy per job) triggers recompiles and CNI agent CPU</text>
-  </g>
+  <path d="M 435 290 L 435 315 L 295 315 L 295 340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 655 290 L 655 315 L 785 315 L 785 340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="340" width="460" height="250" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="100" cy="375" r="16" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 92 375 L 108 375 M 100 367 L 108 375 L 100 383" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="130" y="380" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">cali-from-wl-dispatch -&gt;</text>
+  <text x="130" y="415" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">cali-fw-iface</text>
+  <text x="90" y="475" font-family="sans-serif" font-size="24px" fill="#303a36">(traffic from workload,</text>
+  <text x="90" y="515" font-family="sans-serif" font-size="24px" fill="#303a36">applies the pod's egress policies)</text>
+
+  
+  <rect x="555" y="340" width="465" height="250" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="590" cy="375" r="16" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 598 375 L 582 375 M 590 367 L 582 375 L 590 383" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="620" y="380" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">cali-to-wl-dispatch -&gt;</text>
+  <text x="620" y="415" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">cali-tw-iface</text>
+  <text x="580" y="475" font-family="sans-serif" font-size="24px" fill="#303a36">(traffic to workload,</text>
+  <text x="580" y="515" font-family="sans-serif" font-size="24px" fill="#303a36">applies ingress policies)</text>
+
+  
+  <path d="M 295 590 L 295 640" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 785 590 L 785 640" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="640" width="955" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="90" y="675" width="30" height="18" rx="9" fill="none" stroke="#207448" stroke-width="3" />
+  <rect x="110" y="675" width="30" height="18" rx="9" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="160" y="688" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">Per-policy chains <tspan font-family="monospace" fill="#207448">cali-pi-policy</tspan> (ingress rules)</text>
+  <text x="160" y="730" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">and <tspan font-family="monospace" fill="#207448">cali-po-policy</tspan> (egress rules)</text>
+
+  
+  <path d="M 542 760 L 542 800" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="800" width="955" height="240" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="95" y="845" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">Rule form:</text>
+  <text x="95" y="890" font-family="monospace" font-size="24px" fill="#303a36">-m set --match-set cali40s:hash src</text>
+  <text x="95" y="930" font-family="monospace" font-size="24px" fill="#303a36">-p tcp --dport 8000</text>
+  <text x="95" y="970" font-family="monospace" font-size="24px" fill="#303a36">-j MARK --set-xmark 0x10000/0x10000 (allow mark),</text>
+  <text x="95" y="1010" font-family="sans-serif" font-size="24px" fill="#303a36">drop at the end of the profile chain</text>
+
+  
+  <rect x="1080" y="130" width="480" height="940" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1110" y="180" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">ipset update</text>
+
+  <rect x="1105" y="210" width="430" height="830" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="1145" cy="255" r="14" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 1145 235 L 1145 241 M 1145 269 L 1145 275 M 1125 255 L 1131 255 M 1159 255 L 1165 255" fill="none" stroke="#207448" stroke-width="3" />
+
+  <text x="1175" y="262" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Felix agent compiles policy;</text>
+
+  <text x="1135" y="335" font-family="sans-serif" font-size="24px" fill="#303a36">each selector becomes an</text>
+  <text x="1135" y="375" font-family="sans-serif" font-size="24px" fill="#303a36">ipset of pod IPs;</text>
+
+  <path d="M 1135 415 L 1505 415" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="1135" y="465" font-family="sans-serif" font-size="24px" fill="#303a36">a new labelled pod is just</text>
+  <text x="1135" y="505" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">ipset add<tspan font-family="sans-serif" font-weight="normal" fill="#303a36">, a deleted pod is</tspan></text>
+  <text x="1135" y="545" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">ipset del<tspan font-family="sans-serif" font-weight="normal" fill="#303a36">;</tspan></text>
+
+  <path d="M 1135 595 L 1505 595" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="1135" y="645" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">rules stay unchanged;</text>
+
+  <text x="1135" y="725" font-family="sans-serif" font-size="24px" fill="#303a36">rule count grows with</text>
+  <text x="1135" y="765" font-family="sans-serif" font-size="24px" fill="#303a36">policies times ports,</text>
+  <text x="1135" y="805" font-family="sans-serif" font-size="24px" fill="#303a36">not with pod count</text>
+
+  
+  <rect x="40" y="1110" width="1520" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="70" y="1145" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 78 1140 L 78 1145 M 88 1140 L 88 1145 M 98 1140 L 98 1145 M 78 1181 L 78 1186 M 88 1181 L 88 1186 M 98 1181 L 98 1186" stroke="#207448" stroke-width="2" />
+
+  <text x="125" y="1170" font-family="sans-serif" font-size="25px" fill="#303a36">ipset lookup O(1) per set, but evaluation of rules is O(number of rules) per new connection;</text>
+  <text x="125" y="1225" font-family="sans-serif" font-size="25px" fill="#303a36">Calico eBPF dataplane replaces the chains with BPF programs and maps;</text>
+  <text x="125" y="1280" font-family="sans-serif" font-size="25px" fill="#303a36">churn (one policy per job) triggers recompiles and CNI agent CPU</text>
 </svg>

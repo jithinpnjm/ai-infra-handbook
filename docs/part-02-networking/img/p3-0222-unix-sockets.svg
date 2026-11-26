@@ -1,146 +1,164 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
   <title>Unix domain sockets: local, permissioned and faster than loopback TCP</title>
-  <desc>Visual comparison showing how Unix domain sockets bypass kernel networking layers compared to loopback TCP, with file permissions access control, lsof inspection, and architectural facts.</desc>
+  <desc>Visual comparison between loopback TCP and Unix domain sockets, illustrating access control, performance differences, and lsof output inspection.</desc>
 
+  <rect width="1600" height="1450" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">
+    Unix domain sockets: local, permissioned and faster than loopback TCP
+  </text>
+
+  
+  <rect x="50" y="105" width="230" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="75" y="125" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="75" y1="140" x2="121" y2="140" stroke="#207448" stroke-width="3"/>
+  <circle cx="85" cy="133" r="2.5" fill="#207448"/>
+  <circle cx="93" cy="133" r="2.5" fill="#207448"/>
+  <text x="135" y="152" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Process A</text>
+  <text x="75" y="195" font-family="sans-serif" font-size="24" fill="#303a36">Local client</text>
+  <text x="75" y="230" font-family="sans-serif" font-size="24" fill="#303a36">or service</text>
+  <text x="75" y="280" font-family="monospace" font-size="24" fill="#207448">/proc/$PID</text>
+
+  <rect x="1320" y="105" width="230" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="1355" cy="144" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M1355 124 v6 M1355 158 v6 M1335 144 h6 M1369 144 h6 M1341 130 l4 4 M1365 154 l4 4 M1341 158 l4 -4 M1365 134 l4 -4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="1385" y="152" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Process B</text>
+  <text x="1345" y="195" font-family="sans-serif" font-size="24" fill="#303a36">Local daemon</text>
+  <text x="1345" y="230" font-family="sans-serif" font-size="24" fill="#303a36">or peer</text>
+  <text x="1345" y="280" font-family="monospace" font-size="24" fill="#207448">/proc/$PID</text>
+
+  
+  <rect x="320" y="105" width="960" height="95" rx="10" fill="#ffffff" stroke="#78887e" stroke-width="2"/>
+  <path d="M280 152 H320" stroke="#78887e" stroke-width="3" stroke-dasharray="6,6"/>
+  <path d="M1280 152 H1320" stroke="#78887e" stroke-width="3" marker-end="url(#arrow-grey)"/>
+  <text x="340" y="142" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Loopback TCP via 127.0.0.1 or ::1</text>
+  <text x="340" y="178" font-family="sans-serif" font-size="24" fill="#505e57">passes through the full networking stack</text>
+
+  
+  <rect x="320" y="220" width="960" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <path d="M280 337 H320" stroke="#207448" stroke-width="4"/>
+  <path d="M1280 337 H1320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="340" y="258" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Unix domain socket</text>
+  
+  <text x="340" y="295" font-family="sans-serif" font-size="24" fill="#303a36">socket file at a path such as</text>
+  <text x="670" y="295" font-family="monospace" font-size="24" fill="#207448">'/var/run/docker.sock'</text>
+  <text x="340" y="328" font-family="monospace" font-size="24" fill="#207448">'/run/dbus/system_bus_socket'</text>
+  <text x="755" y="328" font-family="sans-serif" font-size="24" fill="#303a36">or</text>
+  <text x="785" y="328" font-family="monospace" font-size="24" fill="#207448">'/var/run/mysqld/mysqld.sock'</text>
+
+  <text x="340" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="340" dy="0">the kernel skips many layers of its networking subsystem, so performance is usually</tspan>
+    <tspan x="340" dy="34">much better; not a network socket, so no networking configuration is needed</tspan>
+  </text>
+
+  
+  <g transform="translate(50, 480)">
+    <rect x="0" y="0" width="720" height="420" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M45 42 L70 30 L95 42 V68 C95 86 70 98 70 98 C70 98 45 86 45 68 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="115" y="70" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Access control</text>
+
+    <text x="35" y="135" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="35" dy="0">ordinary file permissions on the socket file</tspan>
+      <tspan x="35" dy="36">decide who can connect, for example</tspan>
+      <tspan x="35" dy="36" font-family="monospace" font-weight="bold" fill="#207448">srwxrwxrwx</tspan>
+      <tspan font-family="sans-serif"> for </tspan>
+      <tspan font-family="monospace" fill="#207448">system_bus_socket</tspan>
+      <tspan x="35" dy="36">the socket stays off the network</tspan>
+    </text>
+
+    
+    <rect x="25" y="275" width="670" height="115" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <path d="M55 345 L75 305 L95 345 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="75" y1="318" x2="75" y2="332" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="75" cy="339" r="2" fill="#db8129"/>
+    <text x="115" y="325" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="115" dy="0">access to docker.sock is equivalent to root,</tspan>
+      <tspan x="115" dy="32">so protect it</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(810, 480)">
+    <rect x="0" y="0" width="740" height="420" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="40" y="40" width="55" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M52 54 L62 61 L52 68 M66 69 H76" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="115" y="70" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">reading lsof -U output</text>
+
+    <text x="35" y="130" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="35" dy="0">NAME column first: a path names a socket file;</tspan>
+      <tspan x="35" dy="34">the word socket marks an unnamed socket;</tspan>
+      <tspan x="35" dy="34">a process can create an unnamed Unix domain socket</tspan>
+      <tspan x="35" dy="34">and share its address with another process</tspan>
+    </text>
+
+    
+    <rect x="25" y="275" width="690" height="115" rx="8" fill="#ffffff" stroke="#78887e" stroke-width="2"/>
+    <text x="40" y="320" font-family="monospace" font-size="24" fill="#303a36">mysqld 19701 mysql 12u unix ... /var/run/mysqld/mysqld.sock</text>
+    <text x="40" y="362" font-family="monospace" font-size="24" fill="#303a36">tlsmgr 30480 postfix 6u unix ... private/tlsmgr</text>
+  </g>
+
+  
+  <g transform="translate(50, 930)">
+    
+    <rect x="0" y="0" width="720" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="45" y="53" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448">i</text>
+    <text x="80" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">programs pass file descriptors and credentials with</tspan>
+      <tspan x="80" dy="36" font-family="monospace" font-weight="bold" fill="#207448">SCM_RIGHTS</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">SO_PEERCRED</tspan>
+    </text>
+
+    
+    <rect x="760" y="0" width="740" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="805" cy="45" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="805" y="53" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448">i</text>
+    <text x="840" y="65" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0">daemons such as systemd and NetworkManager</tspan>
+      <tspan x="840" dy="36">use D-Bus</tspan>
+    </text>
+
+    
+    <rect x="0" y="175" width="720" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="220" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="45" y="228" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448">i</text>
+    <text x="80" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">mysqld accepts remote clients and also offers</tspan>
+      <tspan x="80" dy="36">a Unix domain socket</tspan>
+    </text>
+
+    
+    <rect x="760" y="175" width="740" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="805" cy="220" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="805" y="228" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448">i</text>
+    <text x="840" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0">list with </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">ss -xlp</tspan>
+      <tspan> or </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">lsof -U</tspan>
+      <tspan> as root</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="50" y="1310" width="1500" height="85" rx="10" fill="#207448"/>
+  <text x="800" y="1363" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">
+    A Unix domain socket is not a network socket
+  </text>
+
+  
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
     </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#78887e"/>
+    </marker>
   </defs>
-
-  
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
-
-  
-  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Unix domain sockets: local,</text>
-  <text x="60" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">permissioned and faster than loopback TCP</text>
-
-  
-  <rect x="40" y="150" width="1520" height="360" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="70" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Two paths between two local processes</text>
-
-  
-  <rect x="70" y="210" width="110" height="280" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="97" y="322" width="56" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-  <line x1="97" y1="336" x2="153" y2="336" stroke="#207448" stroke-width="3"/>
-  <circle cx="106" cy="329" r="2.5" fill="#207448"/>
-  <circle cx="114" cy="329" r="2.5" fill="#207448"/>
-  <path d="M 113 352 L 122 343 L 131 352 L 140 343" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-
-  
-  <rect x="1420" y="210" width="110" height="280" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="1447" y="322" width="56" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-  <line x1="1447" y1="336" x2="1503" y2="336" stroke="#207448" stroke-width="3"/>
-  <circle cx="1456" cy="329" r="2.5" fill="#207448"/>
-  <circle cx="1464" cy="329" r="2.5" fill="#207448"/>
-  <path d="M 1463 352 L 1472 343 L 1481 352 L 1490 343" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-
-  
-  <rect x="240" y="210" width="1120" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <path d="M 180 252 L 238 252" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <path d="M 1360 252 L 1418 252" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <text x="270" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Loopback TCP via 127.0.0.1 or ::1</text>
-  <text x="270" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">passes through the full networking stack</text>
-
-  
-  <rect x="240" y="305" width="1120" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <path d="M 180 397 L 238 397" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <path d="M 1360 397 L 1418 397" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <text x="270" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Unix domain socket</text>
-  <text x="270" y="368" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="270">socket file at a path such as &apos;/var/run/docker.sock&apos;,</tspan>
-    <tspan x="270" dy="28">&apos;/run/dbus/system_bus_socket&apos;, &apos;/var/run/mysqld/mysqld.sock&apos;</tspan>
-  </text>
-  <text x="270" y="432" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="270">the kernel skips many layers of its networking subsystem,</tspan>
-    <tspan x="270" dy="28">so performance is usually much better; not a network socket,</tspan>
-    <tspan x="270" dy="28">so no networking configuration is needed</tspan>
-  </text>
-
-  
-
-  
-  <rect x="40" y="530" width="580" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <path d="M 565 545 L 585 553 L 585 571 C 585 583 576 594 565 599 C 554 594 545 583 545 571 L 545 553 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-  <text x="70" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">access control</text>
-  <text x="70" y="608" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="70">ordinary file permissions on the socket</tspan>
-    <tspan x="70" dy="28">file decide who can connect, for example</tspan>
-    <tspan x="70" dy="28">srwxrwxrwx for system_bus_socket;</tspan>
-    <tspan x="70" dy="28">the socket stays off the network</tspan>
-  </text>
-
-  
-  <rect x="65" y="730" width="530" height="110" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-  <path d="M 85 795 L 105 755 L 125 795 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
-  <line x1="105" y1="768" x2="105" y2="782" stroke="#db8129" stroke-width="3"/>
-  <circle cx="105" cy="789" r="2" fill="#db8129"/>
-  <text x="140" y="765" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="140">access to docker.sock is</tspan>
-    <tspan x="140" dy="28">equivalent to root,</tspan>
-    <tspan x="140" dy="28">so protect it</tspan>
-  </text>
-
-  
-  <rect x="650" y="530" width="910" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="1485" y="546" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="1485" y1="556" x2="1531" y2="556" stroke="#207448" stroke-width="2"/>
-  <path d="M 1493 565 L 1499 571 L 1493 577" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="680" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">reading lsof -U output</text>
-  <text x="680" y="608" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="680">NAME column first: a path names a socket file;</tspan>
-    <tspan x="680" dy="28">the word socket marks an unnamed socket;</tspan>
-    <tspan x="680" dy="28">a process can create an unnamed Unix domain</tspan>
-    <tspan x="680" dy="28">socket and share its address with another process</tspan>
-  </text>
-
-  <text x="680" y="732" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Example rows</text>
-  <rect x="680" y="744" width="850" height="96" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="700" y="780" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">mysqld 19701 mysql 12u unix ... /var/run/mysqld/mysqld.sock</text>
-  <text x="700" y="818" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">tlsmgr 30480 postfix 6u unix ... private/tlsmgr</text>
-
-  
-  <rect x="40" y="880" width="1520" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <circle cx="160" cy="907" r="14" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="160" y1="903" x2="160" y2="915" stroke="#207448" stroke-width="3"/>
-  <circle cx="160" cy="898" r="1.5" fill="#207448"/>
-  <text x="70" y="915" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Facts</text>
-
-  
-  <rect x="70" y="934" width="695" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="95" cy="968" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="115" y="961" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="115">programs pass file descriptors and credentials</tspan>
-    <tspan x="115" dy="26">with SCM_RIGHTS and SO_PEERCRED</tspan>
-  </text>
-
-  
-  <rect x="795" y="934" width="735" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="820" cy="968" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="840" y="961" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="840">daemons such as systemd and NetworkManager</tspan>
-    <tspan x="840" dy="26">use D-Bus</tspan>
-  </text>
-
-  
-  <rect x="70" y="1016" width="695" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="95" cy="1050" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="115" y="1043" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="115">mysqld accepts remote clients and also</tspan>
-    <tspan x="115" dy="26">offers a Unix domain socket</tspan>
-  </text>
-
-  
-  <rect x="795" y="1016" width="735" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="820" cy="1050" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="840" y="1056" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">list with ss -xlp or lsof -U as root</text>
-
-  
-  <rect x="40" y="1120" width="1520" height="55" rx="8" fill="#207448"/>
-  <text x="800" y="1156" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A Unix domain socket is not a network socket</text>
 </svg>

@@ -1,220 +1,175 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Turning an Xid code into ignore, suspect or drain</title>
-  <desc>Flowchart showing the fleet policy for handling NVIDIA GPU Xid errors by catalog action and repeat frequency into ignore, suspect, or drain.</desc>
+  <desc>A decision flowchart detailing how to classify and handle GPU Xid error codes into ignore, suspect, or drain actions.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5"/>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
 
   
-  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Turning an Xid code into ignore, suspect or drain</text>
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Turning an Xid code into ignore, suspect or drain</text>
 
   
-  <g id="start-box">
-    <rect x="680" y="75" width="560" height="75" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(560, 100)">
+    <rect width="480" height="80" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(705, 84)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="10" width="36" height="36" rx="4"/>
-      <line x1="18" y1="4" x2="18" y2="10"/>
-      <line x1="28" y1="4" x2="28" y2="10"/>
-      <line x1="38" y1="4" x2="38" y2="10"/>
-      <line x1="18" y1="46" x2="18" y2="52"/>
-      <line x1="28" y1="46" x2="28" y2="52"/>
-      <line x1="38" y1="46" x2="38" y2="52"/>
-      <line x1="4" y1="18" x2="10" y2="18"/>
-      <line x1="4" y1="28" x2="10" y2="28"/>
-      <line x1="4" y1="38" x2="10" y2="38"/>
-      <line x1="46" y1="18" x2="52" y2="18"/>
-      <line x1="46" y1="28" x2="52" y2="28"/>
-      <line x1="46" y1="38" x2="52" y2="38"/>
+    <g transform="translate(25, 18)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="10" y="10" width="24" height="24" rx="3" fill="#f5f8f5" />
+      <line x1="16" y1="4" x2="16" y2="10" />
+      <line x1="22" y1="4" x2="22" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="16" y1="34" x2="16" y2="40" />
+      <line x1="22" y1="34" x2="22" y2="40" />
+      <line x1="28" y1="34" x2="28" y2="40" />
+      <line x1="4" y1="16" x2="10" y2="16" />
+      <line x1="4" y1="22" x2="10" y2="22" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="34" y1="16" x2="40" y2="16" />
+      <line x1="34" y1="22" x2="40" y2="22" />
+      <line x1="34" y1="28" x2="40" y2="28" />
     </g>
-    <text x="1000" y="123" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Xid reported on a node</text>
+    <text x="90" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Xid reported on a node</text>
   </g>
 
   
-  <line x1="960" y1="150" x2="960" y2="193" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="800" y1="180" x2="800" y2="230" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <g id="step-1">
+  <g transform="translate(570, 230)">
+    <rect width="460" height="90" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <circle cx="630" cy="165" r="24" fill="#207448"/>
-    <text x="630" y="174" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-
-    
-    <rect x="680" y="195" width="560" height="75" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    
-    <g transform="translate(705, 204)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="8" width="40" height="40" rx="4"/>
-      <line x1="16" y1="18" x2="36" y2="18"/>
-      <line x1="16" y1="28" x2="36" y2="28"/>
-      <line x1="16" y1="38" x2="28" y2="38"/>
-    </g>
-    <text x="1000" y="243" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Code in the catalog?</text>
-  </g>
-
-  
-  <path d="M 680 235 L 200 235 L 200 523" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <line x1="960" y1="270" x2="960" y2="313" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <g id="step-2">
-    
-    <circle cx="630" cy="285" r="24" fill="#207448"/>
-    <text x="630" y="294" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-
-    
-    <rect x="680" y="315" width="560" height="75" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    
-    <g transform="translate(705, 324)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="10"/>
-      <path d="M 28 8 L 28 14 M 28 42 L 28 48 M 8 28 L 14 28 M 42 28 L 48 28 M 14 14 L 18 18 M 38 38 L 42 42 M 14 42 L 18 38 M 38 18 L 42 14"/>
-    </g>
-    <text x="1000" y="363" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Catalog action</text>
-  </g>
-
-  
-  <g id="suspect-node">
-    <rect x="40" y="525" width="320" height="225" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-    
-    <g transform="translate(172, 545)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 12 10 L 28 4 L 44 10 C 44 32 28 48 28 48 C 28 48 12 32 12 10 Z"/>
-      <line x1="28" y1="18" x2="28" y2="30"/>
-      <circle cx="28" cy="37" r="1.5" fill="#207448"/>
-    </g>
-    <text x="200" y="635" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Suspect</text>
-    <text x="200" y="682" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="200" dy="0">never ignore an</tspan>
-      <tspan x="200" dy="30">unknown code</tspan>
-    </text>
+    <circle cx="45" cy="45" r="24" fill="#207448" />
+    <text x="45" y="54" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="90" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Code in the catalog?</text>
   </g>
 
   
   
-  <path d="M 760 390 L 760 415 L 385 415 L 385 588" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 570 275 L 230 275 L 230 350" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+  
+  <rect x="360" y="257" width="60" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="390" y="282" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
 
   
-  <rect x="415" y="435" width="330" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="580" y="463" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="580" dy="0" font-weight="bold" fill="#207448">application-level,</tspan>
-    <tspan x="580" dy="28" font-weight="bold" fill="#207448">RESTART_APP</tspan>
-    <tspan x="580" dy="28">(for example</tspan>
-    <tspan x="580" dy="28">Xid 13, 31, 94)</tspan>
-  </text>
+  <g transform="translate(60, 350)">
+    <rect width="340" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="170" y="52" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Suspect</text>
+    <text x="170" y="96" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">never ignore an unknown code</text>
+  </g>
 
   
-  <g id="repeat-decision">
-    <rect x="410" y="590" width="340" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <line x1="800" y1="320" x2="800" y2="400" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  <rect x="815" y="342" width="65" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="847" y="367" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+
+  
+  <g transform="translate(610, 400)">
+    <rect width="380" height="90" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(558, 600)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="22" cy="22" r="18"/>
-      <polyline points="22,10 22,22 30,22"/>
-    </g>
-    <text x="580" y="662" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="580" dy="0">Same code three</tspan>
-      <tspan x="580" dy="28">times within an hour</tspan>
-      <tspan x="580" dy="28">on this node?</tspan>
-    </text>
+    <circle cx="45" cy="45" r="24" fill="#207448" />
+    <text x="45" y="54" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="95" y="55" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Catalog action</text>
   </g>
 
   
-  <g id="memory-note">
-    <rect x="790" y="600" width="190" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <path d="M 610 445 L 200 445 L 200 660" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+  
+  <g transform="translate(45, 510)">
+    <rect width="310" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="155" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">IGNORE</text>
+    <text x="155" y="65" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(for example Xid 43, 63)</text>
+  </g>
+  
+  <g transform="translate(70, 660)">
+    <rect width="260" height="90" rx="16" fill="#207448" stroke="#207448" stroke-width="3" />
+    <text x="130" y="56" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">Ignore</text>
+  </g>
+
+  
+  <line x1="800" y1="490" x2="800" y2="660" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  <g transform="translate(560, 525)">
+    <rect width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="240" y="36" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">application-level, RESTART_APP</text>
+    <text x="240" y="72" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(for example Xid 13, 31, 94)</text>
+  </g>
+
+  
+  <g transform="translate(480, 660)">
+    <rect width="640" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <text x="320" y="48" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Same code three times</text>
+    <text x="320" y="84" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">within an hour on this node?</text>
+  </g>
+
+  
+  <g transform="translate(1140, 660)">
     
-    <g transform="translate(861, 612)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="6" width="48" height="24" rx="3"/>
-      <rect x="9" y="11" width="6" height="8" fill="#e8f1ea"/>
-      <rect x="19" y="11" width="6" height="8" fill="#e8f1ea"/>
-      <rect x="29" y="11" width="6" height="8" fill="#e8f1ea"/>
-      <rect x="39" y="11" width="6" height="8" fill="#e8f1ea"/>
-      <line x1="11" y1="30" x2="11" y2="36"/>
-      <line x1="19" y1="30" x2="19" y2="36"/>
-      <line x1="27" y1="30" x2="27" y2="36"/>
-      <line x1="35" y1="30" x2="35" y2="36"/>
-      <line x1="43" y1="30" x2="43" y2="36"/>
-    </g>
-    <text x="885" y="665" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="885" dy="0">recent Xid</tspan>
-      <tspan x="885" dy="28">times kept</tspan>
-      <tspan x="885" dy="28">per node</tspan>
-    </text>
-  </g>
-
-  
-  <line x1="410" y1="650" x2="362" y2="650" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <line x1="580" y1="740" x2="580" y2="788" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <g id="drain-box">
-    <rect x="450" y="790" width="260" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <rect x="15" y="15" width="55" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(470, 817)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 8 12 L 28 32 L 48 12"/>
-      <line x1="28" y1="4" x2="28" y2="44"/>
-      <line x1="12" y1="50" x2="44" y2="50"/>
-    </g>
-    <text x="610" y="858" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Drain</text>
-  </g>
-
-  
-  
-  <path d="M 960 390 L 960 415 L 1000 415 L 1000 765 L 1040 765 L 1040 788" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <rect x="1025" y="485" width="230" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="1140" y="515" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1140" dy="0" font-weight="bold" fill="#207448">IGNORE</tspan>
-    <tspan x="1140" dy="30">(for example</tspan>
-    <tspan x="1140" dy="30">Xid 43, 63)</tspan>
-  </text>
-
-  
-  <g id="ignore-box">
-    <rect x="1020" y="790" width="240" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <line x1="25" y1="95" x2="25" y2="105" stroke="#207448" stroke-width="3" />
+    <line x1="35" y1="95" x2="35" y2="105" stroke="#207448" stroke-width="3" />
+    <line x1="45" y1="95" x2="45" y2="105" stroke="#207448" stroke-width="3" />
+    <line x1="55" y1="95" x2="55" y2="105" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1045, 817)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="22"/>
-      <path d="M 18 28 L 25 35 L 38 21"/>
-    </g>
-    <text x="1170" y="858" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Ignore</text>
+    <rect x="23" y="25" width="38" height="18" fill="#207448" rx="2" />
+    <rect x="23" y="55" width="38" height="18" fill="#207448" rx="2" />
+    
+    <text x="85" y="48" font-family="sans-serif" font-size="24" fill="#303a36">recent Xid times</text>
+    <text x="85" y="80" font-family="sans-serif" font-size="24" fill="#303a36">kept per node</text>
   </g>
 
   
+  <path d="M 600 770 L 600 890" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
   
-  <path d="M 1140 390 L 1140 415 L 1280 415 L 1280 765 L 1330 765 L 1330 788" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
+  <rect x="570" y="805" width="60" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="600" y="830" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
   
-  <rect x="1305" y="465" width="250" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="1430" y="495" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1430" dy="0" font-weight="bold" fill="#207448">reset, reboot</tspan>
-    <tspan x="1430" dy="28" font-weight="bold" fill="#207448">or link</tspan>
-    <tspan x="1430" dy="28">(for example</tspan>
-    <tspan x="1430" dy="28">Xid 48, 64,</tspan>
-    <tspan x="1430" dy="28">79, 95, 119,</tspan>
-    <tspan x="1430" dy="28">120, 74)</tspan>
-  </text>
-
-  
-  <g id="drain-at-once-box">
-    <rect x="1300" y="790" width="260" height="110" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
-    <text x="1430" y="858" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Drain at once</text>
+  <g transform="translate(480, 890)">
+    <rect width="240" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="120" y="56" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Suspect</text>
   </g>
 
   
-  <g id="takeaway-bar">
-    <rect x="40" y="940" width="1520" height="100" rx="14" fill="#207448"/>
-    <text x="800" y="983" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
-      <tspan x="800" dy="0">Translate the catalog into ignore, suspect and drain,</tspan>
-      <tspan x="800" dy="34">and never ignore a code you do not recognise.</tspan>
-    </text>
+  <path d="M 1000 770 L 1000 890" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+  
+  <rect x="968" y="805" width="65" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1000" y="830" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+  
+  <g transform="translate(880, 890)">
+    <rect width="240" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="120" y="56" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Drain</text>
   </g>
+
+  
+  <path d="M 990 445 L 1400 445 L 1400 890" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+  
+  <g transform="translate(1180, 500)">
+    <rect width="400" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="200" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">reset, reboot or link</text>
+    <text x="200" y="70" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(for example Xid 48, 64,</text>
+    <text x="200" y="98" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">79, 95, 119, 120, 74)</text>
+  </g>
+  
+  <g transform="translate(1230, 890)">
+    <rect width="340" height="90" rx="16" fill="#db8129" stroke="#db8129" stroke-width="3" />
+    <text x="170" y="56" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">Drain at once</text>
+  </g>
+
+  
+  <g transform="translate(50, 1070)">
+    <rect width="1500" height="85" rx="16" fill="#207448" />
+    <text x="750" y="52" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Translate the catalog into ignore, suspect and drain, and never ignore a code you do not recognise.</text>
+  </g>
+
 </svg>

@@ -1,146 +1,137 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>What a CLI test must pin: exit code, stdout and stderr</title>
-  <desc>Infographic explaining how CLI testing validates exit codes, stdout purity, error handling, and automation stability using CliRunner and end-to-end smoke tests.</desc>
+  <desc>Visual infographic explaining what CLI tests must assert: exit codes, pure JSON stdout, stderr split, and end-to-end smoke testing.</desc>
 
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 1 2 L 7 5 L 1 8 z" fill="#207448"/>
-    </marker>
-  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1160" fill="#f5f8f5"/>
+  <text x="60" y="68" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">What a CLI test must pin: exit code, stdout and stderr</text>
 
   
-  <text x="50" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">What a CLI test must pin: exit code, stdout and stderr</text>
+  <g id="warning-box">
+    <rect x="60" y="98" width="1480" height="88" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(84, 114)">
+      <polygon points="28,4 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="160" y="152" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">a CLI with no tests for exit codes, or for the split between stdout and stderr, can break automation without anyone noticing</text>
+  </g>
 
   
-  <rect x="50" y="120" width="840" height="770" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="60" y="210" width="760" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <rect x="75" y="145" width="790" height="410" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-
-  
-  <g transform="translate(95, 165)">
-    <rect x="0" y="0" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(88, 232)">
+    <rect x="0" y="0" width="56" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3"/>
     <circle cx="10" cy="7" r="2.5" fill="#207448"/>
     <circle cx="18" cy="7" r="2.5" fill="#207448"/>
-    <circle cx="26" cy="7" r="2.5" fill="#207448"/>
-    <path d="M 10 24 L 16 29 L 10 34" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="20" y1="34" x2="32" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M10,24 L18,29 L10,34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="24" y1="34" x2="36" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
+  <text x="160" y="266" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">CliRunner invocation &amp; assertions</text>
 
   
-  <rect x="95" y="230" width="750" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="115" y="262">monkeypatch.setattr(fleetctl.cli.query_host,</tspan>
-    <tspan x="140" y="294">lambda h, c: {host: h, gpus: 8, state: ok})</tspan>
+  <rect x="88" y="296" width="704" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="108" y="334" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="108" dy="0">monkeypatch.setattr(</tspan>
+    <tspan x="128" dy="32">fleetctl.cli.query_host,</tspan>
+    <tspan x="128" dy="32">lambda h, c: {host: h, gpus: 8, state: ok})</tspan>
   </text>
 
   
-  <rect x="95" y="325" width="750" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="115" y="357">CliRunner().invoke(cli,</tspan>
-    <tspan x="140" y="387">[--output, json, status, h1, h2])</tspan>
+  <rect x="88" y="448" width="704" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="108" y="488" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="108" dy="0">CliRunner().invoke(cli,</tspan>
+    <tspan x="128" dy="32">[--output, json, status, h1, h2])</tspan>
   </text>
 
   
-  <line x1="230" y1="400" x2="230" y2="435" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="610" y1="400" x2="610" y2="435" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M440,552 L440,580" fill="none" stroke="#207448" stroke-width="4"/>
+  <polygon points="440,592 432,576 448,576" fill="#207448"/>
 
   
-  <rect x="95" y="445" width="270" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
-  <text x="115" y="498" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">r.exit_code == 0</text>
+  <rect x="88" y="596" width="704" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(108, 611)">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="14,22 20,28 30,16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="164" y="642" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">r.exit_code == 0</text>
 
   
-  <rect x="385" y="445" width="460" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
-  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
-    <tspan x="405" y="480">json.loads(r.output)[0][host] == h1</tspan>
+  <rect x="88" y="686" width="704" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(108, 702)">
+    <rect x="4" y="4" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="11" y="28" font-family="monospace" font-size="20" font-weight="bold" fill="#207448">{ }</text>
+  </g>
+  <text x="164" y="730" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">json.loads(r.output)[0][host] == h1</text>
+  <text x="164" y="784" font-family="sans-serif" font-size="24" fill="#303a36">(stdout is pure JSON)</text>
+
+  
+  <rect x="88" y="840" width="704" height="152" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(108, 856)">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="22" y1="12" x2="22" y2="24" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="22" cy="30" r="2" fill="#db8129"/>
+  </g>
+  <text x="164" y="888" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="164" dy="0">CliRunner().invoke(cli, [drain])</tspan>
+    <tspan x="164" dy="32">.exit_code == 2</tspan>
   </text>
-  <text x="405" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">stdout is pure JSON</text>
+  <text x="164" y="966" font-family="sans-serif" font-size="24" fill="#303a36">(usage error, the missing argument)</text>
+
 
   
-  <rect x="75" y="580" width="790" height="285" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="850" y="210" width="690" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g transform="translate(95, 600)">
-    <rect x="0" y="0" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="2"/>
-    <line x1="20" y1="23" x2="36" y2="37" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="36" y1="23" x2="20" y2="37" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(880, 230)">
+    <circle cx="26" cy="26" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M26,4 L26,12 M26,40 L26,48 M4,26 L12,26 M40,26 L48,26 M10,10 L16,16 M36,36 L42,42 M10,42 L16,36 M36,10 L42,16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
   </g>
+  <text x="948" y="266" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Other ways</text>
 
   
-  <rect x="95" y="670" width="750" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
-  <text x="115" y="722" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">CliRunner().invoke(cli, [drain]).exit_code == 2</text>
-
-  
-  <rect x="95" y="770" width="750" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-  <text x="115" y="817" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">usage error, the missing argument</text>
-
-  
-  <rect x="920" y="120" width="630" height="770" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-  
-  <g transform="translate(950, 145)">
-    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="28" y1="16" x2="28" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <rect x="880" y="296" width="630" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(904, 316)">
+    <rect x="0" y="4" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M8,16 L18,16 M8,24 L28,24 M8,32 L22,32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
-  <text x="1025" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#303a36">Other ways</text>
-
-  
-  <rect x="950" y="230" width="570" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(975, 250)">
-    <rect x="0" y="0" width="48" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
-    <circle cx="14" cy="19" r="4" fill="#207448"/>
-    <circle cx="34" cy="19" r="4" fill="#207448"/>
-  </g>
-  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="975" y="325">argparse tools: call main([...])</tspan>
-    <tspan x="975" y="360">and use capsys</tspan>
-  </text>
-
-  
-  <rect x="950" y="415" width="570" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(975, 435)">
-    <rect x="0" y="0" width="48" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="12,14 20,20 12,26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="24" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  </g>
-  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="975" y="505">end to end: subprocess.run([sys.executable,</tspan>
-    <tspan x="975" y="540">-m, fleetctl, ...])</tspan>
-    <tspan x="975" y="575">in a few smoke tests</tspan>
+  <text x="968" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="968" dy="0">argparse tools: call main([...]) and</tspan>
+    <tspan x="968" dy="36">use capsys</tspan>
   </text>
 
   
-  <rect x="950" y="625" width="570" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(975, 645)">
-    <path d="M 6 4 L 42 4 L 42 40 L 6 40 Z" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="14,22 22,30 36,14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="880" y="474" width="630" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(904, 498)">
+    <rect x="2" y="2" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M12,24 L36,24 M26,14 L36,24 L26,34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="975" y="718">exit codes 0, 1, 2, 3 and 4,</tspan>
-    <tspan x="975" y="753">JSON on stdout pure,</tspan>
-    <tspan x="975" y="788">--dry-run does not mutate, and a smoke test</tspan>
-    <tspan x="975" y="823">of the installed entry point</tspan>
+  <text x="968" y="522" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="968" dy="0">end to end: subprocess.run([sys.executable,</tspan>
+    <tspan x="968" dy="36">-m, fleetctl, ...]) in a few smoke</tspan>
+    <tspan x="968" dy="36">tests</tspan>
   </text>
 
   
-  <rect x="50" y="920" width="1500" height="100" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-  <g transform="translate(80, 942)">
-    <polygon points="28,4 54,48 2,48" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
-    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="28" cy="42" r="2" fill="#db8129"/>
+  <rect x="880" y="712" width="630" height="280" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(904, 736)">
+    <path d="M8,4 L38,4 L44,14 L44,46 L8,46 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="16,28 22,34 34,20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
-  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="160" y="962">a CLI with no tests for exit codes, or for the split between stdout and stderr,</tspan>
-    <tspan x="160" y="996">can break automation without anyone noticing</tspan>
+  <text x="968" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="968" dy="0">exit codes 0, 1, 2, 3 and 4, JSON on</tspan>
+    <tspan x="968" dy="36">stdout pure, --dry-run does not mutate,</tspan>
+    <tspan x="968" dy="36">and a smoke test of the installed entry</tspan>
+    <tspan x="968" dy="36">point</tspan>
   </text>
 
   
-  <rect x="50" y="1045" width="1500" height="80" rx="14" fill="#207448"/>
-  <text x="800" y="1095" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">CliRunner returns the exit code and the output in one in-process call</text>
+  <rect x="60" y="1104" width="1480" height="68" rx="10" fill="#207448"/>
+  <text x="800" y="1147" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">CliRunner returns the exit code and the output in one in-process call</text>
 </svg>

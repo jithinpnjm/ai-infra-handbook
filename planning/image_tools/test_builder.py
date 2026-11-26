@@ -1,198 +1,192 @@
 import xml.etree.ElementTree as ET
-import re, json, subprocess, pathlib
+import re
+import pathlib
 
-def generate_svg():
-    W = 1600
-    H = 1200
-
-    title_text = "Splitting state by rate of change and cost of failure"
-    axis_x = "how often it changes"
-    axis_y = "what it costs when it fails"
-    place_network = "network and project: changes a few times a year, costly: own state few people can touch"
-    place_cloud = "cloud stage: cluster and node pools, changes with capacity"
-    place_platform = "platform stage per cluster: Helm releases and tenants, change daily, a mistake is cheap, small fast state"
-    test_line = "who would notice if the piece broke: only the platform team means it sits with their state; every service means the strictest guards"
-    iso_workspaces = "workspaces share one backend and credentials, nothing in code or shell shows which one you are in, so not for staging versus production"
-    iso_file = "file layout: one directory and state per environment per component (recommended)"
-    example_box = "nebius-solutions-library k8s-inference: cloud stage has one state for clusters, pools, filesystems, static IPs, identities, registry, buckets and managed database; platform stage has one state per cluster for Helm releases"
-    output_flow = "stacks talk through outputs such as cluster_id via terraform_remote_state or CI variables; a reader of remote state needs read access to the other state, which may include secrets"
-
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
-  <title>{title_text}</title>
-  <desc>Infographic explaining how to split Terraform state by rate of change and cost of failure, comparing workspaces to directory layout, and detailing output flows.</desc>
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Leader election with Lease objects</title>
+  <desc>Architecture infographic illustrating Kubernetes leader election among control-plane nodes using Lease objects, normal renewal cycles, and failover takeover when the active leader crashes.</desc>
 
   <defs>
-    <!-- Arrowhead green 18px -->
+    <!-- Arrowhead Green (18px) -->
     <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
       <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <!-- Arrowhead Orange (18px) -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
     </marker>
   </defs>
 
   <!-- Background -->
-  <rect width="{W}" height="{H}" fill="#f5f8f5" />
+  <rect width="1600" height="1060" fill="#f5f8f5" />
 
-  <!-- Title (48px bold, at most two lines) -->
-  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Splitting state by rate of change</tspan>
-    <tspan x="800" dy="54">and cost of failure</tspan>
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Leader election with Lease objects</text>
+
+  <!-- ==================== TOP ROW: THREE CONTROL-PLANE NODES ==================== -->
+  <!-- Container Panel for Top Row -->
+  <rect x="40" y="85" width="1520" height="282" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <!-- Status Header Banners -->
+  <!-- Active Leader Header over Node 1 -->
+  <rect x="60" y="100" width="470" height="36" rx="8" fill="#207448" />
+  <text x="295" y="126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">active leader</text>
+
+  <!-- Standby Header over Node 2 and Node 3 -->
+  <rect x="565" y="100" width="975" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1052" y="126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">standby</text>
+
+  <!-- Three Equal-Width Control-Plane Node Boxes (width 470 each) -->
+  <!-- Node 1: control-plane node 1 -->
+  <g id="node-1">
+    <rect x="60" y="144" width="470" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Server Icon (56px) -->
+    <g transform="translate(75, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4" />
+      <rect x="4" y="32" width="48" height="18" rx="4" />
+      <circle cx="14" cy="15" r="2" fill="#207448" />
+      <circle cx="22" cy="15" r="2" fill="#207448" />
+      <circle cx="14" cy="41" r="2" fill="#207448" />
+      <circle cx="22" cy="41" r="2" fill="#207448" />
+      <line x1="38" y1="15" x2="44" y2="15" />
+      <line x1="38" y1="41" x2="44" y2="41" />
+    </g>
+    <text x="145" y="191" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">control-plane node 1</text>
+  </g>
+
+  <!-- Node 2: node 2 -->
+  <g id="node-2">
+    <rect x="565" y="144" width="470" height="74" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <!-- Server Icon (56px) -->
+    <g transform="translate(685, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4" />
+      <rect x="4" y="32" width="48" height="18" rx="4" />
+      <circle cx="14" cy="15" r="2" fill="#207448" />
+      <circle cx="22" cy="15" r="2" fill="#207448" />
+      <circle cx="14" cy="41" r="2" fill="#207448" />
+      <circle cx="22" cy="41" r="2" fill="#207448" />
+      <line x1="38" y1="15" x2="44" y2="15" />
+      <line x1="38" y1="41" x2="44" y2="41" />
+    </g>
+    <text x="760" y="191" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 2</text>
+  </g>
+
+  <!-- Node 3: node 3 -->
+  <g id="node-3">
+    <rect x="1070" y="144" width="470" height="74" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <!-- Server Icon (56px) -->
+    <g transform="translate(1190, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4" />
+      <rect x="4" y="32" width="48" height="18" rx="4" />
+      <circle cx="14" cy="15" r="2" fill="#207448" />
+      <circle cx="22" cy="15" r="2" fill="#207448" />
+      <circle cx="14" cy="41" r="2" fill="#207448" />
+      <circle cx="22" cy="41" r="2" fill="#207448" />
+      <line x1="38" y1="15" x2="44" y2="15" />
+      <line x1="38" y1="41" x2="44" y2="41" />
+    </g>
+    <text x="1265" y="191" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">node 3</text>
+  </g>
+
+  <!-- Shared Component Tracks Across All Nodes -->
+  <!-- Track 1: kube-scheduler -->
+  <rect x="60" y="228" width="1480" height="58" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <line x1="547.5" y1="228" x2="547.5" y2="286" stroke="#207448" stroke-width="1" stroke-dasharray="4 3" opacity="0.6" />
+  <line x1="1052.5" y1="228" x2="1052.5" y2="286" stroke="#207448" stroke-width="1" stroke-dasharray="4 3" opacity="0.6" />
+  <text x="800" y="266" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">kube-scheduler</text>
+
+  <!-- Track 2: kube-controller-manager -->
+  <rect x="60" y="296" width="1480" height="58" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <line x1="547.5" y1="296" x2="547.5" y2="354" stroke="#207448" stroke-width="1" stroke-dasharray="4 3" opacity="0.6" />
+  <line x1="1052.5" y1="296" x2="1052.5" y2="354" stroke="#207448" stroke-width="1" stroke-dasharray="4 3" opacity="0.6" />
+  <text x="800" y="334" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">kube-controller-manager</text>
+
+  <!-- ==================== ARROW 1 & LEASE OBJECT ==================== -->
+  <!-- Arrow 1: From Leader (Node 1) to Lease Object Box -->
+  <path d="M 100 367 L 100 468 L 230 468" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 1 Label Card -->
+  <rect x="135" y="388" width="630" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="450" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">renews renewTime every 2 s (retryPeriod)</text>
+
+  <!-- Central Box: Lease object in kube-system -->
+  <rect x="230" y="435" width="1140" height="66" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <!-- Lock / Lease Outline Icon (56px) -->
+  <g transform="translate(250, 440)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="24" width="32" height="26" rx="4" />
+    <path d="M 20 24 L 20 14 C 20 8 36 8 36 14 L 36 24" />
+    <circle cx="28" cy="37" r="3" fill="#207448" />
+  </g>
+  <text x="825" y="478" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">Lease object in kube-system (coordination.k8s.io/v1)</text>
+
+  <!-- ==================== SECOND ROW: FAILURE & FAILOVER ==================== -->
+  <!-- Box Left: leader crashes, no renewal within 15 s (leaseDuration) -->
+  <rect x="40" y="535" width="700" height="170" rx="16" fill="#ffffff" stroke="#c53030" stroke-width="2.5" />
+
+  <!-- Crashed Server Icon with RED X (56px) -->
+  <g transform="translate(65, 592)" stroke="#303a36" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="18" rx="4" />
+    <rect x="4" y="32" width="48" height="18" rx="4" />
+    <circle cx="14" cy="15" r="2" fill="#303a36" />
+    <circle cx="22" cy="15" r="2" fill="#303a36" />
+    <circle cx="14" cy="41" r="2" fill="#303a36" />
+    <circle cx="22" cy="41" r="2" fill="#303a36" />
+  </g>
+  <!-- Red X over node 1 icon -->
+  <line x1="60" y1="587" x2="126" y2="653" stroke="#c53030" stroke-width="6" stroke-linecap="round" />
+  <line x1="126" y1="587" x2="60" y2="653" stroke="#c53030" stroke-width="6" stroke-linecap="round" />
+
+  <!-- Text for Leader Crash -->
+  <text x="430" y="605" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="430" dy="0">leader crashes, no renewal</tspan>
+    <tspan x="430" dy="36">within 15 s (leaseDuration)</tspan>
   </text>
 
-  <!-- ==================== MATRIX CONTAINER ==================== -->
-  <rect x="40" y="130" width="1520" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Arrow 2: From Crash box to Takeover box -->
+  <line x1="740" y1="620" x2="840" y2="620" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
 
-  <!-- Matrix Axes -->
-  <!-- Y Axis (what it costs when it fails) -->
-  <line x1="110" y1="515" x2="110" y2="160" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <!-- X Axis (how often it changes) -->
-  <line x1="110" y1="515" x2="1520" y2="515" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- Box Right (ORANGE): a standby acquires the Lease and takes over, failover about 15 s -->
+  <rect x="840" y="535" width="720" height="170" rx="16" fill="#fdf6ec" stroke="#db8129" stroke-width="3" />
 
-  <!-- Axis Labels (at least 24px) -->
-  <text x="135" y="175" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">{axis_y}</text>
-  <text x="1510" y="550" text-anchor="end" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">{axis_x}</text>
-
-  <!-- Placement 1: Network & Project (Top-Left: rare change, high cost) -->
-  <g id="placement-network">
-    <rect x="140" y="195" width="455" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <!-- Lock / Shield Icon (56px) placed to the left -->
-    <g transform="translate(158, 252)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 28 6 L 48 14 L 48 28 C 48 40, 28 50, 28 50 C 28 50, 8 40, 8 28 L 8 14 Z" />
-      <circle cx="28" cy="24" r="5" />
-      <line x1="28" y1="29" x2="28" y2="36" />
-    </g>
-    <text x="232" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="232" dy="0" font-weight="bold" fill="#207448">network and project:</tspan>
-      <tspan x="232" dy="32">changes a few times a year,</tspan>
-      <tspan x="232" dy="32">costly: own state few</tspan>
-      <tspan x="232" dy="32">people can touch</tspan>
-    </text>
+  <!-- Takeover / Lock Icon (56px) in Orange -->
+  <g transform="translate(865, 592)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="18" width="40" height="32" rx="4" />
+    <path d="M 18 18 L 18 10 C 18 4 38 4 38 10 L 38 18" />
+    <polyline points="22,34 26,38 34,30" />
   </g>
 
-  <!-- Placement 2: Cloud Stage (Center: capacity change, medium cost) -->
-  <g id="placement-cloud">
-    <rect x="615" y="250" width="430" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <!-- Cluster / Chip Icon (56px) placed to the left -->
-    <g transform="translate(633, 298)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="10" width="36" height="36" rx="6" />
-      <line x1="28" y1="4" x2="28" y2="10" />
-      <line x1="28" y1="46" x2="28" y2="52" />
-      <line x1="4" y1="28" x2="10" y2="28" />
-      <line x1="46" y1="28" x2="52" y2="28" />
-      <circle cx="28" cy="28" r="7" />
-    </g>
-    <text x="705" y="295" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="705" dy="0" font-weight="bold" fill="#207448">cloud stage:</tspan>
-      <tspan x="705" dy="34">cluster and node pools,</tspan>
-      <tspan x="705" dy="34">changes with capacity</tspan>
-    </text>
-  </g>
+  <!-- Text for Takeover -->
+  <text x="1210" y="605" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1210" dy="0">a standby acquires the Lease</tspan>
+    <tspan x="1210" dy="36">and takes over, failover about 15 s</tspan>
+  </text>
 
-  <!-- Placement 3: Platform Stage (Bottom-Right: daily change, low cost) -->
-  <g id="placement-platform">
-    <rect x="1065" y="310" width="460" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <!-- Fast App / Helm Gear Icon (56px) placed to the left -->
-    <g transform="translate(1083, 375)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="14" />
-      <line x1="28" y1="6" x2="28" y2="14" />
-      <line x1="28" y1="42" x2="28" y2="50" />
-      <line x1="6" y1="28" x2="14" y2="28" />
-      <line x1="42" y1="28" x2="50" y2="28" />
-      <circle cx="28" cy="28" r="4" fill="#207448" />
-    </g>
-    <text x="1155" y="350" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1155" dy="0" font-weight="bold" fill="#207448">platform stage per cluster:</tspan>
-      <tspan x="1155" dy="32">Helm releases and tenants,</tspan>
-      <tspan x="1155" dy="32">change daily, a mistake is</tspan>
-      <tspan x="1155" dy="32">cheap, small fast state</tspan>
-    </text>
-  </g>
-
-  <!-- ==================== TEST LINE (Decision rule) ==================== -->
-  <rect x="40" y="585" width="1520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <!-- Question / Notice Icon (56px) -->
-  <g transform="translate(60, 604)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="22" />
-    <line x1="28" y1="18" x2="28" y2="28" />
+  <!-- ==================== NOTE & COMMAND HINT ==================== -->
+  <!-- Note Box -->
+  <rect x="40" y="735" width="1520" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <!-- Shield / Info Icon (56px) -->
+  <g transform="translate(65, 782)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" />
+    <line x1="28" y1="20" x2="28" y2="30" />
     <circle cx="28" cy="38" r="2" fill="#207448" />
   </g>
-  <text x="135" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0" font-weight="bold" fill="#207448">who would notice if the piece broke: only the platform team means it sits with their state;</tspan>
-    <tspan x="135" dy="32">every service means the strictest guards</tspan>
+  <text x="820" y="785" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="820" dy="0">Three active schedulers would cause conflicting bindings</tspan>
+    <tspan x="820" dy="32">and duplicate ReplicaSet creations;</tspan>
+    <tspan x="820" dy="32">API servers stay active-active behind a load balancer</tspan>
   </text>
 
-  <!-- ==================== BOTTOM PANELS ==================== -->
-  <!-- Left Column: Isolation Panel (Workspaces vs File Layout) -->
-  <g id="isolation-panel">
-    <rect x="40" y="695" width="740" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-    <!-- Card 1: Workspaces -->
-    <rect x="65" y="715" width="690" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <!-- Workspace Box Icon (56px) -->
-    <g transform="translate(85, 785)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="14" width="40" height="30" rx="4" />
-      <path d="M 18 14 L 18 10 C 18 8, 22 6, 28 6 C 34 6, 38 8, 38 10 L 38 14" />
-      <line x1="8" y1="26" x2="48" y2="26" />
-    </g>
-    <text x="160" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="160" dy="0" font-weight="bold" fill="#207448">workspaces share one backend and</tspan>
-      <tspan x="160" dy="32">credentials, nothing in code or shell shows</tspan>
-      <tspan x="160" dy="32">which one you are in, so not for</tspan>
-      <tspan x="160" dy="32">staging versus production</tspan>
-    </text>
-
-    <!-- Card 2: File Layout (RECOMMENDED - Highlighted with stroke #db8129) -->
-    <rect x="65" y="930" width="690" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
-    <!-- Folder / Structure Icon (56px) -->
-    <g transform="translate(85, 1005)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 6 12 L 20 12 L 26 18 L 50 18 L 50 46 L 6 46 Z" />
-      <polyline points="20,32 26,38 38,26" />
-    </g>
-    <text x="160" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="160" dy="0" font-weight="bold" fill="#207448">file layout: one directory and state per</tspan>
-      <tspan x="160" dy="34">environment per component</tspan>
-      <tspan x="160" dy="34" font-weight="bold">(recommended)</tspan>
-    </text>
+  <!-- Command Hint Box -->
+  <rect x="40" y="915" width="1520" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Terminal Prompt Icon (56px) -->
+  <g transform="translate(65, 932)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4" />
+    <polyline points="14,22 22,28 14,34" />
+    <line x1="26" y1="34" x2="38" y2="34" />
   </g>
+  <text x="800" y="971" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">kubectl get lease -n kube-system</text>
 
-  <!-- Right Column: Output Flow + Real Example -->
-  <g id="right-column">
-    <!-- Output Flow Box -->
-    <rect x="820" y="695" width="740" height="215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <!-- Output / Flow Icon (56px) -->
-    <g transform="translate(845, 745)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="28" r="8" />
-      <circle cx="40" cy="28" r="8" />
-      <path d="M 24 28 L 32 28" />
-      <line x1="8" y1="28" x2="4" y2="28" />
-      <line x1="48" y1="28" x2="52" y2="28" />
-    </g>
-    <!-- Arrow representing output flow -->
-    <path d="M 855 885 L 1520 885" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
-    <text x="920" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="920" dy="0" font-weight="bold" fill="#207448">stacks talk through outputs such as cluster_id</tspan>
-      <tspan x="920" dy="30">via terraform_remote_state or CI variables;</tspan>
-      <tspan x="920" dy="30">a reader of remote state needs read access to the</tspan>
-      <tspan x="920" dy="30">other state, which may include secrets</tspan>
-    </text>
-
-    <!-- Real Example Box -->
-    <rect x="820" y="925" width="740" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <!-- Database / Stack Icon (56px) -->
-    <g transform="translate(845, 1010)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <ellipse cx="28" cy="14" rx="20" ry="7" />
-      <path d="M 8 14 L 8 28 C 8 32, 20 35, 28 35 C 36 35, 48 32, 48 28 L 48 14" />
-      <path d="M 8 28 L 8 42 C 8 46, 20 49, 28 49 C 36 49, 48 46, 48 42 L 48 28" />
-    </g>
-    <text x="920" y="964" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="920" dy="0" font-weight="bold" fill="#207448">nebius-solutions-library k8s-inference: cloud</tspan>
-      <tspan x="920" dy="30">stage has one state for clusters, pools,</tspan>
-      <tspan x="920" dy="30">filesystems, static IPs, identities, registry, buckets</tspan>
-      <tspan x="920" dy="30">and managed database; platform stage has one</tspan>
-      <tspan x="920" dy="30">state per cluster for Helm releases</tspan>
-    </text>
-  </g>
 </svg>'''
-    return svg
 
-with open("test_split_by_rate.svg", "w") as f:
-    f.write(generate_svg())
-print("Wrote test_split_by_rate.svg")
+pathlib.Path("test_p3_0503_fixed.svg").write_text(svg_content)
+print("Saved test_p3_0503_fixed.svg")

@@ -1,158 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Three questions to ask of any playbook the night before a change</title>
-  <desc>Infographic explaining three essential questions to evaluate any Ansible playbook before execution.</desc>
+  <desc>Visual infographic outlining the three essential playbook validation questions, operational shift from runbook to playbook, antipattern contrast, practical use cases, and chapter summary.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
-  <rect x="0" y="0" width="1600" height="1080" fill="#f5f8f5"/>
+  <g id="title-group">
+    <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Three questions to ask of any playbook the night before a change</text>
+    <line x1="120" y1="108" x2="1480" y2="108" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Three questions to ask of any playbook</tspan>
-    <tspan x="800" dy="56">the night before a change</tspan>
-  </text>
-
   
-  <g>
-    <rect x="40" y="160" width="480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="card-1">
+    <rect x="70" y="140" width="460" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <circle cx="80" cy="205" r="24" fill="#207448"/>
-    <text x="80" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <circle cx="300" cy="190" r="26" fill="#207448"/>
+    <text x="300" y="199" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
     
-    <g transform="translate(420, 177)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <rect x="0" y="0" width="56" height="56" rx="8"/>
-      <line x1="0" y1="20" x2="56" y2="20"/>
-      <line x1="28" y1="20" x2="28" y2="56"/>
-      <circle cx="14" cy="10" r="3" fill="#207448"/>
-      <circle cx="28" cy="10" r="3" fill="#207448"/>
-    </g>
+    <text x="300" y="258" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does it change?</text>
+    <line x1="140" y1="285" x2="460" y2="285" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
     
-    <text x="64" y="278" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does it change?</text>
-    
-    <rect x="60" y="310" width="440" height="155" rx="12" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
-    <text x="80" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="80" dy="0">the layout of the playbook, </tspan>
-      <tspan x="80" dy="34">then the modules that </tspan>
-      <tspan x="80" dy="34">do the work</tspan>
+    <text x="300" y="340" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="300" dy="0">the layout of the playbook,</tspan>
+      <tspan x="300" dy="38">then the modules that do</tspan>
+      <tspan x="300" dy="38">the work</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="560" y="160" width="480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="card-2">
+    <rect x="570" y="140" width="460" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <circle cx="600" cy="205" r="24" fill="#207448"/>
-    <text x="600" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <circle cx="800" cy="190" r="26" fill="#207448"/>
+    <text x="800" y="199" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
     
-    <g transform="translate(940, 177)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M 28 4 L 50 14 C 50 36 28 52 28 52 C 28 52 6 36 6 14 Z"/>
-      <path d="M 20 28 L 26 34 L 38 22"/>
-    </g>
+    <text x="800" y="258" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is it safe to run again?</text>
+    <line x1="640" y1="285" x2="960" y2="285" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
     
-    <text x="584" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="584" dy="0">Is it safe to </tspan>
-      <tspan x="584" dy="36">run again?</tspan>
-    </text>
-    
-    <rect x="580" y="310" width="440" height="155" rx="12" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
-    <text x="600" y="365" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="600" dy="0">idempotency: </tspan>
-      <tspan x="600" dy="38" font-family="monospace">changed=0 on the second run</tspan>
+    <text x="800" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">idempotency:</tspan>
+      <tspan x="800" dy="42">changed=0 on the second run</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="1080" y="160" width="480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="card-3">
+    <rect x="1070" y="140" width="460" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
     
-    <circle cx="1120" cy="205" r="24" fill="#207448"/>
-    <text x="1120" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <circle cx="1300" cy="190" r="26" fill="#207448"/>
+    <text x="1300" y="199" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
     
-    <g transform="translate(1460, 177)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <polygon points="17,3 39,3 53,17 53,39 39,53 17,53 3,39 3,17"/>
-      <line x1="20" y1="28" x2="36" y2="28"/>
-    </g>
-    
-    <text x="1104" y="246" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="1104" dy="0">How do I stop it </tspan>
-      <tspan x="1104" dy="34">if the first batch </tspan>
-      <tspan x="1104" dy="34">looks wrong?</tspan>
+    <text x="1300" y="248" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1300" dy="0">How do I stop it</tspan>
+      <tspan x="1300" dy="34">if the first batch looks wrong?</tspan>
     </text>
+    <line x1="1140" y1="300" x2="1460" y2="300" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
     
-    <rect x="1100" y="325" width="440" height="140" rx="12" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
-    <text x="1120" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1120" dy="0">check mode, diff, tags, </tspan>
-      <tspan x="1120" dy="36">limits and serial</tspan>
+    <text x="1300" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1300" dy="0">check mode, diff, tags,</tspan>
+      <tspan x="1300" dy="38">limits and serial</tspan>
     </text>
   </g>
 
   
-  <g>
+  <g id="before-after-strip">
     
-    <rect x="40" y="525" width="740" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <g transform="translate(68, 565)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <circle cx="28" cy="18" r="12"/>
-      <path d="M 8 50 C 8 36 16 32 28 32 C 40 32 48 36 48 50"/>
-    </g>
-    <text x="150" y="568" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="150" dy="0">runbook in one person's head: </tspan>
-      <tspan x="150" dy="34">when that person is on leave </tspan>
-      <tspan x="150" dy="34">the change waits</tspan>
+    <rect x="70" y="520" width="715" height="150" rx="12" fill="#ffffff" stroke="#c0d4c4" stroke-width="2"/>
+    <text x="427" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="427" dy="0">runbook in one person's head:</tspan>
+      <tspan x="427" dy="38">when that person is on leave the change waits</tspan>
     </text>
 
     
-    <rect x="820" y="525" width="740" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 788 595 L 812 595" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="812,589 824,595 812,601" fill="#207448"/>
+
     
-    <g transform="translate(848, 565)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M 10 4 L 38 4 L 50 16 L 50 52 L 10 52 Z"/>
-      <line x1="18" y1="24" x2="38" y2="24"/>
-      <line x1="18" y1="34" x2="38" y2="34"/>
-      <line x1="18" y1="44" x2="28" y2="44"/>
-    </g>
-    <text x="930" y="568" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="930" dy="0">playbook: steps and their order </tspan>
-      <tspan x="930" dy="34">written down and reviewed </tspan>
-      <tspan x="930" dy="34">like any other code</tspan>
+    <rect x="815" y="520" width="715" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1172" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1172" dy="0">playbook: steps and their order written</tspan>
+      <tspan x="1172" dy="38">down and reviewed like any other code</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="685" width="1520" height="140" rx="14" fill="#fef8f2" stroke="#db8129" stroke-width="3"/>
-    
-    <g transform="translate(68, 727)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <polygon points="28,4 54,50 2,50"/>
-      <line x1="28" y1="20" x2="28" y2="34"/>
-      <circle cx="28" cy="42" r="2" fill="#db8129"/>
-    </g>
-    <text x="150" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="150" dy="0">a well-written playbook reads like a runbook; </tspan>
-      <tspan x="150" dy="34">a badly written one is a shell script in YAML: </tspan>
-      <tspan x="150" dy="34">it always reports changed, cannot be dry-run and breaks differently on every host</tspan>
+  <g id="contrast-strip">
+    <rect x="70" y="700" width="1460" height="160" rx="12" fill="#fff9f3" stroke="#db8129" stroke-width="2.5"/>
+    <text x="800" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">a well-written playbook reads like a runbook; a badly written one is a shell script in YAML:</tspan>
+      <tspan x="800" dy="44">it always reports changed, cannot be dry-run and breaks differently on every host</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="850" width="1520" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <g transform="translate(68, 874)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <rect x="4" y="6" width="48" height="18" rx="4"/>
-      <rect x="4" y="32" width="48" height="18" rx="4"/>
-      <circle cx="14" cy="15" r="2" fill="#207448"/>
-      <circle cx="14" cy="41" r="2" fill="#207448"/>
-      <line x1="38" y1="15" x2="44" y2="15"/>
-      <line x1="38" y1="41" x2="44" y2="41"/>
-    </g>
-    <text x="150" y="895" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="150" dy="0">install a driver, set kernel parameters, deploy a Slurm configuration, </tspan>
-      <tspan x="150" dy="34">rotate a certificate, drain and patch a node</tspan>
+  <g id="use-cases-strip">
+    <rect x="70" y="890" width="1460" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="952" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">install a driver, set kernel parameters, deploy a Slurm configuration,</tspan>
+      <tspan x="800" dy="40">rotate a certificate, drain and patch a node</tspan>
     </text>
   </g>
 
   
-  <g>
-    <rect x="40" y="980" width="1520" height="65" rx="12" fill="#207448"/>
-    <text x="800" y="1022" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The rest of the chapter answers these three questions in order</text>
+  <g id="bottom-bar">
+    <rect x="70" y="1060" width="1460" height="90" rx="12" fill="#207448"/>
+    <text x="800" y="1116" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The rest of the chapter answers these three questions in order</text>
   </g>
 </svg>

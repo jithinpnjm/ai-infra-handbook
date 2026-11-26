@@ -1,186 +1,189 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>The for-else retry loop: else means no break happened</title>
-  <desc>SVG infographic illustrating Python for-else retry loops, backoff delays, and loop best practices.</desc>
+  <desc>Infographic explaining Python for-else retry loops, backoff delays, and loop termination mechanics.</desc>
 
   <defs>
     
-    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
     </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+
     
-    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
-    </marker>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143621" flood-opacity="0.08"/>
+    </filter>
   </defs>
 
-  
-  <rect width="1600" height="1100" fill="#f5f8f5" />
+  <style>
+    .title-text { font-family: system-ui, -apple-system, sans-serif; font-size: 42px; font-weight: 800; fill: #207448; }
+    .code-lg { font-family: 'SFMono-Regular', Consolas, Menlo, Courier, monospace; font-size: 28px; font-weight: 700; fill: #1c2b24; }
+    .code-md { font-family: 'SFMono-Regular', Consolas, Menlo, Courier, monospace; font-size: 24px; font-weight: 600; fill: #1c2b24; }
+    .label-sans { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: 600; fill: #303a36; }
+    .label-sans-bold { font-family: system-ui, -apple-system, sans-serif; font-size: 25px; font-weight: 700; fill: #303a36; }
+    .bottom-bar-text { font-family: system-ui, -apple-system, sans-serif; font-size: 28px; font-weight: 800; fill: #ffffff; }
+  </style>
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The for-else retry loop: else means no break happened</text>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
+  <text x="800" y="60" text-anchor="middle" class="title-text">The for-else retry loop: else means no break happened</text>
 
   
-  <rect x="540" y="110" width="520" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
   
-  <circle cx="585" cy="162" r="24" fill="#207448" />
-  <text x="585" y="162" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
   
-  <g transform="translate(625, 134)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 46 22 A 20 20 0 1 0 50 34" />
-    <polyline points="46 10 46 24 32 24" />
+
+  
+  
+  <path d="M 845 270 L 845 80 L 360 80 L 360 116" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(70, 120)" filter="url(#card-shadow)">
+    <rect width="580" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 24)" stroke="#207448" stroke-width="3.5" fill="none">
+      <path d="M 38 18 A 18 18 0 1 0 38 34"/>
+      <polyline points="32 10 40 18 32 26"/>
+      <polyline points="44 26 36 34 44 42"/>
+    </g>
+    
+    <text x="95" y="60" class="code-lg">for attempt in range(1, 6):</text>
   </g>
-  
-  <text x="880" y="171" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="bold" fill="#207448">for attempt in range(1, 6):</text>
 
   
-  <path d="M 800 215 L 800 268" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 360 220 L 360 306" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <rect x="540" y="270" width="520" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <circle cx="585" cy="322" r="24" fill="#207448" />
-  <text x="585" y="322" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-  
-  <g transform="translate(625, 294)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="8" y="16" width="28" height="24" rx="4" />
-    <line x1="16" y1="6" x2="16" y2="16" />
-    <line x1="28" y1="6" x2="28" y2="16" />
-    <line x1="22" y1="40" x2="22" y2="52" />
+  <g transform="translate(110, 310)" filter="url(#card-shadow)">
+    <rect width="500" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 24)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="10" y="14" width="22" height="24" rx="4"/>
+      <line x1="16" y1="4" x2="16" y2="14"/>
+      <line x1="26" y1="4" x2="26" y2="14"/>
+      <line x1="21" y1="38" x2="21" y2="48"/>
+    </g>
+    <text x="75" y="60" class="code-lg">try: connect(); break</text>
   </g>
-  
-  <text x="880" y="331" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="bold" fill="#207448">try: connect(); break</text>
 
   
-  <path d="M 800 375 L 800 468" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  
-  <text x="825" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="825" dy="0">connect succeeds,</tspan>
-    <tspan x="825" dy="30">break leaves the loop</tspan>
-  </text>
+  <path d="M 610 360 L 646 360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <rect x="540" y="470" width="520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <g transform="translate(565, 498)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="26" />
-    <polyline points="16 28 24 36 40 18" />
+  <g transform="translate(650, 270)" filter="url(#card-shadow)">
+    <rect width="390" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 20)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="18" cy="18" r="15"/>
+      <polyline points="18 9 18 18 25 18"/>
+    </g>
+    <text x="195" y="48" text-anchor="middle" class="label-sans-bold">OSError:</text>
+    <text x="195" y="92" text-anchor="middle" class="code-md">time.sleep(2 ** attempt),</text>
+    <text x="195" y="136" text-anchor="middle" class="label-sans">then the next attempt</text>
   </g>
-  
-  <text x="850" y="522" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="850" dy="0">else is skipped, the program</tspan>
-    <tspan x="850" dy="34">continues after the loop</tspan>
-  </text>
 
   
-  <path d="M 1060 322 L 1130 322 L 1130 162 L 1062 162" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
-  
-  <text x="1160" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="1160" dy="0">OSError:</tspan>
-    <tspan x="1160" dy="32">time.sleep(2 ** attempt),</tspan>
-    <tspan x="1160" dy="32">then the next attempt</tspan>
-  </text>
+  <path d="M 290 410 L 290 526" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 290 664 L 290 796" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <rect x="1140" y="340" width="410" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1160, 355)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="20" cy="20" r="18" />
-    <polyline points="20 10 20 20 27 24" />
+  <g transform="translate(70, 530)" filter="url(#card-shadow)">
+    <rect width="440" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <text x="220" y="52" text-anchor="middle" class="label-sans-bold">connect succeeds,</text>
+    <text x="220" y="92" text-anchor="middle" class="label-sans-bold">break leaves the loop</text>
   </g>
-  
-  <text x="1225" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1225" dy="0">attempt 1: 2 s,</tspan>
-    <tspan x="1225" dy="48">attempt 2: 4 s,</tspan>
-    <tspan x="1225" dy="48">attempt 3: 8 s,</tspan>
-    <tspan x="1225" dy="48">attempt 4: 16 s</tspan>
-  </text>
 
   
-  <path d="M 540 162 L 275 162 L 275 268" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+  <path d="M 845 450 L 845 526" fill="none" stroke="#db8129" stroke-width="4"/>
   
-  <text x="70" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="70" dy="0">After the fifth failure the loop</tspan>
-    <tspan x="70" dy="30">ends without a break</tspan>
-  </text>
+  <path d="M 845 684 L 845 796" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
 
   
-  <rect x="50" y="270" width="450" height="150" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="4" />
-  
-  <circle cx="95" cy="320" r="24" fill="#db8129" />
-  <text x="95" y="320" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-  
-  <g transform="translate(135, 292)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="28 6 52 48 4 48" />
-    <line x1="28" y1="20" x2="28" y2="34" />
-    <circle cx="28" cy="42" r="2" fill="#db8129" />
+  <g transform="translate(635, 530)" filter="url(#card-shadow)">
+    <rect width="420" height="150" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="210" y="45" text-anchor="middle" class="label-sans-bold">After the fifth failure</text>
+    <text x="210" y="85" text-anchor="middle" class="label-sans-bold">the loop ends</text>
+    <text x="210" y="125" text-anchor="middle" class="label-sans-bold">without a break</text>
   </g>
-  
-  <text x="275" y="375" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="275" dy="0">else:</tspan>
-    <tspan x="275" dy="32">raise RuntimeError("gave up")</tspan>
-  </text>
 
   
-
-  
-  <rect x="50" y="630" width="730" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(80, 680)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 6 38 C 12 12, 38 12, 48 30" />
-    <polyline points="36 32 50 32 50 18" />
+  <g transform="translate(70, 800)" filter="url(#card-shadow)">
+    <rect width="440" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(195, 22)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="25" cy="25" r="22"/>
+      <polyline points="15 25 22 33 36 17"/>
+    </g>
+    <text x="220" y="115" text-anchor="middle" class="label-sans-bold">else is skipped,</text>
+    <text x="220" y="155" text-anchor="middle" class="label-sans-bold">the program continues</text>
+    <text x="220" y="195" text-anchor="middle" class="label-sans-bold">after the loop</text>
   </g>
-  <text x="160" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-    continue skips to the next iteration
-  </text>
 
   
-  <rect x="820" y="630" width="730" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(850, 680)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="10" y1="44" x2="26" y2="28" />
-    <line x1="26" y1="28" x2="26" y2="8" />
-    <line x1="26" y1="28" x2="44" y2="44" />
-    <circle cx="26" cy="8" r="4" fill="#207448" />
-    <circle cx="10" cy="44" r="4" fill="#207448" />
-    <circle cx="44" cy="44" r="4" fill="#207448" />
+  <g transform="translate(565, 800)" filter="url(#card-shadow)">
+    <rect width="490" height="230" rx="14" fill="#fdf6ef" stroke="#db8129" stroke-width="3.5"/>
+    
+    <g transform="translate(220, 22)" stroke="#db8129" stroke-width="3.5" fill="none">
+      <polygon points="25 6 46 42 4 42"/>
+      <line x1="25" y1="19" x2="25" y2="28"/>
+      <circle cx="25" cy="35" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="245" y="120" text-anchor="middle" class="code-md">else: raise RuntimeError("gave up")</text>
   </g>
-  <text x="930" y="695" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="930" dy="0">the loop else clause is the no break happened</tspan>
-    <tspan x="930" dy="34">branch, ideal for search and retry loops</tspan>
-  </text>
 
   
-  <rect x="50" y="825" width="730" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(80, 875)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="8" width="40" height="10" rx="2" />
-    <rect x="6" y="24" width="40" height="10" rx="2" />
-    <rect x="6" y="40" width="40" height="10" rx="2" />
+  
+
+  
+  <g transform="translate(1090, 120)" filter="url(#card-shadow)">
+    <rect width="440" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="220" y="44" text-anchor="middle" class="label-sans">the loop else clause is the</text>
+    <text x="220" y="82" text-anchor="middle" class="label-sans">no break happened branch, ideal</text>
+    <text x="220" y="120" text-anchor="middle" class="label-sans">for search and retry loops</text>
   </g>
-  <text x="160" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="160" dy="0">prefer for over while with indices; use</tspan>
-    <tspan x="160" dy="34">enumerate, zip(strict=True), itertools</tspan>
-  </text>
 
   
-  <rect x="820" y="825" width="730" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(850, 875)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="26" cy="26" r="20" />
-    <line x1="26" y1="16" x2="26" y2="28" />
-    <circle cx="26" cy="34" r="2" fill="#207448" />
-    <line x1="8" y1="8" x2="44" y2="44" />
+  <g transform="translate(1090, 315)" filter="url(#card-shadow)">
+    <rect width="440" height="270" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <rect x="0" y="0" width="440" height="58" rx="14" fill="#207448"/>
+    <text x="220" y="40" text-anchor="middle" class="code-lg" fill="#ffffff">2 ** attempt</text>
+    <text x="220" y="98" text-anchor="middle" class="code-md">attempt 1: 2 s,</text>
+    <text x="220" y="140" text-anchor="middle" class="code-md">attempt 2: 4 s,</text>
+    <text x="220" y="182" text-anchor="middle" class="code-md">attempt 3: 8 s,</text>
+    <text x="220" y="224" text-anchor="middle" class="code-md">attempt 4: 16 s</text>
   </g>
-  <text x="930" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="930" dy="0">avoid infinite while True without a clear</tspan>
-    <tspan x="930" dy="34">exit path and timeout; add backoff and jitter</tspan>
-  </text>
 
   
-  <rect x="50" y="1015" width="1500" height="60" rx="8" fill="#207448" />
-  <text x="800" y="1054" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
-    else runs only if the loop did NOT break
-  </text>
+  <g transform="translate(1090, 610)" filter="url(#card-shadow)">
+    <rect width="440" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="220" y="54" text-anchor="middle" class="label-sans-bold">continue skips to the next iteration</text>
+  </g>
+
+  
+  <g transform="translate(1090, 725)" filter="url(#card-shadow)">
+    <rect width="440" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="220" y="44" text-anchor="middle" class="label-sans">prefer for over while with indices;</text>
+    <text x="220" y="82" text-anchor="middle" class="label-sans">use enumerate, zip(strict=True),</text>
+    <text x="220" y="120" text-anchor="middle" class="label-sans">itertools</text>
+  </g>
+
+  
+  <g transform="translate(1090, 910)" filter="url(#card-shadow)">
+    <rect width="440" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="220" y="42" text-anchor="middle" class="label-sans">avoid infinite while True</text>
+    <text x="220" y="80" text-anchor="middle" class="label-sans">without a clear exit path and timeout;</text>
+    <text x="220" y="118" text-anchor="middle" class="label-sans">add backoff and jitter</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(70, 1115)" filter="url(#card-shadow)">
+    <rect width="1460" height="65" rx="12" fill="#207448"/>
+    <text x="730" y="43" text-anchor="middle" class="bottom-bar-text">else runs only if the loop did NOT break</text>
+  </g>
 </svg>

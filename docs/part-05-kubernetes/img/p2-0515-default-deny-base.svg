@@ -1,133 +1,124 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
   <title>Three policies make a namespace baseline</title>
-  <desc>Infographic explaining the three baseline network policies applied to a Kubernetes namespace.</desc>
+  <desc>Infographic showing the three baseline network policies applied to a namespace: default deny, restore DNS, and allow intra-namespace traffic.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 12 6 L 0 11 z" fill="#207448" />
+    </marker>
+  </defs>
 
   
-  <rect width="1600" height="1000" fill="#f5f8f5" />
+  <rect width="1600" height="1020" fill="#f5f8f5" />
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three policies make a namespace baseline</text>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three policies make a namespace baseline</text>
 
   
-  <g id="namespace-scope">
-    <rect x="50" y="130" width="240" height="750" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <g transform="translate(142, 220)">
-      <polygon points="28,2 54,17 54,47 28,62 2,47 2,17" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
-      <line x1="28" y1="32" x2="28" y2="62" stroke="#207448" stroke-width="3" />
-      <line x1="28" y1="32" x2="54" y2="17" stroke="#207448" stroke-width="3" />
-      <line x1="28" y1="32" x2="2" y2="17" stroke="#207448" stroke-width="3" />
-    </g>
-
-    
-    <text x="170" y="340" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
-      <tspan x="170" dy="0">Namespace:</tspan>
-      <tspan x="170" dy="40">team-a</tspan>
-    </text>
+  <rect x="60" y="120" width="280" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  
+  
+  <g transform="translate(200, 220)">
+    <polygon points="0,-40 35,-20 35,20 0,40 -35,20 -35,-20" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <polygon points="0,-20 18,-10 18,10 0,20 -18,10 -18,-10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   </g>
 
   
-  <g id="card-1">
-    <rect x="330" y="130" width="850" height="230" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
-    
-    
-    <circle cx="385" cy="245" r="24" fill="#207448" />
-    <text x="385" y="254" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <rect x="75" y="450" width="250" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="200" y="491" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Namespace: team-a</text>
 
-    
-    <g transform="translate(435, 216)">
-      <rect x="0" y="0" width="52" height="58" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
-      <rect x="7" y="7" width="38" height="51" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-      <circle cx="37" cy="33" r="3" fill="#207448" />
-      <line x1="0" y1="58" x2="52" y2="58" stroke="#207448" stroke-width="4" />
-    </g>
+  
+  <rect x="380" y="120" width="860" height="220" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  
+  
+  <circle cx="435" cy="175" r="24" fill="#207448" />
+  <text x="435" y="184" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
 
+  
+  <g transform="translate(485, 142)">
     
-    <text x="515" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="515" dy="0">Default deny all ingress and</tspan>
-      <tspan x="515" dy="38">egress in a namespace</tspan>
-    </text>
+    <rect x="0" y="0" width="50" height="66" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="4" />
     
+    <rect x="7" y="6" width="36" height="54" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <rect x="515" y="255" width="240" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="635" y="282" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">default-deny-all</text>
-
-    
-    <text x="785" y="282" font-family="sans-serif" font-size="24" fill="#303a36">Denies everything</text>
+    <circle cx="36" cy="36" r="4" fill="#db8129" />
   </g>
 
   
-  <g id="card-2">
-    <rect x="330" y="390" width="850" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <circle cx="385" cy="505" r="24" fill="#207448" />
-    <text x="385" y="514" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="560" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Default deny all ingress and egress</text>
+  <text x="560" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">in a namespace</text>
 
-    
-    <g transform="translate(435, 476)">
-      <rect x="2" y="2" width="48" height="22" rx="3" fill="#ffffff" stroke="#207448" stroke-width="3" />
-      <circle cx="10" cy="13" r="2.5" fill="#207448" />
-      <circle cx="18" cy="13" r="2.5" fill="#207448" />
-      <line x1="28" y1="13" x2="42" y2="13" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="26" y1="24" x2="26" y2="38" stroke="#207448" stroke-width="3" />
-      <line x1="12" y1="38" x2="40" y2="38" stroke="#207448" stroke-width="3" />
-      <line x1="12" y1="38" x2="12" y2="46" stroke="#207448" stroke-width="3" />
-      <line x1="40" y1="38" x2="40" y2="46" stroke="#207448" stroke-width="3" />
-      <circle cx="12" cy="51" r="4.5" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-      <circle cx="40" cy="51" r="4.5" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    </g>
+  
+  <rect x="560" y="226" width="220" height="42" rx="8" fill="#e8f1ea" />
+  <text x="575" y="255" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">default-deny-all</text>
 
+  
+  <text x="560" y="306" font-family="sans-serif" font-size="24" fill="#303a36">Denies everything</text>
+
+  
+  <rect x="380" y="375" width="860" height="210" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="435" cy="430" r="24" fill="#207448" />
+  <text x="435" y="439" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <g transform="translate(485, 397)">
     
-    <text x="515" y="490" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Restore DNS</text>
-    <text x="515" y="546" font-family="sans-serif" font-size="24" fill="#303a36">Lets pods resolve names again</text>
+    <rect x="5" y="0" width="40" height="20" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="13" cy="10" r="2.5" fill="#207448" />
+    <circle cx="21" cy="10" r="2.5" fill="#207448" />
+    
+    <line x1="25" y1="20" x2="25" y2="34" stroke="#207448" stroke-width="3" />
+    <line x1="10" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="3" />
+    <line x1="10" y1="34" x2="10" y2="44" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="34" x2="40" y2="44" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="10" cy="52" r="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="40" cy="52" r="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
   </g>
 
   
-  <g id="card-3">
-    <rect x="330" y="650" width="850" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <circle cx="385" cy="765" r="24" fill="#207448" />
-    <text x="385" y="774" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="560" y="440" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Restore DNS</text>
+  <text x="560" y="510" font-family="sans-serif" font-size="24" fill="#303a36">Lets pods resolve names again</text>
 
-    
-    <g transform="translate(435, 736)">
-      <rect x="0" y="0" width="52" height="58" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
-      <rect x="7" y="7" width="38" height="51" fill="#cde0d2" />
-      <path d="M 7 7 L 34 14 L 34 53 L 7 48 Z" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-      <circle cx="28" cy="32" r="2.5" fill="#207448" />
-      <line x1="0" y1="58" x2="52" y2="58" stroke="#207448" stroke-width="4" />
-    </g>
+  
+  <rect x="380" y="620" width="860" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="435" cy="675" r="24" fill="#207448" />
+  <text x="435" y="684" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
 
+  
+  <g transform="translate(485, 642)">
     
-    <text x="515" y="750" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Allow traffic inside the namespace</text>
-    <text x="515" y="806" font-family="sans-serif" font-size="24" fill="#303a36">Pods in the same namespace can talk</text>
+    <rect x="0" y="0" width="50" height="66" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="4" />
+    
+    <polygon points="6,6 30,12 30,62 6,58" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="24" cy="37" r="3" fill="#207448" />
   </g>
 
   
-  <g id="arrows">
-    
-    <path d="M 1180 245 L 1250 245 L 1250 765" fill="none" stroke="#207448" stroke-width="4" />
-    
-    
-    <line x1="1250" y1="505" x2="1198" y2="505" stroke="#207448" stroke-width="4" />
-    <polygon points="1180,505 1198,497 1198,513" fill="#207448" />
+  <text x="560" y="675" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Allow traffic inside the namespace</text>
+  <text x="560" y="745" font-family="sans-serif" font-size="24" fill="#303a36">Pods in the same namespace can talk</text>
 
-    
-    <line x1="1250" y1="765" x2="1198" y2="765" stroke="#207448" stroke-width="4" />
-    <polygon points="1180,765 1198,757 1198,773" fill="#207448" />
+  
+  
+  <circle cx="1240" cy="230" r="6" fill="#207448" />
+  
+  
+  <path d="M 1240 230 L 1380 230 L 1380 735 L 1252 735" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  
+  <path d="M 1380 480 L 1252 480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
-    
-    <line x1="1250" y1="376" x2="1275" y2="376" stroke="#207448" stroke-width="3" />
-    <rect x="1275" y="350" width="275" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <text x="1412" y="384" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Applied to team-a</text>
+  
+  <g transform="translate(1380, 345)">
+    <rect x="-120" y="-24" width="240" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="7" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Applied to team-a</text>
   </g>
 
   
-  <g id="takeaway-bar">
-    <rect x="50" y="910" width="1500" height="64" rx="10" fill="#207448" />
-    <text x="800" y="951" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Each policy is a baseline you can apply to a namespace.</text>
-  </g>
+  <rect x="60" y="890" width="1480" height="74" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="936" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Each policy is a baseline you can apply to a namespace.</text>
 </svg>

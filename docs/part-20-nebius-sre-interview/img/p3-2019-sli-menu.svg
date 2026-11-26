@@ -1,238 +1,133 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1260" width="1600" height="1260">
   <title>The SLI menu: what counts as a good event and where it is measured</title>
-  <desc>Infographic table specifying service level indicators, good events, measurement locations, and metrics for LLM serving systems.</desc>
+  <desc>A comprehensive reference table defining Service Level Indicators (SLIs), good event definitions, measurement locations, and concrete metric names.</desc>
+
+  <rect width="1600" height="1260" fill="#f5f8f5"/>
 
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="bold" fill="#207448">The SLI menu: what counts as a good event and where it is measured</text>
 
   
-  <text x="40" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="40" dy="0">The SLI menu: what counts as a good event</tspan>
-    <tspan x="40" dy="54">and where it is measured</tspan>
-  </text>
-
-  
-  <g id="top-banner">
-    <rect x="40" y="142" width="1520" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="800" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">SLI = good events divided by total valid events</text>
+  <g transform="translate(180, 88)">
+    <rect x="0" y="0" width="1240" height="64" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="620" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#207448">SLI = good events divided by total valid events</text>
   </g>
 
   
-  <g id="table-header">
-    <rect x="40" y="222" width="1520" height="54" rx="6" fill="#207448"/>
-    <text x="56" y="259" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">SLI</text>
-    <text x="426" y="259" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Good event</text>
-    <text x="896" y="259" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Where to measure</text>
-    <text x="1146" y="259" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Metric</text>
+  
+  <g id="table" transform="translate(40, 180)">
+    
+    <rect x="0" y="0" width="1520" height="64" rx="10" fill="#207448"/>
+    
+    <text x="110" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">SLI</text>
+    <text x="435" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Good event</text>
+    <text x="785" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Where to measure</text>
+    <text x="1230" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Metric</text>
+
+    
+    <rect x="0" y="64" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="130" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Availability</text>
+    <text x="240" y="112" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">final response is not a 5xx, or a stream</tspan>
+      <tspan x="240" dy="32">ends without a server-side error</tspan>
+    </text>
+    <rect x="720" y="96" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="128" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="129" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_requests_total</text>
+
+    
+    <rect x="0" y="176" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="226" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Time to first</tspan>
+      <tspan x="24" dy="32">token</tspan>
+    </text>
+    <text x="240" y="240" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">first streamed token within 1.0 s</text>
+    <text x="785" y="226" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="785" dy="0">gateway,</tspan>
+      <tspan x="785" dy="32">explained by engine</tspan>
+    </text>
+    <text x="920" y="241" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_ttft_seconds_bucket</text>
+
+    
+    <rect x="0" y="288" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="338" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Inter-token</tspan>
+      <tspan x="24" dy="32">latency</tspan>
+    </text>
+    <text x="240" y="338" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">gap between streamed outputs</tspan>
+      <tspan x="240" dy="32">at most 0.1 s</tspan>
+    </text>
+    <rect x="735" y="321" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="353" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="353" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">vllm:inter_token_latency_seconds_bucket</text>
+
+    
+    <rect x="0" y="400" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="450" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Per-request</tspan>
+      <tspan x="24" dy="32">speed</tspan>
+    </text>
+    <text x="240" y="450" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">seconds per output token</tspan>
+      <tspan x="240" dy="32">under a limit</tspan>
+    </text>
+    <rect x="735" y="433" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="465" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="465" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" letter-spacing="-0.5px" fill="#303a36">vllm:request_time_per_output_token_seconds</text>
+
+    
+    <rect x="0" y="512" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="562" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">End-to-end</tspan>
+      <tspan x="24" dy="32">latency</tspan>
+    </text>
+    <text x="240" y="562" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">finished within a limit chosen</tspan>
+      <tspan x="240" dy="32">for its output-length class</tspan>
+    </text>
+    <rect x="720" y="545" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="577" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="577" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_e2e_seconds per length class</text>
+
+    
+    <rect x="0" y="624" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="674" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Error rate</tspan>
+      <tspan x="24" dy="32">by cause</tspan>
+    </text>
+    <text x="240" y="674" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">failure counted by reason: overload,</tspan>
+      <tspan x="240" dy="32">upstream, timeout, client</tspan>
+    </text>
+    <rect x="720" y="657" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="689" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="689" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">code and cause labels</text>
+
+    
+    <rect x="0" y="736" width="1520" height="112" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <rect x="2" y="738" width="8" height="108" fill="#db8129"/>
+    <text x="24" y="802" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#db8129">Goodput</text>
+    <text x="240" y="786" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">requests that met TTFT and</tspan>
+      <tspan x="240" dy="32">speed limits together</tspan>
+    </text>
+    <rect x="720" y="769" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="801" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="801" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">derived from the ratios above</text>
+
+    
+    <rect x="0" y="848" width="1520" height="112" rx="0" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="914" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Quality</text>
+    <text x="240" y="914" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">finish reason mix stays normal</text>
+    <rect x="735" y="881" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="913" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="913" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">vllm:request_success_total</text>
   </g>
 
   
-  <g id="row-1">
-    <rect x="40" y="284" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="284" x2="410" y2="388" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="284" x2="880" y2="388" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="284" x2="1130" y2="388" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <path d="M58 322 L78 314 L98 322 C98 340 78 358 78 358 C78 358 58 340 58 322 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
-    <path d="M68 334 L75 341 L88 328" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-
-    
-    <text x="118" y="346" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Availability</text>
-    <text x="426" y="318" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">final response is not a 5xx,</tspan>
-      <tspan x="426" dy="28">or a stream ends without a</tspan>
-      <tspan x="426" dy="28">server-side error</tspan>
-    </text>
-    <text x="896" y="346" font-family="sans-serif" font-size="24" fill="#303a36">gateway</text>
-    <text x="1146" y="346" font-family="monospace" font-size="24" fill="#303a36">gateway_requests_total</text>
+  <g transform="translate(40, 1170)">
+    <rect x="0" y="0" width="1520" height="60" rx="10" fill="#e8f1ea" stroke="#d0ded3" stroke-width="1"/>
+    <text x="760" y="38" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">gateway_ names are this chapter's own design, not Nebius names; vllm: names were checked against v0.32.0</text>
   </g>
-
-  
-  <g id="row-2">
-    <rect x="40" y="392" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="392" x2="410" y2="496" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="392" x2="880" y2="496" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="392" x2="1130" y2="496" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <circle cx="78" cy="446" r="20" stroke="#207448" stroke-width="3.5" fill="none"/>
-    <line x1="78" y1="420" x2="78" y2="426" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <polyline points="78,446 78,434 88,446" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-
-    
-    <text x="118" y="432" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="118" dy="0">Time to first</tspan>
-      <tspan x="118" dy="34">token</tspan>
-    </text>
-    <text x="426" y="434" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">first streamed token</tspan>
-      <tspan x="426" dy="30">within 1.0 s</tspan>
-    </text>
-    <text x="896" y="420" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="896" dy="0">gateway,</tspan>
-      <tspan x="896" dy="28">explained by</tspan>
-      <tspan x="896" dy="28">engine</tspan>
-    </text>
-    <text x="1146" y="434" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1146" dy="0">gateway_ttft_</tspan>
-      <tspan x="1146" dy="30">seconds_bucket</tspan>
-    </text>
-  </g>
-
-  
-  <g id="row-3">
-    <rect x="40" y="500" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="500" x2="410" y2="604" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="500" x2="880" y2="604" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="500" x2="1130" y2="604" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <rect x="60" y="538" width="8" height="28" rx="2" stroke="#207448" stroke-width="3" fill="none"/>
-    <rect x="88" y="538" width="8" height="28" rx="2" stroke="#207448" stroke-width="3" fill="none"/>
-    <line x1="68" y1="552" x2="88" y2="552" stroke="#207448" stroke-width="3" stroke-dasharray="3,3"/>
-
-    
-    <text x="118" y="540" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="118" dy="0">Inter-token</tspan>
-      <tspan x="118" dy="34">latency</tspan>
-    </text>
-    <text x="426" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">gap between streamed</tspan>
-      <tspan x="426" dy="30">outputs at most 0.1 s</tspan>
-    </text>
-    <text x="896" y="562" font-family="sans-serif" font-size="24" fill="#303a36">engine</text>
-    <text x="1146" y="542" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1146" dy="0">vllm:inter_token_</tspan>
-      <tspan x="1146" dy="30">latency_seconds_bucket</tspan>
-    </text>
-  </g>
-
-  
-  <g id="row-4">
-    <rect x="40" y="608" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="608" x2="410" y2="712" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="608" x2="880" y2="712" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="608" x2="1130" y2="712" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <path d="M60 674 A 20 20 0 1 1 96 674" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-    <line x1="78" y1="664" x2="90" y2="652" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="78" cy="664" r="3" fill="#207448"/>
-
-    
-    <text x="118" y="648" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="118" dy="0">Per-request</tspan>
-      <tspan x="118" dy="34">speed</tspan>
-    </text>
-    <text x="426" y="650" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">seconds per output token</tspan>
-      <tspan x="426" dy="30">under a limit</tspan>
-    </text>
-    <text x="896" y="670" font-family="sans-serif" font-size="24" fill="#303a36">engine</text>
-    <text x="1146" y="650" font-family="monospace" font-size="24" fill="#303a36">
-      <tspan x="1146" dy="0">vllm:request_time_</tspan>
-      <tspan x="1146" dy="30">per_output_token_seconds</tspan>
-    </text>
-  </g>
-
-  
-  <g id="row-5">
-    <rect x="40" y="716" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="716" x2="410" y2="820" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="716" x2="880" y2="820" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="716" x2="1130" y2="820" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <line x1="60" y1="758" x2="60" y2="778" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="60" y1="768" x2="96" y2="768" stroke="#207448" stroke-width="3.5"/>
-    <line x1="96" y1="758" x2="96" y2="778" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-
-    
-    <text x="118" y="756" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="118" dy="0">End-to-end</tspan>
-      <tspan x="118" dy="34">latency</tspan>
-    </text>
-    <text x="426" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">finished within a limit chosen</tspan>
-      <tspan x="426" dy="30">for its output-length class</tspan>
-    </text>
-    <text x="896" y="778" font-family="sans-serif" font-size="24" fill="#303a36">gateway</text>
-    <text x="1146" y="758" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1146" dy="0" font-family="monospace">gateway_e2e_seconds</tspan>
-      <tspan x="1146" dy="30">per length class</tspan>
-    </text>
-  </g>
-
-  
-  <g id="row-6">
-    <rect x="40" y="824" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="824" x2="410" y2="928" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="824" x2="880" y2="928" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="824" x2="1130" y2="928" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <polygon points="78,854 58,892 98,892" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
-    <line x1="78" y1="868" x2="78" y2="878" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="78" cy="884" r="1.5" fill="#207448"/>
-
-    
-    <text x="118" y="864" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="118" dy="0">Error rate</tspan>
-      <tspan x="118" dy="34">by cause</tspan>
-    </text>
-    <text x="426" y="858" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">failure counted by reason: overload,</tspan>
-      <tspan x="426" dy="30">upstream, timeout, client</tspan>
-    </text>
-    <text x="896" y="886" font-family="sans-serif" font-size="24" fill="#303a36">gateway</text>
-    <text x="1146" y="886" font-family="sans-serif" font-size="24" fill="#303a36">code and cause labels</text>
-  </g>
-
-  
-  <g id="row-7">
-    <rect x="40" y="932" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
-    <rect x="40" y="932" width="10" height="104" rx="4" fill="#db8129"/>
-    <line x1="410" y1="932" x2="410" y2="1036" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
-    <line x1="880" y1="932" x2="880" y2="1036" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
-    <line x1="1130" y1="932" x2="1130" y2="1036" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
-
-    
-    <circle cx="78" cy="984" r="18" stroke="#db8129" stroke-width="3.5" fill="none"/>
-    <circle cx="78" cy="984" r="8" stroke="#db8129" stroke-width="3.5" fill="none"/>
-    <circle cx="78" cy="984" r="2.5" fill="#db8129"/>
-
-    
-    <text x="118" y="994" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Goodput</text>
-    <text x="426" y="974" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">requests that met TTFT and</tspan>
-      <tspan x="426" dy="30">speed limits together</tspan>
-    </text>
-    <text x="896" y="994" font-family="sans-serif" font-size="24" fill="#303a36">gateway</text>
-    <text x="1146" y="994" font-family="sans-serif" font-size="24" fill="#303a36">derived from the ratios above</text>
-  </g>
-
-  
-  <g id="row-8">
-    <rect x="40" y="1040" width="1520" height="104" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <line x1="410" y1="1040" x2="410" y2="1144" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="880" y1="1040" x2="880" y2="1144" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-    <line x1="1130" y1="1040" x2="1130" y2="1144" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
-
-    
-    <circle cx="78" cy="1084" r="14" stroke="#207448" stroke-width="3.5" fill="none"/>
-    <polyline points="70,1096 66,1112 78,1104 90,1112 86,1096" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
-
-    
-    <text x="118" y="1102" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Quality</text>
-    <text x="426" y="1082" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="426" dy="0">finish reason mix</tspan>
-      <tspan x="426" dy="30">stays normal</tspan>
-    </text>
-    <text x="896" y="1102" font-family="sans-serif" font-size="24" fill="#303a36">engine</text>
-    <text x="1146" y="1102" font-family="monospace" font-size="24" fill="#303a36">vllm:request_success_total</text>
-  </g>
-
-  
-  <text x="40" y="1178" font-family="sans-serif" font-size="24" fill="#303a36">gateway_ names are this chapter's own design, not Nebius names; vllm: names were checked against v0.32.0</text>
 </svg>

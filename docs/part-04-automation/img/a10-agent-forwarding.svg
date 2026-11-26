@@ -1,256 +1,190 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
   <title>Why become breaks SSH agent forwarding for git</title>
-  <desc>Visual infographic explaining why become: true breaks SSH agent forwarding for git tasks on a target host while become: false works, due to sudo dropping SSH_AUTH_SOCK in a clean environment.</desc>
+  <desc>Visual comparison showing why Ansible become: true breaks SSH agent forwarding by dropping SSH_AUTH_SOCK in sudo.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
-      <path d="M 1 2 L 17 9 L 1 16 Z" fill="#207448" />
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
     </marker>
+    <marker id="arrow-dark" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#4a5852" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-red" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#b93829" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b2a22" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5"/>
+  <rect width="1600" height="1060" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why become breaks SSH agent forwarding for git</text>
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Why become breaks SSH agent forwarding for git</text>
 
   
-  <g id="laptop-box">
-    
-    <rect x="40" y="115" width="235" height="755" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <rect x="25" y="105" width="1550" height="260" rx="20" fill="#e8f1ea" stroke="#d0e2d4" stroke-width="2" />
+  
+  <rect x="25" y="390" width="1550" height="425" rx="20" fill="#fcfdfc" stroke="#e0e8e2" stroke-width="2" />
 
-    
-    <g transform="translate(129.5, 145)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="44" height="28" rx="3"/>
-      <path d="M 2 40 L 54 40"/>
-      <line x1="22" y1="44" x2="34" y2="44" stroke-width="3"/>
-    </g>
-
-    
-    <text x="157" y="240" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="157" dy="0">Your login</tspan>
-      <tspan x="157" dy="38">session</tspan>
-    </text>
-
-    
-    <g transform="translate(55, 330)">
-      <rect x="0" y="0" width="205" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(74.5, 22)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="20" cy="20" r="12"/>
-        <line x1="28" y1="28" x2="48" y2="48"/>
-        <line x1="42" y1="42" x2="48" y2="36"/>
-        <line x1="36" y1="36" x2="42" y2="30"/>
-      </g>
-      
-      <text x="102.5" y="148" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ssh-add -L</text>
-    </g>
-
-    
-    <g transform="translate(55, 560)">
-      <rect x="0" y="0" width="205" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      
-      <g transform="translate(74.5, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="10" width="44" height="36" rx="8"/>
-        <line x1="18" y1="22" x2="18" y2="34"/>
-        <line x1="38" y1="22" x2="38" y2="34"/>
-        <circle cx="28" cy="28" r="4" fill="#207448"/>
-      </g>
-      
-      <text x="102.5" y="148" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">SSH_AUTH_SOCK</text>
-    </g>
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="45" y="125" width="235" height="645" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
   </g>
 
   
-  <g id="forward-agent-arrow">
+  <g transform="translate(162, 175)">
     
-    <text x="417" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ForwardAgent=yes</text>
+    <rect x="-35" y="-30" width="70" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="-45" y1="14" x2="45" y2="14" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+  </g>
+  <text x="162" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Your login session</text>
 
+  
+  <g transform="translate(60, 310)">
+    <rect x="0" y="0" width="205" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <line x1="275" y1="485" x2="550" y2="485" stroke="#207448" stroke-width="4"/>
-
-    
-    <path d="M 550 485 V 265 H 585" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-    
-    <path d="M 550 485 V 665 H 585" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <circle cx="50" cy="45" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 64 45 L 98 45 M 82 45 L 82 55 M 92 45 L 92 53" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="102" y="95" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">ssh-add -L</text>
   </g>
 
   
-  <g id="top-row">
+  <g transform="translate(60, 480)">
+    <rect x="0" y="0" width="205" height="135" rx="12" fill="#ffffff" stroke="#303a36" stroke-width="2" stroke-dasharray="6 4" />
     
-    <rect x="560" y="115" width="1000" height="300" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
-
-    
-    <g id="top-target-box" transform="translate(585, 145)">
-      <rect x="0" y="0" width="390" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-      
-      <g transform="translate(35, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="6" width="48" height="44" rx="4"/>
-        <line x1="4" y1="20" x2="52" y2="20" stroke-width="3"/>
-        <line x1="4" y1="36" x2="52" y2="36" stroke-width="3"/>
-        <circle cx="12" cy="13" r="2.5" fill="#207448"/>
-        <circle cx="12" cy="28" r="2.5" fill="#207448"/>
-        <circle cx="12" cy="44" r="2.5" fill="#207448"/>
-      </g>
-
-      
-      <text x="110" y="58" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Target</text>
-
-      
-      <g transform="translate(35, 95)">
-        <rect x="0" y="0" width="320" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-        <text x="160" y="68" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">become: false</text>
-      </g>
-    </g>
-
-    
-    <line x1="975" y1="265" x2="1150" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="top-result-box" transform="translate(1150, 145)">
-      <rect x="0" y="0" width="390" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-      
-      <g transform="translate(167, 35)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="28" cy="28" r="24"/>
-        <polyline points="16,28 24,36 40,20"/>
-      </g>
-
-      
-      <text x="195" y="168" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">the clone works</text>
-    </g>
+    <circle cx="102" cy="42" r="18" fill="#e8f1ea" stroke="#303a36" stroke-width="2.5" />
+    <circle cx="95" cy="42" r="3" fill="#303a36" />
+    <circle cx="109" cy="42" r="3" fill="#303a36" />
+    <text x="102" y="100" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">SSH_AUTH_SOCK</text>
   </g>
 
   
-  <g id="bottom-row">
-    
-    <rect x="560" y="465" width="1000" height="425" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
-
-    
-    <g id="bottom-target-box" transform="translate(585, 495)">
-      <rect x="0" y="0" width="140" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-      
-      <g transform="translate(42, 35)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="6" width="48" height="44" rx="4"/>
-        <line x1="4" y1="20" x2="52" y2="20" stroke-width="3"/>
-        <line x1="4" y1="36" x2="52" y2="36" stroke-width="3"/>
-        <circle cx="12" cy="13" r="2.5" fill="#207448"/>
-        <circle cx="12" cy="28" r="2.5" fill="#207448"/>
-        <circle cx="12" cy="44" r="2.5" fill="#207448"/>
-      </g>
-
-      
-      <g transform="translate(12, 135)">
-        <rect x="0" y="0" width="116" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-        <text x="58" y="65" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
-          <tspan x="58" dy="0">become:</tspan>
-          <tspan x="58" dy="38">true</tspan>
-        </text>
-      </g>
-    </g>
-
-    
-    <line x1="725" y1="665" x2="765" y2="665" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="sudo-box" transform="translate(765, 495)">
-      <rect x="0" y="0" width="345" height="325" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3.5"/>
-
-      
-      <g transform="translate(144.5, 20)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 28 6 L 50 14 V 28 C 50 42 28 50 28 50 C 28 50 6 42 6 28 V 14 Z"/>
-        <line x1="18" y1="28" x2="38" y2="28"/>
-        <line x1="28" y1="18" x2="28" y2="38"/>
-      </g>
-
-      
-      <text x="172.5" y="115" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-        <tspan x="172.5" dy="0">sudo starts a</tspan>
-        <tspan x="172.5" dy="38">clean environment</tspan>
-      </text>
-
-      
-      <g transform="translate(15, 175)">
-        <rect x="0" y="0" width="315" height="125" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
-        <text x="157.5" y="32" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-          <tspan x="157.5" dy="0" font-family="monospace" font-weight="bold" fill="#db8129">SSH_AUTH_SOCK</tspan>
-          <tspan x="157.5" dy="36" font-family="sans-serif">is dropped unless</tspan>
-          <tspan x="33" dy="36" text-anchor="start" font-family="monospace" font-weight="bold" fill="#207448">env_keep</tspan>
-          <tspan font-family="sans-serif"> keeps it</tspan>
-        </text>
-      </g>
-    </g>
-
-    
-    <line x1="1110" y1="665" x2="1150" y2="665" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="no-agent-box" transform="translate(1150, 495)">
-      <rect x="0" y="0" width="155" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-      
-      <g transform="translate(49.5, 35)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="28" cy="28" r="24"/>
-        <path d="M 20 20 C 20 12 36 12 36 22 C 36 28 28 28 28 35"/>
-        <circle cx="28" cy="43" r="2.5" fill="#207448"/>
-      </g>
-
-      
-      <g transform="translate(12, 135)">
-        <rect x="0" y="0" width="131" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-        <text x="65.5" y="46" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-          <tspan x="65.5" dy="0">git has</tspan>
-          <tspan x="65.5" dy="34">no agent</tspan>
-          <tspan x="65.5" dy="34">to ask</tspan>
-        </text>
-      </g>
-    </g>
-
-    
-    <line x1="1305" y1="665" x2="1345" y2="665" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-    
-    <g id="permission-denied-box" transform="translate(1345, 495)">
-      <rect x="0" y="0" width="195" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-
-      
-      <g transform="translate(69.5, 35)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="8" y="22" width="40" height="28" rx="5"/>
-        <path d="M 16 22 V 14 C 16 7 40 7 40 14 V 22"/>
-        <circle cx="28" cy="33" r="3" fill="#207448"/>
-        <line x1="28" y1="36" x2="28" y2="43" stroke-width="3"/>
-      </g>
-
-      
-      <g transform="translate(12, 135)">
-        <rect x="0" y="0" width="171" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-        <text x="85.5" y="44" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-          <tspan x="85.5" dy="0">Permission</tspan>
-          <tspan x="85.5" dy="34">denied</tspan>
-          <tspan x="85.5" dy="34">(publickey)</tspan>
-        </text>
-      </g>
-    </g>
-
-    
-    <text x="1060" y="862" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">the key was fine, the environment was not</text>
-  </g>
+  
+  
+  
+  <path d="M 280 445 L 365 445" fill="none" stroke="#207448" stroke-width="4" />
 
   
-  <g id="takeaway-bar" transform="translate(40, 920)">
-    <rect width="1520" height="115" rx="16" fill="#207448"/>
-    
-    <g transform="translate(45, 29.5)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="24"/>
-      <path d="M 18 28 L 25 35 L 38 21"/>
-    </g>
-    <text x="815" y="50" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#ffffff">
-      <tspan x="815" dy="0">Check 3 is about privilege, and it is the one that catches most people,</tspan>
-      <tspan x="815" dy="38">so make sure the git task does not set <tspan font-family="monospace" font-weight="bold">become: true</tspan>.</tspan>
-    </text>
+  <rect x="365" y="420" width="245" height="50" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+  <text x="487" y="454" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">ForwardAgent=yes</text>
+
+  
+  
+  <path d="M 610 445 L 645 445 L 645 235 L 700 235" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 610 445 L 645 445 L 645 560 L 700 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="715" y="135" width="370" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
   </g>
+  
+  <rect x="745" y="160" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="771" cy="172" r="2.5" fill="#207448" />
+  <line x1="751" y1="172" x2="761" y2="172" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  
+  <text x="795" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Target</text>
+  
+  <rect x="745" y="220" width="310" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="900" y="272" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">become: false</text>
+
+  
+  <path d="M 1085 235 L 1180 235" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1195" y="135" width="355" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <g transform="translate(1235, 235)">
+    <circle cx="0" cy="0" r="32" fill="#207448" />
+    <path d="M -14 0 L -4 10 L 14 -8" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1290" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">the clone works</text>
+
+  
+  
+  
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="715" y="445" width="220" height="230" rx="16" fill="#ffffff" stroke="#4a5852" stroke-width="2.5" />
+  </g>
+  
+  <rect x="740" y="475" width="34" height="22" rx="4" fill="none" stroke="#4a5852" stroke-width="3" />
+  <circle cx="764" cy="486" r="2.5" fill="#4a5852" />
+  <line x1="746" y1="486" x2="756" y2="486" stroke="#4a5852" stroke-width="3" stroke-linecap="round" />
+  
+  <rect x="730" y="525" width="190" height="120" rx="12" fill="#f5f8f5" stroke="#4a5852" stroke-width="1.5" />
+  <text x="825" y="595" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">become: true</text>
+
+  
+  <path d="M 935 560 L 965 560" fill="none" stroke="#4a5852" stroke-width="4" marker-end="url(#arrow-dark)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="980" y="445" width="295" height="230" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="4" />
+  </g>
+  
+  <path d="M 1010 475 L 1024 469 L 1038 475 L 1038 492 C 1038 502 1024 511 1024 511 C 1024 511 1010 502 1010 492 Z" fill="#fff0e0" stroke="#db8129" stroke-width="2.5" />
+  <text x="1052" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">sudo starts a</text>
+  <text x="1005" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">clean environment</text>
+
+  
+  <rect x="995" y="535" width="265" height="120" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 3" />
+  <text x="1127" y="565" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#b93829">SSH_AUTH_SOCK</text>
+  <text x="1127" y="595" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">is dropped unless</text>
+  <text x="1127" y="630" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">env_keep<tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal"> keeps it</tspan></text>
+
+  
+  <path d="M 1275 560 L 1305 560" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1320" y="445" width="235" height="110" rx="14" fill="#ffffff" stroke="#4a5852" stroke-width="2.5" />
+  </g>
+  
+  <circle cx="1345" cy="485" r="10" fill="none" stroke="#4a5852" stroke-width="2.5" />
+  <line x1="1352" y1="492" x2="1360" y2="500" stroke="#4a5852" stroke-width="2.5" stroke-linecap="round" />
+  <text x="1437" y="488" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">git has no</text>
+  <text x="1437" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">agent to ask</text>
+
+  
+  <path d="M 1437 555 L 1437 590" fill="none" stroke="#b93829" stroke-width="4" marker-end="url(#arrow-red)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1275" y="605" width="280" height="115" rx="14" fill="#fdf3f2" stroke="#b93829" stroke-width="3" />
+  </g>
+  
+  <rect x="1300" y="650" width="26" height="20" rx="3" fill="#b93829" />
+  <path d="M 1305 650 L 1305 642 C 1305 636 1321 636 1321 642 L 1321 650" fill="none" stroke="#b93829" stroke-width="3" />
+  <text x="1432" y="652" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b93829">Permission denied</text>
+  <text x="1432" y="688" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#b93829">(publickey)</text>
+
+  
+  <text x="915" y="760" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-style="italic" fill="#586861">the key was fine, the environment was not.</text>
+
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="45" y="855" width="1510" height="145" rx="16" fill="#207448" />
+  </g>
+  <text x="800" y="915" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Check 3 is about privilege, and it is the one that catches most people,</text>
+  <text x="800" y="960" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">so make sure the git task does not set <tspan font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="27" fill="#a4f0c4">become: true</tspan>.</text>
 </svg>

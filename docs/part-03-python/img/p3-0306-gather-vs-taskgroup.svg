@@ -1,213 +1,211 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
   <title>gather versus TaskGroup when one task fails</title>
-  <desc>Visual comparison of asyncio.gather versus asyncio.TaskGroup behavior when a concurrent task fails, demonstrating structured concurrency error handling.</desc>
+  <desc>Visual comparison of error handling and task cancellation between asyncio.gather and asyncio.TaskGroup in Python.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
+    </marker>
+    
+    <marker id="arrow-grey" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#6c7a72" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1420" fill="#f5f8f5" />
 
   
-  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">gather versus TaskGroup when one task fails</text>
+  <text x="800" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">gather versus TaskGroup when one task fails</text>
 
   
-  <g id="strip-create-task">
-    <rect x="40" y="88" width="1520" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(60, 95)">
+    <rect width="1480" height="74" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
     
-    <rect x="62" y="103" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="70" y1="103" x2="70" y2="97" stroke="#207448" stroke-width="2.5"/>
-    <line x1="79" y1="103" x2="79" y2="97" stroke="#207448" stroke-width="2.5"/>
-    <line x1="88" y1="103" x2="88" y2="97" stroke="#207448" stroke-width="2.5"/>
-    <line x1="70" y1="137" x2="70" y2="143" stroke="#207448" stroke-width="2.5"/>
-    <line x1="79" y1="137" x2="79" y2="143" stroke="#207448" stroke-width="2.5"/>
-    <line x1="88" y1="137" x2="88" y2="143" stroke="#207448" stroke-width="2.5"/>
-    <circle cx="79" cy="120" r="5" fill="none" stroke="#207448" stroke-width="2.5"/>
-    
-    <text x="115" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="115" dy="0">asyncio.create_task(coro) schedules concurrently; keep a reference because the loop</tspan>
-      <tspan x="115" dy="26">holds only weak references and a dropped task can be garbage collected mid-flight</tspan>
-    </text>
+    <circle cx="42" cy="37" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 42 15 L 42 21 M 42 53 L 42 59 M 20 37 L 26 37 M 58 37 L 64 37 M 26 21 L 31 26 M 53 48 L 58 53 M 26 53 L 31 48 M 53 26 L 58 21" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="80" y="32" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">asyncio.create_task(coro) schedules concurrently; keep a reference because the loop holds only</text>
+    <text x="80" y="60" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">weak references and a dropped task can be garbage collected mid-flight</text>
   </g>
 
   
-  <g id="strip-await">
-    <rect x="40" y="162" width="1520" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(60, 182)">
+    <rect width="1480" height="74" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
     
-    <circle cx="79" cy="194" r="17" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="79,183 79,194 88,194" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    
-    <text x="115" y="189" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="115" dy="0">await suspends the caller until the awaited coroutine, future or task completes; only inside async def;</tspan>
-      <tspan x="115" dy="26">calling an async def returns a coroutine object that has not run yet</tspan>
-    </text>
+    <circle cx="42" cy="37" r="18" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="42,25 42,37 52,37" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="80" y="32" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">await suspends the caller until the awaited coroutine, future or task completes; only inside async def;</text>
+    <text x="80" y="60" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">calling an async def returns a coroutine object that has not run yet</text>
   </g>
 
   
-  <g id="lane-gather">
+  <g transform="translate(60, 275)">
     
-    <rect x="40" y="240" width="1520" height="385" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="40" y="240" width="1520" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <rect x="40" y="280" width="1520" height="20" fill="#e8f1ea"/>
-    
-    <rect x="65" y="254" width="36" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="65" y1="264" x2="101" y2="264" stroke="#207448" stroke-width="2"/>
-    <circle cx="73" cy="259" r="1.5" fill="#207448"/>
-    <circle cx="79" cy="259" r="1.5" fill="#207448"/>
-    <circle cx="85" cy="259" r="1.5" fill="#207448"/>
-    
-    <text x="115" y="281" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">gather(*aws, return_exceptions=False)</text>
+    <rect width="1480" height="375" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
 
     
-    <rect x="65" y="318" width="460" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-    <circle cx="115" cy="373" r="24" fill="#207448"/>
-    <text x="115" y="381" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-    
-    <circle cx="185" cy="373" r="14" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 185 353 L 185 357 M 185 389 L 185 393 M 165 373 L 169 373 M 201 373 L 205 373 M 171 359 L 174 362 M 196 384 L 199 387 M 171 387 L 174 384 M 196 362 L 199 359" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="240" y1="373" x2="485" y2="373" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <rect x="25" y="20" width="700" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="45" y="55" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">gather(*aws, return_exceptions=False)</text>
 
     
-    <rect x="560" y="318" width="460" height="110" rx="8" fill="#fff5f2" stroke="#db8129" stroke-width="2"/>
-    <circle cx="610" cy="373" r="24" fill="#db8129"/>
-    <text x="610" y="381" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-    
-    <path d="M 685 351 L 670 373 L 685 373 L 673 395" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="725" y1="373" x2="880" y2="373" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
-    
-    <line x1="910" y1="360" x2="936" y2="386" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
-    <line x1="936" y1="360" x2="910" y2="386" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <g transform="translate(1385, 20)">
+      <rect x="0" y="0" width="65" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="16" x2="65" y2="16" stroke="#207448" stroke-width="3" />
+      <circle cx="14" cy="8" r="3" fill="#207448" />
+      <circle cx="26" cy="8" r="3" fill="#207448" />
+      <circle cx="38" cy="8" r="3" fill="#207448" />
+    </g>
 
     
-    <rect x="1055" y="318" width="460" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-    <circle cx="1105" cy="373" r="24" fill="#207448"/>
-    <text x="1105" y="381" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-    
-    <circle cx="1175" cy="373" r="14" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 1175 353 L 1175 357 M 1175 389 L 1175 393 M 1155 373 L 1159 373 M 1191 373 L 1195 373 M 1161 359 L 1164 362 M 1186 384 L 1189 387 M 1161 387 L 1164 384 M 1186 362 L 1189 359" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <line x1="1230" y1="373" x2="1475" y2="373" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <rect x="25" y="88" width="875" height="60" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+    <text x="45" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">first exception propagates, the other tasks keep running</text>
 
     
-    <rect x="65" y="446" width="690" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <polygon points="105,496 127,538 83,538" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-    <line x1="105" y1="510" x2="105" y2="524" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="105" cy="531" r="1.5" fill="#207448"/>
-    <text x="145" y="516" font-family="sans-serif" font-size="25" fill="#303a36">
-      <tspan x="145" dy="0">first exception propagates,</tspan>
-      <tspan x="145" dy="36">the other tasks keep running;</tspan>
-    </text>
+    <g transform="translate(25, 165)">
+      
+      <g transform="translate(0, 0)">
+        <rect width="270" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#207448" text-anchor="middle">1</text>
+        <line x1="70" y1="35" x2="225" y2="35" stroke="#207448" stroke-width="4" stroke-dasharray="6,4" />
+        <polyline points="220,27 240,35 220,43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <g transform="translate(300, 0)">
+        <rect width="270" height="70" rx="8" fill="#fff5f5" stroke="#c53030" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#ffe3e3" stroke="#c53030" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#c53030" text-anchor="middle">2</text>
+        <line x1="70" y1="35" x2="165" y2="35" stroke="#c53030" stroke-width="4" />
+        
+        <g transform="translate(195, 35)">
+          <circle cx="0" cy="0" r="16" fill="#c53030" />
+          <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+          <line x1="8" y1="-8" x2="-8" y2="8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+        </g>
+      </g>
+
+      
+      <g transform="translate(600, 0)">
+        <rect width="275" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#207448" text-anchor="middle">3</text>
+        <line x1="70" y1="35" x2="230" y2="35" stroke="#207448" stroke-width="4" stroke-dasharray="6,4" />
+        <polyline points="225,27 245,35 225,43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
 
     
-    <rect x="785" y="446" width="730" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <rect x="815" y="503" width="34" height="42" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="823" y1="514" x2="841" y2="514" stroke="#207448" stroke-width="2.5"/>
-    <line x1="823" y1="524" x2="841" y2="524" stroke="#207448" stroke-width="2.5"/>
-    <line x1="823" y1="534" x2="835" y2="534" stroke="#207448" stroke-width="2.5"/>
-    <text x="865" y="498" font-family="sans-serif" font-size="25" fill="#303a36">
-      <tspan x="865" dy="0">with 'return_exceptions=True'</tspan>
-      <tspan x="865" dy="36">exceptions are collected in the</tspan>
-      <tspan x="865" dy="36">results list alongside values.</tspan>
-    </text>
+    <g transform="translate(25, 260)">
+      <rect width="400" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="30" y="52" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">return_exceptions=True</text>
+
+      
+      <line x1="400" y1="45" x2="480" y2="45" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="495" y="0" width="935" height="90" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
+      <text x="525" y="53" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">exceptions are collected in the results list alongside values</text>
+    </g>
   </g>
 
   
-  <g id="lane-taskgroup">
+  <g transform="translate(60, 675)">
     
-    <rect x="40" y="645" width="1520" height="445" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
-    
-    <rect x="40" y="645" width="1520" height="84" rx="12" fill="#fef5ec" stroke="#db8129" stroke-width="2"/>
-    <rect x="40" y="700" width="1520" height="29" fill="#fef5ec"/>
-    
-    <path d="M 82 660 L 98 667 L 98 683 C 98 697 82 705 82 705 C 82 705 66 697 66 683 L 66 667 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
-    
-    <text x="115" y="680" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">async with asyncio.TaskGroup() as tg: tg.create_task(poll(n, results))</text>
-    
-    <rect x="115" y="694" width="370" height="30" rx="15" fill="#db8129"/>
-    <text x="300" y="716" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">structured concurrency, 3.11</text>
+    <rect width="1480" height="625" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
 
     
-    <rect x="65" y="744" width="460" height="100" rx="8" fill="#fffcf9" stroke="#db8129" stroke-width="1.5"/>
-    <circle cx="115" cy="794" r="24" fill="#db8129"/>
-    <text x="115" y="802" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-    
-    <circle cx="185" cy="794" r="16" fill="none" stroke="#db8129" stroke-width="3"/>
-    <line x1="174" y1="783" x2="196" y2="805" stroke="#db8129" stroke-width="3"/>
-    <line x1="240" y1="794" x2="485" y2="794" stroke="#db8129" stroke-width="5" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <rect x="25" y="20" width="1070" height="56" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="45" y="56" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#db8129">async with asyncio.TaskGroup() as tg: tg.create_task(poll(n, results))</text>
 
     
-    <rect x="560" y="744" width="460" height="100" rx="8" fill="#fff0e8" stroke="#db8129" stroke-width="2.5"/>
-    <circle cx="610" cy="794" r="24" fill="#db8129"/>
-    <text x="610" y="802" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-    
-    <path d="M 685 772 L 670 794 L 685 794 L 673 816" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="725" y1="794" x2="880" y2="794" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
-    
-    <line x1="910" y1="781" x2="936" y2="807" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
-    <line x1="936" y1="781" x2="910" y2="807" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <g transform="translate(1385, 20)">
+      <path d="M 32 4 L 8 16 L 8 36 C 8 48 32 60 32 60 C 32 60 56 48 56 36 L 56 16 Z" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <polyline points="22,32 30,40 44,24" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
 
     
-    <rect x="1055" y="744" width="460" height="100" rx="8" fill="#fffcf9" stroke="#db8129" stroke-width="1.5"/>
-    <circle cx="1105" cy="794" r="24" fill="#db8129"/>
-    <text x="1105" y="802" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-    
-    <circle cx="1175" cy="794" r="16" fill="none" stroke="#db8129" stroke-width="3"/>
-    <line x1="1164" y1="783" x2="1186" y2="805" stroke="#db8129" stroke-width="3"/>
-    <line x1="1230" y1="794" x2="1475" y2="794" stroke="#db8129" stroke-width="5" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <rect x="25" y="92" width="760" height="56" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+    <text x="45" y="128" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">tasks started in the group are awaited on exit</text>
 
     
-    <rect x="65" y="860" width="690" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <circle cx="105" cy="908" r="17" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="105,897 105,908 114,908" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="145" y="897" font-family="sans-serif" font-size="25" fill="#303a36">
-      <tspan x="145" dy="0">tasks started in the group</tspan>
-      <tspan x="145" dy="34">are awaited on exit;</tspan>
-    </text>
+    <g transform="translate(25, 164)">
+      
+      <g transform="translate(0, 0)">
+        <rect width="270" height="70" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#fdf3e9" stroke="#db8129" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#db8129" text-anchor="middle">1</text>
+        <line x1="70" y1="35" x2="180" y2="35" stroke="#db8129" stroke-width="3" />
+        
+        <line x1="180" y1="22" x2="180" y2="48" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      </g>
+
+      
+      <g transform="translate(300, 0)">
+        <rect width="270" height="70" rx="8" fill="#fff5f5" stroke="#c53030" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#ffe3e3" stroke="#c53030" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#c53030" text-anchor="middle">2</text>
+        <line x1="70" y1="35" x2="165" y2="35" stroke="#c53030" stroke-width="4" />
+        
+        <g transform="translate(195, 35)">
+          <circle cx="0" cy="0" r="16" fill="#c53030" />
+          <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+          <line x1="8" y1="-8" x2="-8" y2="8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+        </g>
+      </g>
+
+      
+      <g transform="translate(600, 0)">
+        <rect width="275" height="70" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+        <circle cx="35" cy="35" r="16" fill="#fdf3e9" stroke="#db8129" stroke-width="2" />
+        <text x="35" y="42" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#db8129" text-anchor="middle">3</text>
+        <line x1="70" y1="35" x2="180" y2="35" stroke="#db8129" stroke-width="3" />
+        
+        <line x1="180" y1="22" x2="180" y2="48" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      </g>
+    </g>
 
     
-    <rect x="785" y="860" width="730" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <path d="M 825 890 L 841 897 L 841 913 C 841 927 825 935 825 935 C 825 935 809 927 809 913 L 809 897 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-    <line x1="825" y1="903" x2="825" y2="917" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="825" cy="923" r="1.5" fill="#207448"/>
-    <text x="860" y="897" font-family="sans-serif" font-size="25" fill="#303a36">
-      <tspan x="860" dy="0">if one fails the others are cancelled</tspan>
-      <tspan x="860" dy="34">and an ExceptionGroup is raised;</tspan>
-    </text>
+    <rect x="25" y="250" width="1070" height="60" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+    <text x="45" y="288" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">if one fails the others are cancelled and an ExceptionGroup is raised</text>
 
     
-    <rect x="65" y="970" width="875" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    
-    <rect x="90" y="1005" width="36" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="98,1015 104,1020 98,1025" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="108" y1="1025" x2="118" y2="1025" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-    <text x="145" y="1003" font-family="monospace" font-size="25" fill="#303a36">
-      <tspan x="145" dy="0">except* TimeoutError as eg:</tspan>
-      <tspan x="145" dy="32">    log.error(timeouts: ...,</tspan>
-      <tspan x="145" dy="32">        [str(e) for e in eg.exceptions])</tspan>
-    </text>
+    <g transform="translate(25, 330)">
+      <rect width="1430" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="35" y="48" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">except* TimeoutError as eg: log.error(timeouts: ..., [str(e) for e in eg.exceptions])</text>
+    </g>
 
     
-    <line x1="940" y1="1023" x2="1040" y2="1023" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-    <text x="990" y="1011" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">then</text>
+    
+    
+    <line x1="740" y1="440" x2="740" y2="460" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="685" y="460" width="110" height="38" rx="19" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="740" y="487" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">then</text>
 
     
-    <rect x="1055" y="970" width="460" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="740" y1="498" x2="740" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
     
-    <circle cx="1115" cy="1023" r="22" fill="none" stroke="#207448" stroke-width="3"/>
-    <polyline points="1104,1023 1112,1031 1128,1015" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="1155" y="1033" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">return results</text>
+    <g transform="translate(565, 520)">
+      <rect width="350" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="175" y="43" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">return results</text>
+    </g>
   </g>
 
   
-  <g id="bottom-takeaway">
-    <rect x="40" y="1105" width="1520" height="55" rx="8" fill="#207448"/>
-    <text x="800" y="1142" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A TaskGroup leaves no orphan task behind</text>
+  <g transform="translate(60, 1325)">
+    <rect width="1480" height="68" rx="10" fill="#207448" />
+    
+    <circle cx="45" cy="34" r="18" fill="#ffffff" />
+    <polyline points="37,34 43,40 53,28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="80" y="43" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A TaskGroup leaves no orphan task behind</text>
   </g>
 </svg>

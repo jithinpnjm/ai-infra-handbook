@@ -1,242 +1,198 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
   <title>Reading one strace line: call, arguments, result, errno</title>
-  <desc>Visual infographic explaining how to read a single strace line: call name, arguments, flags, result, errno, and identifying the first failing call that matters.</desc>
+  <desc>Visual breakdown of a failing strace line showing call name, arguments, flags, result, errno details, and failure diagnostic workflow.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1060" fill="#f5f8f5"/>
+  <rect width="1600" height="1140" fill="#f5f8f5" />
 
   
-  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Reading one strace line: call, arguments, result, errno</tspan>
-  </text>
-
-  
+  <text x="50" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading one strace line: call, arguments, result, errno</text>
 
   
   <g id="callout-1">
-    <rect x="50" y="115" width="320" height="305" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="50" y="110" width="315" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(68, 133)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="6" width="48" height="42" rx="6"/>
-      <polyline points="14,24 22,30 14,36"/>
-      <line x1="28" y1="36" x2="40" y2="36"/>
+    <circle cx="85" cy="148" r="22" fill="#207448" />
+    <text x="85" y="156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(125, 126)">
+      <rect x="0" y="0" width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="0" y1="12" x2="44" y2="12" stroke="#207448" stroke-width="2" />
+      <path d="M 8 24 L 16 29 L 8 34" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="20" y1="34" x2="32" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
     </g>
     
-    <circle cx="330" cy="158" r="24" fill="#207448"/>
-    <text x="330" y="167" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="185" y="157" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Call name</text>
     
-    <text x="134" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Call name</text>
-    
-    <text x="68" y="226" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="68" dy="0">the system call</tspan>
-      <tspan x="68" dy="34">the program made,</tspan>
-      <tspan x="68" dy="34">here an attempt</tspan>
-      <tspan x="68" dy="34">to open a file</tspan>
+    <text x="75" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">the system call</tspan>
+      <tspan x="75" dy="34">the program made,</tspan>
+      <tspan x="75" dy="34">here an attempt</tspan>
+      <tspan x="75" dy="34">to open a file</tspan>
     </text>
   </g>
 
   
   <g id="callout-2">
-    <rect x="390" y="115" width="340" height="305" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="385" y="110" width="335" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(408, 133)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6,12 L22,12 L28,18 L50,18 L50,46 L6,46 Z"/>
-      <line x1="6" y1="24" x2="50" y2="24"/>
+    <circle cx="420" cy="148" r="22" fill="#207448" />
+    <text x="420" y="156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(458, 126)">
+      <path d="M 4 8 L 18 8 L 24 14 L 40 14 A 4 4 0 0 1 44 18 L 44 36 A 4 4 0 0 1 40 40 L 4 40 A 4 4 0 0 1 0 36 L 0 12 A 4 4 0 0 1 4 8 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
     </g>
     
-    <circle cx="690" cy="158" r="24" fill="#207448"/>
-    <text x="690" y="167" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="520" y="157" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Arguments</text>
     
-    <text x="474" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Arguments</text>
-    
-    <text x="408" y="232" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="408" dy="0">which file it wanted</tspan>
-      <tspan x="408" dy="36">and where to start</tspan>
-      <tspan x="408" dy="36">from</tspan>
+    <text x="410" y="215" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="410" dy="0">which file it wanted</tspan>
+      <tspan x="410" dy="36">and where to</tspan>
+      <tspan x="410" dy="36">start from</tspan>
     </text>
   </g>
 
   
   <g id="callout-3">
-    <rect x="750" y="115" width="300" height="305" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="740" y="110" width="305" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(768, 133)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="6" x2="12" y2="50"/>
-      <path d="M12,10 L44,10 L36,22 L44,34 L12,34 Z"/>
+    <circle cx="775" cy="148" r="22" fill="#207448" />
+    <text x="775" y="156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(814, 126)">
+      <line x1="6" y1="4" x2="6" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 6 6 L 36 14 L 6 24 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
     </g>
     
-    <circle cx="1010" cy="158" r="24" fill="#207448"/>
-    <text x="1010" y="167" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="868" y="157" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Flags</text>
     
-    <text x="834" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Flags</text>
-    
-    <text x="768" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="768" dy="0">the program asked</tspan>
-      <tspan x="768" dy="36">to read</tspan>
+    <text x="765" y="225" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="765" dy="0">the program asked</tspan>
+      <tspan x="765" dy="36">to read</tspan>
     </text>
   </g>
 
   
   <g id="callout-4">
-    <rect x="1070" y="115" width="480" height="305" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <rect x="1065" y="110" width="485" height="290" rx="12" fill="#fffcf8" stroke="#db8129" stroke-width="3" />
     
-    <g transform="translate(1090, 133)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="28,6 48,16 48,38 28,48 8,38 8,16"/>
-      <line x1="18" y1="18" x2="38" y2="36"/>
-      <line x1="38" y1="18" x2="18" y2="36"/>
+    <circle cx="1100" cy="148" r="22" fill="#db8129" />
+    <text x="1100" y="156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(1135, 126)">
+      <circle cx="20" cy="20" r="18" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <line x1="12" y1="20" x2="28" y2="20" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
     </g>
     
-    <circle cx="1510" cy="158" r="24" fill="#db8129"/>
-    <text x="1510" y="167" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <text x="1190" y="157" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Result</text>
     
-    <text x="1156" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Result</text>
-    
-    <text x="1090" y="208" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1090" dy="0">the call failed:</tspan>
-      <tspan x="1090" dy="30">-1 means failure</tspan>
+    <text x="1100" y="194" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" dy="0">the call failed: -1 means failure</tspan>
     </text>
 
     
-    <g id="errno-callout">
-      <rect x="1090" y="255" width="440" height="145" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
-      
-      <g transform="translate(1106, 268)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="14" cy="14" r="11"/>
-        <line x1="14" y1="8" x2="14" y2="15"/>
-        <circle cx="14" cy="20" r="1.5" fill="#db8129"/>
-      </g>
-      
-      <text x="1146" y="293" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Errno</text>
-      
-      <text x="1106" y="333" font-family="sans-serif" font-size="24" fill="#303a36">
-        <tspan x="1106" dy="0">No such file or directory:</tspan>
-        <tspan x="1106" dy="34">the path part is missing</tspan>
-      </text>
+    <rect x="1085" y="226" width="445" height="158" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+    
+    <g transform="translate(1102, 244)">
+      <path d="M 18 4 L 34 32 L 2 32 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+      <line x1="18" y1="14" x2="18" y2="22" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <circle cx="18" cy="27" r="1.5" fill="#db8129" />
     </g>
+    
+    <text x="1150" y="272" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Errno</text>
+    
+    <text x="1102" y="316" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1102" dy="0">No such file or directory:</tspan>
+      <tspan x="1102" dy="34">the path part is missing</tspan>
+    </text>
   </g>
 
   
   
-  <path d="M 231 420 L 231 485" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <line x1="237" y1="400" x2="237" y2="475" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <path d="M 500 420 L 500 450 L 468 450 L 468 485" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <line x1="479" y1="400" x2="479" y2="475" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <path d="M 790 420 L 790 450 L 722 450 L 722 485" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <line x1="752" y1="400" x2="752" y2="475" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <path d="M 1150 420 L 1150 450 L 898 450 L 898 485" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  <path d="M 1180 400 V 435 H 870 V 475" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1350 400 V 455 H 971 V 475" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
 
   
   <g id="trace-line-panel">
-    
-    <rect x="40" y="490" width="1520" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-
-    
-    <rect x="176" y="508" width="110" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-    
-    <rect x="298" y="508" width="340" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-    
-    <rect x="652" y="508" width="140" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-    
-    <rect x="806" y="508" width="185" height="64" rx="8" fill="#fff2e6" stroke="#db8129" stroke-width="3"/>
-
-    
-    <text y="549" font-family="monospace" font-size="24" font-weight="bold">
-      
-      <tspan x="188" fill="#207448">openat</tspan>
-      
-      <tspan x="286" fill="#303a36">(</tspan>
-      
-      <tspan x="306" fill="#207448">AT_FDCWD, "not_a_file"</tspan>
-      
-      <tspan x="626" fill="#303a36">, </tspan>
-      
-      <tspan x="662" fill="#207448">O_RDONLY</tspan>
-      
-      <tspan x="788" fill="#303a36">) </tspan>
-      
-      <tspan x="816" fill="#db8129">= -1 ENOENT</tspan>
-      
-      <tspan x="996" fill="#303a36"> (No such file or directory)</tspan>
+    <rect x="50" y="475" width="1500" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="800" y="534" font-family="monospace" font-size="26" text-anchor="middle">
+      <tspan fill="#207448" font-weight="bold">openat</tspan><tspan fill="#303a36">(</tspan><tspan fill="#207448" font-weight="bold">AT_FDCWD, "not_a_file"</tspan><tspan fill="#303a36">, </tspan><tspan fill="#207448" font-weight="bold">O_RDONLY</tspan><tspan fill="#303a36">) = </tspan><tspan fill="#db8129" font-weight="bold">-1 </tspan><tspan fill="#db8129" font-weight="bold">ENOENT</tspan><tspan fill="#66706b"> (No such file or directory)</tspan>
     </text>
   </g>
 
   
-  <g id="lower-panel">
+  <g id="bottom-panel">
+    <rect x="50" y="620" width="1500" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <rect x="40" y="630" width="1520" height="245" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
     
-    <g transform="translate(70, 650)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="22" cy="22" r="14"/>
-      <line x1="32" y1="32" x2="46" y2="46"/>
-      <line x1="22" y1="14" x2="22" y2="22"/>
-      <circle cx="22" cy="27" r="1.5" fill="#207448"/>
+    <g transform="translate(90, 642)">
+      <circle cx="22" cy="22" r="20" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+      <path d="M 12 22 L 19 29 L 32 15" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
     </g>
-
     
-    <text x="135" y="685" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Read the first unexpected failure</text>
+    <text x="148" y="674" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Read the first unexpected failure</text>
 
-    
     
     <g id="tile-1">
-      <rect x="70" y="720" width="440" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      <g transform="translate(100, 755)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="6" width="36" height="30" rx="4"/>
-        <polyline points="12,18 18,23 12,28"/>
-        <line x1="22" y1="28" x2="30" y2="28"/>
+      <rect x="90" y="715" width="446" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(291, 740)">
+        <rect x="0" y="0" width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 8 19 L 16 24 L 8 29" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="20" y1="29" x2="32" y2="29" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
       </g>
-      <text x="165" y="795" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">openat</text>
+      <text x="313" y="855" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">openat</text>
     </g>
 
     
     <g id="tile-2">
-      <rect x="550" y="720" width="440" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-      <g transform="translate(575, 755)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="6" y="8" width="32" height="32" rx="4"/>
-        <line x1="14" y1="18" x2="30" y2="18"/>
-        <line x1="14" y1="26" x2="26" y2="26"/>
+      <rect x="576" y="715" width="446" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(777, 740)">
+        <circle cx="22" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 14 20 L 22 12 M 14 20 L 22 28 M 14 20 L 30 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
       </g>
-      <text x="630" y="780" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-        <tspan x="630" dy="0">returns the</tspan>
-        <tspan x="630" dy="32">new descriptor</tspan>
-      </text>
+      <text x="799" y="855" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">returns -1 on failure</text>
     </g>
 
     
     <g id="tile-3">
-      <rect x="1030" y="720" width="500" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="1062" y="715" width="446" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
       
-      <g transform="translate(1060, 757)">
-        <circle cx="24" cy="24" r="22" fill="#207448"/>
-        <polyline points="14,24 21,31 34,17" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <g transform="translate(1263, 740)">
+        <path d="M 4 4 L 26 4 L 38 16 L 38 40 L 4 40 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+        <line x1="14" y1="26" x2="26" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round" />
       </g>
-      <text x="1130" y="795" font-size="28" font-weight="bold" fill="#207448">
-        <tspan font-family="sans-serif">for example </tspan>
-        <tspan font-family="monospace">= 3</tspan>
+      <text x="1285" y="838" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="1285" dy="0">ENOENT =</tspan>
+        <tspan x="1285" dy="34">no such file or directory</tspan>
       </text>
     </g>
   </g>
 
   
   <g id="takeaway-bar">
-    <rect x="40" y="915" width="1520" height="90" rx="14" fill="#207448"/>
-    <text x="800" y="970" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
-      Find the first failing call that matters, name the errno, and say what resource it points to.
-    </text>
+    <rect x="50" y="990" width="1500" height="95" rx="12" fill="#207448" />
+    <text x="800" y="1048" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Find the first failing call that matters, name the errno, and say what resource it points to.</text>
   </g>
 </svg>

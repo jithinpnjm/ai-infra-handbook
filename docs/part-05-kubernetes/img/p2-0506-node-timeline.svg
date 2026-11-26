@@ -1,117 +1,103 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
   <title>A silent node: from grace period to eviction</title>
-  <desc>Visual infographic timeline showing Kubernetes behavior when a node goes silent, progressing from heartbeat loss through node-monitor-grace-period and tolerationSeconds to pod eviction, replacement, and terminating state handling.</desc>
+  <desc>Visual horizontal timeline illustrating Kubernetes silent node detection, taint application, pod toleration period, eviction, and split-brain safeguards.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-grey" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7a8b82"/>
+    <marker id="arrow-grey" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#788880"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
 
   
-  <text x="80" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A silent node: from grace period to eviction</text>
+  <text x="80" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A silent node: from grace period to eviction</text>
 
   
-  <line x1="80" y1="415" x2="1520" y2="415" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
-  <line x1="80" y1="415" x2="1530" y2="415" stroke="#207448" stroke-width="6" marker-end="url(#arrow-green)"/>
+  <rect x="670" y="130" width="470" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="905" y="167" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="905" dy="0">DefaultTolerationSeconds</tspan>
+    <tspan x="905" dy="32">adds the toleration</tspan>
+  </text>
+  
+  <line x1="905" y1="220" x2="905" y2="255" stroke="#207448" stroke-width="2" stroke-dasharray="4,4"/>
 
   
-  <rect x="760" y="445" width="560" height="110" rx="16" fill="#e0ede2" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
-  <text x="1040" y="492" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
-    <tspan x="1040" dy="0">Pods tolerate the taint</tspan>
-    <tspan x="1040" dy="34">for 300 seconds</tspan>
+  
+  <rect x="500" y="185" width="180" height="46" rx="23" fill="#fff5eb" stroke="#db8129" stroke-width="2"/>
+  <text x="590" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">40 seconds</text>
+
+  
+  <rect x="1140" y="185" width="260" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1270" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">340 seconds total</text>
+
+  
+  <line x1="100" y1="280" x2="1500" y2="280" stroke="#c2d6c8" stroke-width="6" stroke-linecap="round"/>
+
+  
+  <rect x="590" y="255" width="680" height="50" rx="12" fill="#d8ebe0" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="930" y="289" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Pods tolerate the taint for 300 seconds</text>
+
+  
+  <circle cx="240" cy="280" r="18" fill="#ffffff" stroke="#207448" stroke-width="5"/>
+  <circle cx="240" cy="280" r="8" fill="#207448"/>
+  <line x1="240" y1="298" x2="240" y2="350" stroke="#207448" stroke-width="3"/>
+
+  
+  <circle cx="590" cy="280" r="20" fill="#ffffff" stroke="#db8129" stroke-width="6"/>
+  <circle cx="590" cy="280" r="9" fill="#db8129"/>
+  <line x1="590" y1="300" x2="590" y2="350" stroke="#db8129" stroke-width="3"/>
+
+  
+  <circle cx="1270" cy="280" r="18" fill="#ffffff" stroke="#207448" stroke-width="5"/>
+  <circle cx="1270" cy="280" r="8" fill="#207448"/>
+  <line x1="1270" y1="298" x2="1270" y2="350" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="60" y="350" width="360" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="240" y="425" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="240" dy="0">Heartbeats stop:</tspan>
+    <tspan x="240" dy="38" font-size="24" font-weight="normal" fill="#505e58">kubelet lease not renewed</tspan>
   </text>
 
   
-  <rect x="760" y="575" width="560" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 5"/>
-  <text x="1040" y="618" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">DefaultTolerationSeconds adds the toleration</text>
-
-  
-  <line x1="260" y1="370" x2="260" y2="415" stroke="#207448" stroke-width="4"/>
-  <circle cx="260" cy="415" r="10" fill="#207448"/>
-  <rect x="60" y="130" width="400" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <circle cx="115" cy="180" r="24" fill="#207448"/>
-  <text x="115" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  <g transform="translate(170, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 0 25 L 12 25 L 18 8 L 26 42 L 34 16 L 40 25 L 54 25"/>
-  </g>
-  <text x="85" y="255" font-family="sans-serif">
-    <tspan x="85" dy="0" font-size="30" font-weight="bold" fill="#303a36">Heartbeats stop:</tspan>
-    <tspan x="85" dy="42" font-size="24" fill="#303a36">kubelet lease not renewed</tspan>
+  <rect x="450" y="350" width="540" height="200" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <text x="720" y="398" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">
+    <tspan x="720" dy="0" font-size="25" font-weight="bold" fill="#db8129">node-monitor-grace-period:</tspan>
+    <tspan x="720" dy="36" font-size="24" fill="#303a36">Ready becomes Unknown, taint</tspan>
+    <tspan x="720" dy="34" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">node.kubernetes.io/</tspan>
+    <tspan x="720" dy="30" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">unreachable:NoExecute added</tspan>
   </text>
 
   
-  <line x1="760" y1="370" x2="760" y2="415" stroke="#db8129" stroke-width="4"/>
-  <circle cx="760" cy="415" r="10" fill="#db8129"/>
-  <rect x="490" y="130" width="550" height="240" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
-  <circle cx="545" cy="180" r="24" fill="#207448"/>
-  <text x="545" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  <g transform="translate(600, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="25" cy="25" r="22"/>
-    <polyline points="25,12 25,25 36,25"/>
-  </g>
-  <text x="515" y="235" font-family="sans-serif">
-    <tspan x="515" dy="0" font-size="30" font-weight="bold" fill="#303a36">node-monitor-grace-period:</tspan>
-    <tspan x="515" dy="35" font-size="24" fill="#303a36">Ready becomes Unknown,</tspan>
-    <tspan x="515" dy="33" font-size="24" fill="#303a36">taint node.kubernetes.io/</tspan>
-    <tspan x="515" dy="33" font-size="24" fill="#303a36">unreachable:NoExecute added</tspan>
+  <rect x="1020" y="350" width="500" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1270" y="410" font-family="system-ui, -apple-system, sans-serif" font-size="26" text-anchor="middle">
+    <tspan x="1270" dy="0" font-weight="bold" fill="#207448">tolerationSeconds 300 ends:</tspan>
+    <tspan x="1270" dy="38" font-size="24" fill="#303a36">taint-based eviction</tspan>
+    <tspan x="1270" dy="34" font-size="24" fill="#303a36">deletes the pods</tspan>
   </text>
 
   
-  <line x1="1320" y1="370" x2="1320" y2="415" stroke="#207448" stroke-width="4"/>
-  <circle cx="1320" cy="415" r="10" fill="#207448"/>
-  <rect x="1070" y="130" width="470" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <circle cx="1125" cy="180" r="24" fill="#207448"/>
-  <text x="1125" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  <g transform="translate(1185, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 8 14 L 42 14 M 14 14 L 14 42 L 36 42 L 36 14 M 20 14 L 20 8 L 30 8 L 30 14"/>
-    <line x1="21" y1="22" x2="21" y2="34"/>
-    <line x1="29" y1="22" x2="29" y2="34"/>
-  </g>
-  <text x="1095" y="235" font-family="sans-serif">
-    <tspan x="1095" dy="0" font-size="30" font-weight="bold" fill="#303a36">tolerationSeconds</tspan>
-    <tspan x="1095" dy="35" font-size="30" font-weight="bold" fill="#303a36">300 ends:</tspan>
-    <tspan x="1095" dy="34" font-size="24" fill="#303a36">taint-based eviction</tspan>
-    <tspan x="1095" dy="32" font-size="24" fill="#303a36">deletes the pods</tspan>
+  <path d="M 1270 530 L 1270 570" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1030" y="570" width="480" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1270" y="623" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Controllers recreate pods elsewhere</text>
+
+  
+  <path d="M 1020 460 H 800 V 700" stroke="#788880" stroke-width="3" stroke-dasharray="6,4" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <rect x="60" y="700" width="1480" height="130" rx="14" fill="#f0f2f1" stroke="#788880" stroke-width="2"/>
+  <text x="800" y="754" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#44524c" text-anchor="middle">
+    <tspan x="800" dy="0">Pod on a dead node stays Terminating until the kubelet returns,</tspan>
+    <tspan x="800" dy="38">the node is deleted, or someone force deletes it</tspan>
   </text>
 
   
-  <path d="M 1420 370 L 1420 670" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
-  <rect x="1070" y="670" width="470" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-  <g transform="translate(1100, 698)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="6" width="20" height="20" rx="3"/>
-    <rect x="28" y="26" width="20" height="20" rx="3"/>
-    <path d="M 24 16 L 38 16 L 38 24"/>
-  </g>
-  <text x="1175" y="720" font-family="sans-serif">
-    <tspan x="1175" dy="0" font-size="26" font-weight="bold" fill="#303a36">Controllers recreate</tspan>
-    <tspan x="1175" dy="36" font-size="26" font-weight="bold" fill="#303a36">pods elsewhere</tspan>
-  </text>
-
-  
-  <path d="M 380 415 L 380 790" stroke="#7a8b82" stroke-width="3" fill="none" stroke-dasharray="6 4" marker-end="url(#arrow-grey)"/>
-  <rect x="60" y="790" width="960" height="130" rx="14" fill="#eef2ef" stroke="#7a8b82" stroke-width="3"/>
-  <g transform="translate(95, 825)" stroke="#7a8b82" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="28" r="22"/>
-    <line x1="28" y1="16" x2="28" y2="30"/>
-    <circle cx="28" cy="38" r="2" fill="#7a8b82"/>
-  </g>
-  <text x="175" y="846" font-family="sans-serif" font-size="24" fill="#4a5550">
-    <tspan x="175" dy="0">Pod on a dead node stays Terminating until the kubelet</tspan>
-    <tspan x="175" dy="36">returns, the node is deleted, or someone force deletes it</tspan>
-  </text>
-
-  
-  <rect x="60" y="965" width="1480" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(95, 982)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 26 6 L 46 14 L 46 28 C 46 40 26 48 26 48 C 26 48 6 40 6 28 L 6 14 Z"/>
-    <path d="M 18 26 L 24 32 L 35 20"/>
-  </g>
-  <text x="170" y="1022" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">StatefulSets do not replace stuck Terminating pods, to avoid split brain.</text>
+  <rect x="60" y="865" width="1480" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="921" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">StatefulSets do not replace stuck Terminating pods, to avoid split brain.</text>
 </svg>

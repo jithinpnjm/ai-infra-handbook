@@ -1,193 +1,243 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
   <title>A Kubernetes stop: SIGTERM, the grace period, SIGKILL, and Python as PID 1</title>
-  <desc>Visual infographic detailing Kubernetes termination lifecycle, signal handling, Python PID 1 pitfalls, and cleanup hooks.</desc>
+  <desc>Visual infographic explaining Kubernetes termination lifecycle, signal handling in Python, PID 1 nuances, and checkpointing.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1420" fill="#f5f8f5" />
 
   
-  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">A Kubernetes stop: SIGTERM, the grace period,</text>
-  <text x="800" y="108" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">SIGKILL, and Python as PID 1</text>
+  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="42" font-weight="bold" fill="#207448">
+    <tspan x="60" dy="0">A Kubernetes stop: SIGTERM, the grace period,</tspan>
+    <tspan x="60" dy="50">SIGKILL, and Python as PID 1</tspan>
+  </text>
 
   
+  
+  
+  <g id="handler-registrations">
+    <rect x="60" y="150" width="1480" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="80" y="165" width="690" height="46" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="100" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">SIGTERM: Kubernetes or systemd stop</text>
 
-  
-  <rect x="40" y="125" width="740" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="78" cy="177" r="24" fill="#207448" />
-  <text x="78" y="185" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="135" y1="195" x2="135" y2="160" />
-    <path d="M 123 195 L 147 195" />
-    <path d="M 125 170 A 15 15 0 0 1 125 150" />
-    <path d="M 145 150 A 15 15 0 0 1 145 170" />
-    <circle cx="135" cy="155" r="3" fill="#207448" />
+    
+    <rect x="80" y="217" width="690" height="46" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="100" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">SIGINT: Ctrl-C</text>
+
+    
+    <rect x="790" y="165" width="730" height="46" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="810" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">SIGHUP: reload_config() by convention</text>
+
+    
+    <rect x="790" y="217" width="730" height="46" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="810" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">SIGPIPE set to SIG_DFL: script | head ends quietly</text>
   </g>
-  <text x="175" y="185" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">t0 Kubernetes sends SIGTERM</text>
 
   
-  <line x1="410" y1="230" x2="410" y2="253" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  
+  <rect x="60" y="296" width="880" height="758" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
 
   
-  <rect x="40" y="255" width="740" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="78" cy="305" r="24" fill="#207448" />
-  <text x="78" y="313" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="115" y="285" width="40" height="40" rx="4" />
-    <line x1="125" y1="277" x2="125" y2="285" />
-    <line x1="145" y1="277" x2="145" y2="285" />
-    <line x1="125" y1="325" x2="125" y2="333" />
-    <line x1="145" y1="325" x2="145" y2="333" />
-    <line x1="107" y1="295" x2="115" y2="295" />
-    <line x1="107" y1="315" x2="115" y2="315" />
-    <line x1="155" y1="295" x2="163" y2="295" />
-    <line x1="155" y1="315" x2="163" y2="315" />
+  <g id="timeline-step-1">
+    <rect x="85" y="316" width="830" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="125" cy="356" r="20" fill="#207448" />
+    <text x="125" y="364" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="165" y="365" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">t0 Kubernetes sends SIGTERM</text>
+    
+    <g transform="translate(845, 332)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 0 35 A 30 30 0 0 1 30 5" />
+      <path d="M 0 24 A 18 18 0 0 1 18 5" />
+      <circle cx="2" cy="38" r="3" fill="#207448" />
+    </g>
   </g>
-  <text x="175" y="300" font-family="sans-serif" font-size="24" fill="#303a36">handler runs in the main thread between</text>
-  <text x="175" y="335" font-family="monospace" font-size="24" fill="#303a36">bytecode instructions: log.warning(received</text>
-  <text x="175" y="370" font-family="monospace" font-size="24" fill="#303a36">SIGTERM, shutting down); stop.set()</text>
 
   
-  <line x1="410" y1="430" x2="410" y2="453" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="500" y1="396" x2="500" y2="418" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <rect x="40" y="455" width="740" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="78" cy="505" r="24" fill="#207448" />
-  <text x="78" y="513" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 120 505 A 18 18 0 1 1 150 515" />
-    <polyline points="152,497 150,517 132,517" />
+  <g id="timeline-step-2">
+    <rect x="85" y="420" width="830" height="152" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="125" cy="460" r="20" fill="#207448" />
+    <text x="125" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="165" y="456" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">handler runs in the main thread between bytecode instructions:</tspan>
+    </text>
+    <text x="165" y="496" font-family="ui-monospace, monospace" font-size="24" fill="#207448">
+      <tspan x="165" dy="0">log.warning(received SIGTERM, shutting down);</tspan>
+      <tspan x="165" dy="32">stop.set()</tspan>
+    </text>
+    
+    <g transform="translate(845, 436)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="5" y="5" width="30" height="30" rx="4" />
+      <line x1="12" y1="0" x2="12" y2="5" />
+      <line x1="20" y1="0" x2="20" y2="5" />
+      <line x1="28" y1="0" x2="28" y2="5" />
+      <line x1="12" y1="35" x2="12" y2="40" />
+      <line x1="20" y1="35" x2="20" y2="40" />
+      <line x1="28" y1="35" x2="28" y2="40" />
+    </g>
   </g>
-  <text x="175" y="500" font-family="monospace" font-size="24" fill="#303a36">main loop: while not stop.is_set():</text>
-  <text x="175" y="535" font-family="monospace" font-size="24" fill="#303a36">do_work(); stop.wait(5)</text>
-  <text x="175" y="570" font-family="sans-serif" font-size="24" fill="#303a36">(interruptible sleep)</text>
 
   
-  <line x1="410" y1="620" x2="410" y2="643" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="500" y1="572" x2="500" y2="594" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <rect x="40" y="645" width="740" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="78" cy="710" r="24" fill="#207448" />
-  <text x="78" y="718" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <ellipse cx="135" cy="695" rx="18" ry="7" />
-    <path d="M 117 695 L 117 720 A 18 7 0 0 0 153 720 L 153 695" />
+  <g id="timeline-step-3">
+    <rect x="85" y="596" width="830" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="125" cy="636" r="20" fill="#207448" />
+    <text x="125" y="644" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="165" y="632" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">main loop: while not stop.is_set(): do_work();</tspan>
+    </text>
+    <text x="165" y="670" font-family="ui-monospace, monospace" font-size="24" fill="#207448">
+      <tspan x="165" dy="0">stop.wait(5) (interruptible sleep)</tspan>
+    </text>
+    
+    <g transform="translate(845, 612)" stroke="#207448" stroke-width="2.5" fill="none">
+      <path d="M 32 18 A 14 14 0 1 0 32 26" />
+      <polyline points="28,10 34,18 26,18" />
+    </g>
   </g>
-  <text x="175" y="700" font-family="sans-serif" font-size="24" fill="#303a36">finish the in-flight item,</text>
-  <text x="175" y="735" font-family="monospace" font-size="24" fill="#303a36">checkpoint, cleanup()</text>
 
   
-  <line x1="410" y1="775" x2="410" y2="798" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="500" y1="710" x2="500" y2="732" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <rect x="40" y="800" width="740" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <circle cx="78" cy="862" r="24" fill="#207448" />
-  <text x="78" y="870" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="135" cy="862" r="20" />
-    <polyline points="135,850 135,862 145,862" />
+  <g id="timeline-step-4">
+    <rect x="85" y="734" width="830" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="125" cy="774" r="20" fill="#207448" />
+    <text x="125" y="782" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="165" y="782" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">finish the in-flight item, checkpoint, cleanup()</text>
+    
+    <g transform="translate(845, 750)" stroke="#207448" stroke-width="2.5" fill="none">
+      <ellipse cx="20" cy="10" rx="16" ry="6" />
+      <path d="M 4 10 v 16 c 0 3.3 7.2 6 16 6 s 16 -2.7 16 -6 v -16" />
+    </g>
   </g>
-  <text x="175" y="852" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">terminationGracePeriodSeconds</text>
-  <text x="175" y="887" font-family="sans-serif" font-size="24" fill="#303a36">elapses</text>
 
   
-  <line x1="410" y1="925" x2="410" y2="948" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <line x1="500" y1="814" x2="500" y2="836" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <rect x="40" y="950" width="740" height="110" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="3" />
-  <circle cx="78" cy="1005" r="24" fill="#db8129" />
-  <text x="78" y="1013" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
-  
-  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 135 985 L 155 1021 L 115 1021 Z" />
-    <line x1="135" y1="998" x2="135" y2="1008" />
-    <circle cx="135" cy="1014" r="1.5" fill="#db8129" />
+  <g id="timeline-step-5">
+    <rect x="85" y="838" width="830" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="125" cy="878" r="20" fill="#207448" />
+    <text x="125" y="886" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="165" y="886" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">terminationGracePeriodSeconds elapses</text>
+    
+    <g transform="translate(845, 854)" stroke="#207448" stroke-width="2.5" fill="none">
+      <circle cx="20" cy="20" r="16" />
+      <polyline points="20,10 20,20 28,24" />
+    </g>
   </g>
-  <text x="175" y="1014" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">SIGKILL (cannot be handled)</text>
-
 
   
+  <line x1="500" y1="918" x2="500" y2="940" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
 
   
-  <rect x="820" y="125" width="740" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="860" cy="230" r="18" />
-    <path d="M 852 230 L 868 230" />
-    <path d="M 860 222 L 860 238" />
+  <g id="timeline-step-6">
+    <rect x="85" y="942" width="830" height="92" rx="8" fill="#fdf5ec" stroke="#db8129" stroke-width="2" />
+    
+    <circle cx="125" cy="988" r="20" fill="#db8129" />
+    <text x="125" y="996" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    <text x="165" y="997" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">SIGKILL (cannot be handled)</text>
+    
+    <g transform="translate(845, 966)" stroke="#db8129" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="16" />
+      <line x1="8" y1="8" x2="32" y2="32" />
+    </g>
   </g>
-  
-  <rect x="900" y="137" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
-  <text x="915" y="163" font-family="monospace" font-size="24" fill="#303a36">SIGTERM: Kubernetes or systemd stop</text>
-  
-  <rect x="900" y="181" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
-  <text x="915" y="207" font-family="monospace" font-size="24" fill="#303a36">SIGINT: Ctrl-C</text>
-  
-  <rect x="900" y="225" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
-  <text x="915" y="251" font-family="monospace" font-size="24" fill="#303a36">SIGHUP: reload_config() by convention</text>
-  
-  <rect x="900" y="269" width="640" height="54" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
-  <text x="915" y="291" font-family="monospace" font-size="24" fill="#303a36">SIGPIPE set to SIG_DFL:</text>
-  <text x="915" y="315" font-family="monospace" font-size="24" fill="#303a36">script | head ends quietly</text>
 
   
-  <rect x="820" y="360" width="740" height="220" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 845 425 Q 860 415 875 425 Q 875 455 860 475 Q 845 455 845 425 Z" />
-    <line x1="860" y1="438" x2="860" y2="452" />
-    <circle cx="860" cy="460" r="1.5" fill="#207448" />
+  
+
+  
+  <g id="rules-panel">
+    <rect x="970" y="296" width="570" height="364" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1470, 316)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 20 4 L 4 10 v 14 c 0 12 16 18 16 18 s 16 -6 16 -18 v -14 z" />
+    </g>
+    
+    <text x="1000" y="348" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1000" dy="0">keep handlers tiny: set a flag and</tspan>
+      <tspan x="1000" dy="38">do the real work in the main loop,</tspan>
+      <tspan x="1000" dy="38">because a handler that opens a file</tspan>
+      <tspan x="1000" dy="38">or waits on the network can be</tspan>
+      <tspan x="1000" dy="38">interrupted in the middle of its</tspan>
+      <tspan x="1000" dy="38">own work; SIGKILL and SIGSTOP</tspan>
+      <tspan x="1000" dy="38">cannot be handled</tspan>
+    </text>
   </g>
-  <text x="895" y="398" font-family="sans-serif" font-size="24" fill="#303a36">keep handlers tiny: set a flag and do</text>
-  <text x="895" y="428" font-family="sans-serif" font-size="24" fill="#303a36">the real work in the main loop, because a</text>
-  <text x="895" y="458" font-family="sans-serif" font-size="24" fill="#303a36">handler that opens a file or waits on the</text>
-  <text x="895" y="488" font-family="sans-serif" font-size="24" fill="#303a36">network can be interrupted in the middle of</text>
-  <text x="895" y="518" font-family="sans-serif" font-size="24" fill="#303a36">its own work; SIGKILL and SIGSTOP</text>
-  <text x="895" y="548" font-family="sans-serif" font-size="24" fill="#303a36">cannot be handled</text>
 
   
-  <rect x="820" y="605" width="740" height="225" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="842" y="675" width="36" height="36" rx="3" />
-    <line x1="842" y1="693" x2="878" y2="693" />
-    <line x1="860" y1="675" x2="860" y2="711" />
+  <g id="pid1-panel">
+    <rect x="970" y="682" width="570" height="372" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1470, 702)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 6 12 L 20 4 L 34 12 L 34 32 L 20 40 L 6 32 Z" />
+      <line x1="20" y1="4" x2="20" y2="40" />
+      <line x1="6" y1="12" x2="20" y2="20" />
+      <line x1="34" y1="12" x2="20" y2="20" />
+    </g>
+    
+    <text x="1000" y="732" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1000" dy="0">inside a container Python running</tspan>
+      <tspan x="1000" dy="36">as PID 1 does not reap zombies or</tspan>
+      <tspan x="1000" dy="36">forward signals by default: use tini,</tspan>
+      <tspan x="1000" dy="36">docker run --init, or exec the</tspan>
+      <tspan x="1000" dy="36">process from a shell wrapper; in the</tspan>
+      <tspan x="1000" dy="36">lab compare with and without --init</tspan>
+      <tspan x="1000" dy="36">under docker stop and its grace period</tspan>
+    </text>
   </g>
-  <text x="895" y="642" font-family="sans-serif" font-size="24" fill="#303a36">inside a container Python running as</text>
-  <text x="895" y="672" font-family="sans-serif" font-size="24" fill="#303a36">PID 1 does not reap zombies or forward</text>
-  <text x="895" y="702" font-family="monospace" font-size="24" fill="#303a36">signals by default: use tini, docker run --init,</text>
-  <text x="895" y="732" font-family="sans-serif" font-size="24" fill="#303a36">or exec the process from a shell wrapper;</text>
-  <text x="895" y="762" font-family="monospace" font-size="24" fill="#303a36">in the lab compare with and without --init</text>
-  <text x="895" y="792" font-family="sans-serif" font-size="24" fill="#303a36">under docker stop and its grace period</text>
 
   
-  <rect x="820" y="855" width="740" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="860" cy="915" r="8" />
-    <path d="M 860 923 L 860 950 A 12 12 0 0 1 848 962 A 12 12 0 0 1 836 950" />
-    <polyline points="830,953 836,947 842,953" />
+  
+  <g id="exit-hooks-strip">
+    <rect x="60" y="1076" width="1480" height="196" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1470, 1096)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="12" r="8" />
+      <path d="M 20 20 v 14 a 8 8 0 0 1 -16 0" />
+      <line x1="10" y1="26" x2="30" y2="26" />
+    </g>
+    
+    <text x="95" y="1126" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">atexit.register(fn) runs on normal exit, but not on SIGKILL or os._exit;</tspan>
+      <tspan x="95" dy="46">faulthandler.enable() dumps tracebacks on crashes;</tspan>
+      <tspan x="95" dy="46">faulthandler.register with kill -SIGUSR1 dumps them on demand</tspan>
+    </text>
   </g>
-  <text x="895" y="892" font-family="monospace" font-size="24" fill="#303a36">atexit.register(fn) runs on normal exit,</text>
-  <text x="895" y="922" font-family="monospace" font-size="24" fill="#303a36">but not on SIGKILL or os._exit;</text>
-  <text x="895" y="952" font-family="monospace" font-size="24" fill="#303a36">faulthandler.enable() dumps tracebacks</text>
-  <text x="895" y="982" font-family="monospace" font-size="24" fill="#303a36">on crashes; faulthandler.register with</text>
-  <text x="895" y="1012" font-family="monospace" font-size="24" fill="#303a36">kill -SIGUSR1 dumps them on demand</text>
 
   
-  <rect x="40" y="1080" width="1520" height="70" rx="10" fill="#207448" />
-  <text x="800" y="1124" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Use the grace period to finish in-flight work and checkpoint</text>
+  
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1296" width="1480" height="76" rx="12" fill="#207448" />
+    <text x="800" y="1344" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Use the grace period to finish in-flight work and checkpoint
+    </text>
+  </g>
 </svg>

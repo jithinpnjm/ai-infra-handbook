@@ -1,154 +1,178 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
   <title>The node lifecycle</title>
-  <desc>Visual flowchart of the node remediation and recovery lifecycle from Healthy and Suspect through Cordoned, Draining, Quarantined, Repairing, RMA, and Validating.</desc>
+  <desc>State transition diagram showing the progression of a node from healthy, suspect, cordoned, draining, quarantined, repairing, RMA, to validating.</desc>
 
   <defs>
+    
     <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
       <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
     </marker>
     <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
       <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
     </marker>
+
+    
+    <filter id="shadow" x="-6%" y="-8%" width="116%" height="124%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1b382b" flood-opacity="0.08"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="920" fill="#f5f8f5"/>
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The node lifecycle</text>
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The node lifecycle</text>
 
   
-  <g id="node-healthy">
-    <rect x="90" y="140" width="210" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <line x1="510" y1="170" x2="665" y2="170" stroke="#207448" stroke-width="3.5"/>
+  <line x1="855" y1="170" x2="1010" y2="170" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="670" y="147" width="180" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="178" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">soft signal</text>
+
+  
+  <line x1="1010" y1="230" x2="905" y2="230" stroke="#207448" stroke-width="3.5"/>
+  <line x1="615" y1="230" x2="510" y2="230" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="620" y="207" width="280" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="238" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">clean for a while</text>
+
+  
+  <path d="M 420 265 L 420 305 L 665 305" stroke="#207448" stroke-width="3.5" fill="none"/>
+  <path d="M 1100 265 L 1100 305 L 855 305" stroke="#207448" stroke-width="3.5" fill="none"/>
+  <line x1="760" y1="328" x2="760" y2="355" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="665" y="282" width="190" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="313" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">hard signal</text>
+
+  
+  <line x1="890" y1="420" x2="1220" y2="420" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1350" y1="485" x2="1350" y2="565" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1350" y1="695" x2="1350" y2="805" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1220" y1="870" x2="510" y2="870" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1280 935 L 1280 1010 L 1185 1010" stroke="#207448" stroke-width="3.5" fill="none"/>
+  <line x1="975" y1="1010" x2="890" y2="1010" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="980" y="987" width="200" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1080" y="1018" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">vendor swap</text>
+
+  
+  <path d="M 630 1010 L 450 1010 L 450 935" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 380 805 L 380 630 L 685 630" stroke="#207448" stroke-width="3.5" fill="none"/>
+  <line x1="835" y1="630" x2="1220" y2="630" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="690" y="607" width="140" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="638" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">diag fails</text>
+
+  
+  <path d="M 250 870 L 120 870 L 120 560" stroke="#db8129" stroke-width="4" fill="none"/>
+  <path d="M 120 505 L 120 200 L 250 200" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+  <rect x="35" y="510" width="170" height="46" rx="23" fill="#fcf3ea" stroke="#db8129" stroke-width="2.5"/>
+  <text x="120" y="541" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">diag passes</text>
+
+
+  
+
+  
+  <g transform="translate(250, 135)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 175,172 L 215,172 C 215,198 195,214 195,214 C 195,214 175,198 175,172 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 185,191 L 192,198 L 206,183" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="195" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Healthy</text>
+    <g transform="translate(130, 42)">
+      <path d="M -16 -16 L 16 -16 C 16 8 0 20 0 20 C 0 20 -16 8 -16 -16 Z" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M -8 1 L -2 7 L 8 -4" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Healthy</text>
   </g>
 
   
-  <g id="node-suspect">
-    <rect x="90" y="480" width="210" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1010, 135)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 195,508 L 219,548 L 171,548 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 195,522 L 195,534 M 195,541 L 195,543" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="195" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Suspect</text>
+    <g transform="translate(130, 42)">
+      <circle cx="-4" cy="-4" r="14" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="7" y1="7" x2="18" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="-4" y1="-10" x2="-4" y2="-4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="-4" cy="2" r="1.5" fill="#207448"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Suspect</text>
   </g>
 
   
-  <g id="node-cordoned">
-    <rect x="490" y="140" width="200" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(630, 355)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 575,172 L 605,172 L 615,187 L 615,203 L 605,218 L 575,218 L 565,203 L 565,187 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 574,195 L 606,195" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="590" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cordoned</text>
+    <g transform="translate(130, 42)">
+      <line x1="-18" y1="-14" x2="-18" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="18" y1="-14" x2="18" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <rect x="-18" y="-9" width="36" height="18" rx="2" stroke="#207448" stroke-width="3" fill="#e8f1ea"/>
+      <line x1="-10" y1="-9" x2="10" y2="9" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Cordoned</text>
   </g>
 
   
-  <g id="node-draining">
-    <rect x="740" y="140" width="200" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1220, 355)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 820,174 L 860,174 L 847,194 L 847,208 L 833,208 L 833,194 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 840,213 L 840,217" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="840" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Draining</text>
+    <g transform="translate(130, 42)">
+      <path d="M -18 -15 L 18 -15 L 6 3 L 6 12 L -6 12 L -6 3 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+      <path d="M 0 15 L 0 22 M -4 18 L 0 22 L 4 18" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Draining</text>
   </g>
 
   
-  <g id="node-quarantined">
-    <rect x="990" y="140" width="250" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1220, 565)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <rect x="1100" y="188" width="30" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 1106,188 L 1106,179 A 9 9 0 0 1 1124,179 L 1124,188" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M 1115,196 L 1115,204" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="1115" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Quarantined</text>
+    <g transform="translate(130, 42)">
+      <path d="M -9 -2 L -9 -11 C -9 -17 9 -17 9 -11 L 9 -2" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <rect x="-16" y="-2" width="32" height="22" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <circle cx="0" cy="7" r="2.5" fill="#207448"/>
+      <line x1="0" y1="9.5" x2="0" y2="14" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Quarantined</text>
   </g>
 
   
-  <g id="node-repairing">
-    <rect x="1320" y="140" width="220" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1220, 805)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 1416,210 L 1436,190 M 1432,186 A 7 7 0 0 1 1444,174 L 1441,180 L 1445,184 L 1451,181 A 7 7 0 0 1 1439,193 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 1444,210 L 1424,190 M 1420,186 L 1414,180" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    <text x="1430" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Repairing</text>
+    <g transform="translate(130, 42)">
+      <path d="M -14 -17 C -19 -12 -19 -4 -15 1 L 9 25 C 12 28 17 28 20 25 C 23 22 23 17 20 14 L -4 -10 C 0 -14 -3 -20 -10 -21 L -5 -16 L -10 -11 L -15 -16 Z" stroke="#207448" stroke-width="3.2" fill="none" stroke-linejoin="round"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Repairing</text>
   </g>
 
   
-  <g id="node-rma">
-    <rect x="1320" y="480" width="220" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(630, 945)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <path d="M 1410,522 L 1430,510 L 1450,522 L 1450,544 L 1430,556 L 1410,544 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M 1430,510 L 1430,556 M 1410,522 L 1430,534 L 1450,522" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-    <text x="1430" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">RMA</text>
+    <g transform="translate(130, 42)">
+      <rect x="-17" y="-9" width="34" height="26" rx="3" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="-17" y1="-1" x2="17" y2="-1" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 12 -15 C 6 -22 -6 -22 -12 -15 M -14 -19 L -12 -15 L -8 -17" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">RMA</text>
   </g>
 
   
-  <g id="node-validating">
-    <rect x="990" y="480" width="250" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(250, 805)">
+    <rect width="260" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
     
-    <rect x="1100" y="514" width="30" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 1109,514 L 1109,508 A 6 6 0 0 1 1121,508 L 1121,514" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <path d="M 1107,532 L 1113,538 L 1123,526" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="1115" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validating</text>
+    <g transform="translate(130, 42)">
+      <rect x="-15" y="-14" width="30" height="34" rx="3" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M -7 -14 L -7 -19 L 7 -19 L 7 -14 Z" stroke="#207448" stroke-width="3" fill="#ffffff"/>
+      <path d="M -7 4 L -2 9 L 8 -2" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="130" y="104" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Validating</text>
   </g>
 
-  
-
-  
-  <path d="M 150,290 L 150,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <text x="140" y="375" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="140" dy="0">soft</tspan>
-    <tspan x="140" dy="28">signal</tspan>
-  </text>
-
-  
-  <path d="M 240,480 L 240,290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <text x="252" y="375" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="252" dy="0">clean for</tspan>
-    <tspan x="252" dy="28">a while</tspan>
-  </text>
-
-  
-  <path d="M 300,175 L 490,175" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 300,555 L 340,555 L 340,255 L 490,255" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <text x="415" y="206" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="415" dy="0">hard</tspan>
-    <tspan x="415" dy="28">signal</tspan>
-  </text>
-
-  
-  <path d="M 690,215 L 740,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 940,215 L 990,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 1240,215 L 1320,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 1430,290 L 1430,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <text x="1445" y="375" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1445" dy="0">vendor</tspan>
-    <tspan x="1445" dy="28">swap</tspan>
-  </text>
-
-  
-  <path d="M 1320,555 L 1240,555" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 1320,260 L 1170,260 L 1170,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-
-  
-  <path d="M 1115,630 L 1115,780 L 45,780 L 45,215 L 90,215" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <text x="580" y="825" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">diag passes</text>
-
-  
-  <path d="M 1060,480 L 1060,290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <text x="1045" y="375" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1045" dy="0">diag</tspan>
-    <tspan x="1045" dy="28">fails</tspan>
-  </text>
 </svg>

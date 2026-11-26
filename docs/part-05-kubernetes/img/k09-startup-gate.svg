@@ -1,138 +1,163 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
   <title>A startup probe holds the other two probes back until the server is up</title>
-  <desc>Horizontal timeline illustrating how Kubernetes startupProbe delays livenessProbe and readinessProbe until initial server readiness, or terminates on failureThreshold expiry.</desc>
+  <desc>Horizontal timeline illustrating how Kubernetes startupProbe guards slow-starting containers before liveness and readiness probes take over.</desc>
 
   <defs>
-    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#207448"/>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-axis" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#303a36" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <rect width="1600" height="1100" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A startup probe holds the other two probes back until the server is up</text>
-
-  
-  <text x="800" y="116" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">time after container start</text>
-  <line x1="80" y1="134" x2="1510" y2="134" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <line x1="80" y1="124" x2="80" y2="144" stroke="#207448" stroke-width="3"/>
-
-  
-  <rect x="80" y="158" width="720" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6"/>
-  <text x="440" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="440" dy="0">liveness and readiness probes are not run</tspan>
-    <tspan x="440" dy="30">during this window</tspan>
+  <text x="60" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    A startup probe holds the other two probes back until the server is up
   </text>
 
   
-  <rect x="80" y="252" width="720" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-
-  
-  <g transform="translate(108, 276)">
-    <rect x="0" y="0" width="52" height="42" rx="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="12" x2="52" y2="12" stroke="#207448" stroke-width="2"/>
-    <circle cx="8" cy="6" r="2.5" fill="#207448"/>
-    <circle cx="16" cy="6" r="2.5" fill="#207448"/>
-    <circle cx="24" cy="6" r="2.5" fill="#207448"/>
+  <g transform="translate(1470, 30)">
+    <rect x="0" y="0" width="60" height="50" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="16" x2="60" y2="16" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="8" r="3" fill="#207448" />
+    <circle cx="24" cy="8" r="3" fill="#207448" />
+    <circle cx="36" cy="8" r="3" fill="#207448" />
   </g>
 
   
-  <text x="178" y="298" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">startupProbe window</text>
-  <text x="178" y="334" font-family="sans-serif" font-size="24" fill="#303a36">spanning about 300 seconds</text>
-
-  
-  <line x1="120" y1="424" x2="740" y2="424" stroke="#207448" stroke-width="4"/>
-
-  
-  <circle cx="210" cy="424" r="24" fill="#207448"/>
-  <text x="210" y="432" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-
-  
-  <g transform="translate(112, 498)">
-    <circle cx="18" cy="18" r="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    <polyline points="18,8 18,18 26,18" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <g transform="translate(60, 110)">
+    <rect x="0" y="0" width="760" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-dasharray="8,6" />
+    <text x="380" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      liveness and readiness probes are not run during this window
+    </text>
   </g>
 
   
-  <text x="270" y="523" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">periodSeconds 10</text>
+  <g transform="translate(60, 200)">
+    
+    <rect x="0" y="0" width="760" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+
+    
+    <g transform="translate(36, 32)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="110" y="68" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      startupProbe window
+    </text>
+
+    
+    
+    <g transform="translate(40, 130)">
+      <rect x="0" y="0" width="680" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="45" cy="45" r="22" fill="#207448" />
+      <text x="45" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="90" y="53" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">periodSeconds 10</text>
+    </g>
+
+    
+    <g transform="translate(40, 245)">
+      <rect x="0" y="0" width="680" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="45" cy="45" r="22" fill="#207448" />
+      <text x="45" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="90" y="53" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">failureThreshold 30</text>
+    </g>
+
+    
+    <line x1="40" y1="375" x2="720" y2="375" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="40" cy="375" r="8" fill="#207448" />
+    <circle cx="210" cy="375" r="8" fill="#207448" />
+    <circle cx="380" cy="375" r="8" fill="#207448" />
+    <circle cx="550" cy="375" r="8" fill="#207448" />
+    <circle cx="720" cy="375" r="8" fill="#207448" />
+  </g>
 
   
-  <circle cx="295" cy="424" r="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <circle cx="365" cy="424" r="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <circle cx="430" cy="424" r="5" fill="#207448"/>
-  <circle cx="460" cy="424" r="5" fill="#207448"/>
-  <circle cx="490" cy="424" r="5" fill="#207448"/>
-  <circle cx="520" cy="424" r="5" fill="#207448"/>
-  <circle cx="585" cy="424" r="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <path d="M 820 330 L 910 330" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
 
   
-  <circle cx="660" cy="424" r="24" fill="#207448"/>
-  <text x="660" y="432" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">30</text>
+  <g transform="translate(850, 240)">
+    <rect x="0" y="0" width="310" height="60" rx="8" fill="#207448" />
+    <text x="155" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      startupProbe succeeds
+    </text>
+  </g>
 
   
-  <text x="660" y="523" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">failureThreshold 30</text>
+  <path d="M 750 620 L 750 720 L 840 720" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
 
   
-  <line x1="800" y1="424" x2="835" y2="424" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <g transform="translate(850, 660)">
+    <rect x="0" y="0" width="690" height="120" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    <rect x="0" y="0" width="16" height="120" rx="4" fill="#db8129" />
+    <text x="40" y="48" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      startupProbe never succeeds, the kubelet kills
+    </text>
+    <text x="40" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      the container and restartPolicy decides next
+    </text>
+  </g>
 
   
-  <rect x="840" y="364" width="230" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <circle cx="955" cy="398" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-  <polyline points="947,398 953,404 963,392" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="955" y="440" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
-    <tspan x="955" dy="0">startupProbe</tspan>
-    <tspan x="955" dy="28">succeeds</tspan>
-  </text>
+  
+  <g transform="translate(930, 310)">
+    <rect x="0" y="0" width="610" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <text x="30" y="45" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      livenessProbe, checks every 10 seconds
+    </text>
+    
+    <rect x="30" y="68" width="550" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="50" y="106" font-family="sans-serif" font-size="24" fill="#303a36">
+      three failures restart the container
+    </text>
+  </g>
 
   
-  <path d="M 1070 404 H 1105 V 336 H 1135" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <path d="M 1070 444 H 1105 V 530 H 1135" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <g transform="translate(930, 480)">
+    <rect x="0" y="0" width="610" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <text x="30" y="45" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      readinessProbe, checks every 5 seconds
+    </text>
+    
+    <rect x="30" y="68" width="550" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="50" y="106" font-family="sans-serif" font-size="24" fill="#303a36">
+      failure removes the pod from Service endpoints
+    </text>
+  </g>
 
   
-  <rect x="1140" y="252" width="380" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <circle cx="1182" cy="292" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-  <polyline points="1170,292 1176,292 1180,283 1184,301 1188,292 1194,292" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1212" y="300" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">livenessProbe</text>
-  <text x="1164" y="340" font-family="sans-serif" font-size="24" fill="#303a36">checks every 10 seconds</text>
-  <text x="1164" y="378" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1164" dy="0">three failures restart</tspan>
-    <tspan x="1164" dy="30">the container</tspan>
-  </text>
+  <path d="M 880 330 L 880 555 L 920 555" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="1140" y="446" width="380" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  <circle cx="1182" cy="486" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-  <circle cx="1175" cy="486" r="3.5" fill="#207448"/>
-  <circle cx="1189" cy="480" r="3.5" fill="#207448"/>
-  <circle cx="1189" cy="492" r="3.5" fill="#207448"/>
-  <line x1="1175" y1="486" x2="1189" y2="480" stroke="#207448" stroke-width="2"/>
-  <line x1="1175" y1="486" x2="1189" y2="492" stroke="#207448" stroke-width="2"/>
-  <text x="1212" y="494" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">readinessProbe</text>
-  <text x="1164" y="534" font-family="sans-serif" font-size="24" fill="#303a36">checks every 5 seconds</text>
-  <text x="1164" y="572" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1164" dy="0">failure removes the pod from</tspan>
-    <tspan x="1164" dy="30">Service endpoints</tspan>
-  </text>
+  <g transform="translate(60, 830)">
+    <line x1="0" y1="30" x2="1470" y2="30" stroke="#303a36" stroke-width="4" marker-end="url(#arrow-axis)" />
+    
+    <line x1="2" y1="18" x2="2" y2="42" stroke="#303a36" stroke-width="4" />
+    <line x1="760" y1="18" x2="760" y2="42" stroke="#303a36" stroke-width="4" />
+    
+    <rect x="470" y="5" width="460" height="50" rx="25" fill="#f5f8f5" stroke="#303a36" stroke-width="2" />
+    <text x="700" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      time after container start
+    </text>
+  </g>
 
   
-  <path d="M 740 592 V 680" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
-
-  
-  <rect x="180" y="688" width="1240" height="150" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
-  <circle cx="240" cy="763" r="24" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
-  <line x1="228" y1="751" x2="252" y2="775" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="252" y1="751" x2="228" y2="775" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-  <text x="290" y="746" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-    <tspan x="290" dy="0">startupProbe never succeeds,</tspan>
-    <tspan x="290" dy="36">the kubelet kills the container and restartPolicy decides next</tspan>
-  </text>
-
-  
-  <rect x="80" y="960" width="1440" height="76" rx="10" fill="#207448"/>
-  <text x="800" y="1008" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">the startup probe covers the slow start alone and then steps aside</text>
+  <g transform="translate(60, 960)">
+    <rect x="0" y="0" width="1480" height="90" rx="16" fill="#207448" />
+    <text x="740" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      the startup probe covers the slow start alone and then steps aside.
+    </text>
+  </g>
 </svg>

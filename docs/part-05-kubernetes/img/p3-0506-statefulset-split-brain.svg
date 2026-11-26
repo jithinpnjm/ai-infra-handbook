@@ -1,172 +1,189 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>Dead node: why web-0 is not replaced until the node is fenced</title>
-  <desc>Infographic explaining why a StatefulSet pod web-0 is not replaced on a dead node until fencing automation confirms host shutdown and applies the out-of-service taint.</desc>
+  <desc>Numbered flow showing Kubernetes StatefulSet pod replacement behavior on node failure and out-of-service fencing.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="12" refY="8" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="12" refY="8" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1150" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1350" fill="#f5f8f5" />
 
   
-  <text x="40" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Dead node: why web-0 is not replaced</text>
-  <text x="40" y="114" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">until the node is fenced</text>
-
-  
-  
-  <line x1="570" y1="280" x2="618" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <path d="M 885 420 L 885 440 L 305 440 L 305 458" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <line x1="570" y1="600" x2="618" y2="600" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <path d="M 885 740 L 885 760 L 305 760 L 305 778" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <line x1="570" y1="945" x2="618" y2="945" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
-
-  
-  <rect x="40" y="140" width="530" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="76" cy="184" r="24" fill="#207448" />
-  <text x="76" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
-  <g transform="translate(120, 156)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="4" y="10" width="48" height="36" rx="6" />
-    <line x1="12" y1="22" x2="24" y2="22" />
-    <circle cx="38" cy="22" r="2.5" fill="#207448" />
-    <line x1="12" y1="34" x2="32" y2="34" />
-    <path d="M42 4 L34 26 L46 26 L38 48" stroke="#207448" />
-  </g>
-  <text x="68" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="68" dy="0">Node crashes or loses</tspan>
-    <tspan x="68" dy="34">network; kubelet is silent</tspan>
+  <text x="60" y="65" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">
+    Dead node: why web-0 is not replaced until the node is fenced
   </text>
 
   
-  <rect x="620" y="140" width="530" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="656" cy="184" r="24" fill="#207448" />
-  <text x="656" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
-  <g transform="translate(700, 156)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <circle cx="28" cy="28" r="24" />
-    <polyline points="28,14 28,28 38,28" />
-    <line x1="28" y1="0" x2="28" y2="4" />
-    <line x1="20" y1="0" x2="36" y2="0" />
-  </g>
-  <text x="648" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="648" dy="0">After 40 s Ready becomes</tspan>
-    <tspan x="648" dy="34">Unknown, unreachable taint</tspan>
-    <tspan x="648" dy="34">added; after 300 s</tspan>
-    <tspan x="648" dy="34">tolerationSeconds pods</tspan>
-    <tspan x="648" dy="34">are deleted</tspan>
-  </text>
 
   
-  <rect x="40" y="460" width="530" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="76" cy="504" r="24" fill="#207448" />
-  <text x="76" y="513" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
-  <g transform="translate(120, 476)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M12 8 H44 L32 28 L44 48 H12 L24 28 Z" />
-    <line x1="8" y1="8" x2="48" y2="8" />
-    <line x1="8" y1="48" x2="48" y2="48" />
+  <g transform="translate(60, 110)">
+    
+    <rect x="0" y="0" width="980" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="50" r="26" fill="#207448" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <rect x="96" y="26" width="48" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="104" y1="40" x2="114" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="90" y1="62" x2="150" y2="62" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-dasharray="6,4" />
+    
+    <text x="165" y="58" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+      Node crashes or loses network; kubelet is silent
+    </text>
   </g>
-  <text x="68" y="585" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="68" dy="0">web-0 stays Terminating:</tspan>
-    <tspan x="68" dy="34">nobody confirms the</tspan>
-    <tspan x="68" dy="34">container stopped</tspan>
-  </text>
 
   
-  <rect x="620" y="460" width="530" height="280" rx="12" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
-  <circle cx="656" cy="504" r="24" fill="#db8129" />
-  <text x="656" y="513" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
-  <g transform="translate(700, 476)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <ellipse cx="28" cy="14" rx="20" ry="8" />
-    <path d="M8 14 V42 C8 46.4 17 50 28 50 C39 50 48 46.4 48 42 V14" />
-    <path d="M8 28 C8 32.4 17 36 28 36 C39 36 48 32.4 48 28" />
-  </g>
-  <text x="648" y="565" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="648" dy="0">StatefulSet guarantees at</tspan>
-    <tspan x="648" dy="34">most one pod per ordinal,</tspan>
-    <tspan x="648" dy="34">so it creates no replacement</tspan>
-    <tspan x="648" dy="34">web-0 (two writers on one</tspan>
-    <tspan x="648" dy="34">volume would be split-brain)</tspan>
-  </text>
+  <path d="M 550 240 L 550 280" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="40" y="780" width="530" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="76" cy="824" r="24" fill="#207448" />
-  <text x="76" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
-  <g transform="translate(120, 796)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M16 16 A 18 18 0 1 0 40 16" />
-    <line x1="28" y1="6" x2="28" y2="24" />
+  <g transform="translate(60, 280)">
+    
+    <rect x="0" y="0" width="980" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="50" r="26" fill="#207448" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <circle cx="120" cy="50" r="24" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="120,34 120,50 134,50" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="165" y="54" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0" font-weight="bold">After 40 s Ready becomes Unknown, unreachable taint added;</tspan>
+      <tspan x="165" dy="36">after 300 s tolerationSeconds pods are deleted</tspan>
+    </text>
   </g>
-  <text x="68" y="880" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="68" dy="0">Admin or fencing automation</tspan>
-    <tspan x="68" dy="32">confirms the host is powered</tspan>
-    <tspan x="68" dy="32">off (IPMI, Redfish or cloud</tspan>
-    <tspan x="68" dy="32">API) and applies taint</tspan>
-    <tspan x="68" dy="32" font-family="monospace">node.kubernetes.io/</tspan>
-    <tspan x="68" dy="32" font-family="monospace">out-of-service=</tspan>
-    <tspan x="68" dy="32" font-family="monospace">nodeshutdown:NoExecute</tspan>
-  </text>
 
   
-  <rect x="620" y="780" width="530" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="656" cy="824" r="24" fill="#207448" />
-  <text x="656" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
-  <g transform="translate(700, 796)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <circle cx="28" cy="28" r="24" />
-    <polyline points="16,28 25,37 40,19" />
-  </g>
-  <text x="648" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="648" dy="0">Control plane force-completes</tspan>
-    <tspan x="648" dy="34">pod termination and detaches</tspan>
-    <tspan x="648" dy="34">volumes; web-0 reschedules</tspan>
-    <tspan x="648" dy="34">cleanly</tspan>
-  </text>
+  <path d="M 550 435 L 550 475" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="1200" y="140" width="360" height="970" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 475)">
+    
+    <rect x="0" y="0" width="980" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="50" r="26" fill="#207448" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <rect x="98" y="28" width="44" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="98" y1="42" x2="142" y2="42" stroke="#207448" stroke-width="2" />
+    <circle cx="120" cy="56" r="3" fill="#207448" />
+    
+    <text x="165" y="52" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0" font-weight="bold">web-0 stays Terminating:</tspan>
+      <tspan x="165" dy="36">nobody confirms the container stopped</tspan>
+    </text>
+  </g>
 
   
-  <g transform="translate(1352, 170)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <circle cx="28" cy="28" r="24" />
-    <path d="M16 28 L40 28 M30 18 L40 28 L30 38" />
-  </g>
-  <text x="1380" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Other ways out:</text>
+  <path d="M 550 615 L 550 655" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
 
   
-  <rect x="1220" y="285" width="320" height="200" rx="8" fill="#f5f8f5" stroke="#a5c4b1" stroke-width="2" />
-  <g transform="translate(1352, 315)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M8 36 C8 36 16 16 28 16 C40 16 48 36 48 36" />
-    <path d="M16 42 C16 42 22 28 28 28 C34 28 40 42 40 42" />
-    <circle cx="28" cy="46" r="3" fill="#207448" />
+  <g transform="translate(60, 655)">
+    
+    <rect x="0" y="0" width="980" height="185" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="50" cy="50" r="26" fill="#db8129" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M 120 28 L 142 38 L 142 56 C 142 70 120 80 120 80 C 120 80 98 70 98 56 L 98 38 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+    
+    <text x="165" y="48" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0" font-weight="bold">StatefulSet guarantees at most one pod per ordinal,</tspan>
+      <tspan x="165" dy="36">so it creates no replacement web-0</tspan>
+      <tspan x="165" dy="36" fill="#b35900" font-weight="bold">(two writers on one volume would be split-brain)</tspan>
+    </text>
   </g>
-  <text x="1380" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">kubelet returns,</text>
 
   
-  <rect x="1220" y="515" width="320" height="200" rx="8" fill="#f5f8f5" stroke="#a5c4b1" stroke-width="2" />
-  <g transform="translate(1352, 545)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="10" y="10" width="36" height="36" rx="6" />
-    <line x1="18" y1="28" x2="38" y2="28" />
-  </g>
-  <text x="1380" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">node object deleted,</text>
+  <path d="M 550 840 L 550 880" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
 
   
-  <rect x="1220" y="745" width="320" height="330" rx="8" fill="#f5f8f5" stroke="#a5c4b1" stroke-width="2" />
-  <g transform="translate(1352, 775)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <polygon points="28,8 6,48 50,48" />
-    <line x1="28" y1="22" x2="28" y2="34" />
-    <circle cx="28" cy="41" r="2.5" fill="#207448" />
+  <g transform="translate(60, 880)">
+    
+    <rect x="0" y="0" width="980" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="50" r="26" fill="#207448" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <circle cx="120" cy="50" r="22" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="120" y1="36" x2="120" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="165" y="46" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0" font-weight="bold">Admin or fencing automation confirms the host is powered off</tspan>
+      <tspan x="165" dy="36">(IPMI, Redfish or cloud API) and applies taint</tspan>
+      <tspan x="165" dy="44" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">node.kubernetes.io/out-of-service=nodeshutdown:NoExecute</tspan>
+    </text>
   </g>
-  <text x="1380" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
-    <tspan x="1380" dy="0">force delete</tspan>
-    <tspan x="1380" dy="38">only if sure</tspan>
-    <tspan x="1380" dy="38">the node is down</tspan>
-  </text>
+
+  
+  <path d="M 550 1090 L 550 1130" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(60, 1130)">
+    
+    <rect x="0" y="0" width="980" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="50" r="26" fill="#207448" />
+    <text x="50" y="59" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <ellipse cx="120" cy="38" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 100 38 v 20 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -20" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="165" y="50" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0" font-weight="bold">Control plane force-completes pod termination</tspan>
+      <tspan x="165" dy="36">and detaches volumes; web-0 reschedules cleanly</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1080, 110)">
+    
+    <rect x="0" y="0" width="460" height="730" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-dasharray="8,6" />
+
+    
+    <rect x="0" y="0" width="460" height="80" rx="12" fill="#e8f1ea" />
+    <text x="30" y="52" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Other ways out</text>
+
+    
+    <g transform="translate(24, 110)">
+      <rect x="0" y="0" width="412" height="155" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <circle cx="36" cy="36" r="14" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="18px" font-weight="bold" fill="#ffffff" text-anchor="middle">A</text>
+      <text x="64" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Node Recovery</text>
+      <text x="24" y="94" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="24" dy="0">kubelet returns and</tspan>
+        <tspan x="24" dy="36">confirms;</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 295)">
+      <rect x="0" y="0" width="412" height="175" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <circle cx="36" cy="36" r="14" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="18px" font-weight="bold" fill="#ffffff" text-anchor="middle">B</text>
+      <text x="64" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Node Deletion</text>
+      <text x="24" y="94" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="24" dy="0">node object is deleted</tspan>
+        <tspan x="24" dy="36">from the API;</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 500)">
+      <rect x="0" y="0" width="412" height="195" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <circle cx="36" cy="36" r="14" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="18px" font-weight="bold" fill="#ffffff" text-anchor="middle">C</text>
+      <text x="64" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Manual Override</text>
+      <text x="24" y="94" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="24" dy="0">force delete only when the</tspan>
+        <tspan x="24" dy="36">node is certainly down.</tspan>
+      </text>
+    </g>
+  </g>
 </svg>

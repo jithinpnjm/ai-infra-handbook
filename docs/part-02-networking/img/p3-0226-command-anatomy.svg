@@ -1,179 +1,211 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1300" width="1600" height="1300">
   <title>Anatomy of one tcpdump command</title>
-  <desc>Visual breakdown of one tcpdump command into its component pieces with brackets and job descriptions, common command variations, and the core takeaway.</desc>
+  <desc>Visual explanation of the components of a standard tcpdump command, its options, and common variation flags.</desc>
+
+  <rect width="1600" height="1300" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Anatomy of one tcpdump command</text>
 
   
-  <text x="50" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of one tcpdump command</text>
-
-  
-  <rect x="50" y="110" width="1500" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="158" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">sudo tcpdump -nni eth0 -s 96 -w /tmp/c.pcap &quot;host 10.0.0.5 and tcp&quot;</text>
-
-  
-  
-  <path d="M 245 186 L 245 192 L 270 192 L 270 196 L 270 192 L 295 192 L 295 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 458 186 L 458 192 L 480 192 L 480 196 L 480 192 L 502 192 L 502 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 510 186 L 510 192 L 555 192 L 555 196 L 555 192 L 600 192 L 600 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 630 186 L 630 192 L 665 192 L 665 196 L 665 192 L 700 192 L 700 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 735 186 L 735 192 L 858 192 L 858 196 L 858 192 L 980 192 L 980 186" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 1010 186 L 1010 192 L 1180 192 L 1180 196 L 1180 192 L 1350 192 L 1350 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-
-  
-  
-  <path d="M 270 196 L 270 212 L 200 212 L 200 225" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 480 196 L 480 200 L 75 200 L 75 392 L 110 392" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <path d="M 555 196 L 555 206 L 795 206 L 795 512 L 780 512" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <path d="M 665 196 L 665 212 L 900 212 L 900 225" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  
-  <path d="M 858 196 L 858 206 L 805 206 L 805 402 L 820 402" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <path d="M 1180 196 L 1180 200 L 1525 200 L 1525 542 L 1490 542" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-
-  
-  
-  <g transform="translate(110, 225)">
-    <rect width="670" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <path d="M 48 24 L 66 32 V 44 C 66 56 48 66 48 66 C 48 66 30 56 30 44 V 32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M 48 38 V 48 M 48 52 V 53" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <text x="96" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">sudo: the right to open a raw socket</text>
+  <g id="main-command">
+    <rect x="50" y="105" width="1500" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="800" y="165" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">sudo tcpdump -nni eth0 -s 96 -w /tmp/c.pcap &quot;host 10.0.0.5 and tcp&quot;</text>
   </g>
 
   
-  <g transform="translate(110, 345)">
-    <rect width="670" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <circle cx="48" cy="48" r="20" fill="none" stroke="#207448" stroke-width="4"/>
-    <ellipse cx="48" cy="48" rx="8" ry="20" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="28" y1="48" x2="68" y2="48" stroke="#207448" stroke-width="4"/>
-    <line x1="34" y1="62" x2="62" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <text x="96" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">-nn: no name lookups, no port names</text>
-  </g>
 
   
-  <g transform="translate(110, 465)">
-    <rect width="670" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="piece-sudo">
+    <rect x="50" y="225" width="730" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <rect x="28" y="30" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M 38 64 V 54 H 44 V 58 H 52 V 54 H 58 V 64" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="38" cy="40" r="3" fill="#207448"/>
-    <circle cx="48" cy="40" r="3" fill="#207448"/>
-    <text x="96" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">-i eth0: listen on the eth0 interface</text>
-  </g>
-
-  
-  
-  <g transform="translate(820, 225)">
-    <rect width="670" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 68 245 L 56 245 L 56 340 L 68 340" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
     
-    <rect x="28" y="30" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="44" y1="26" x2="44" y2="68" stroke="#207448" stroke-width="4" stroke-dasharray="4 4"/>
-    <path d="M 34 38 L 40 44 L 34 50" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="96" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">-s 96: keep the first 96 bytes of each packet</text>
-  </g>
-
-  
-  <g transform="translate(820, 345)">
-    <rect width="670" height="115" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(80, 265)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 28 6 L 8 16 L 8 32 C 8 44 28 52 28 52 C 28 52 48 44 48 32 L 48 16 Z"/>
+      <path d="M 28 22 L 28 36"/>
+      <circle cx="28" cy="22" r="3" fill="#207448"/>
+    </g>
     
-    <ellipse cx="48" cy="38" rx="18" ry="7" fill="none" stroke="#db8129" stroke-width="4"/>
-    <path d="M 30 38 V 64 C 30 68 38 72 48 72 C 58 72 66 68 66 64 V 38" fill="none" stroke="#db8129" stroke-width="4"/>
-    <path d="M 30 51 C 30 55 38 59 48 59 C 58 59 66 55 66 51" fill="none" stroke="#db8129" stroke-width="4"/>
-    <text x="96" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
-      <tspan x="96" dy="0">-w /tmp/c.pcap: write packets to a file</tspan>
-      <tspan x="96" dy="36">rather than the screen, safer than reading live</tspan>
+    <text x="155" y="303" font-size="26" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">sudo: </tspan>
+      <tspan font-family="sans-serif">the right to open a raw socket</tspan>
     </text>
   </g>
 
   
-  <g transform="translate(820, 485)">
-    <rect width="670" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="piece-nn">
+    <rect x="820" y="225" width="730" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <polygon points="28,32 68,32 52,52 52,66 44,70 44,52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
-    <text x="96" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
-      <tspan x="96" dy="0">quoted filter: host 10.0.0.5 and tcp; single</tspan>
-      <tspan x="96" dy="36">quotes stop the shell from reading the spaces and the ampersand</tspan>
+    <path d="M 838 245 L 826 245 L 826 340 L 838 340" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <g transform="translate(850, 265)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 6 28 C 14 16 38 16 46 28 C 38 40 14 40 6 28 Z"/>
+      <circle cx="26" cy="28" r="7"/>
+      <line x1="8" y1="46" x2="44" y2="10"/>
+    </g>
+    
+    <text x="925" y="303" font-size="26" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-nn: </tspan>
+      <tspan font-family="sans-serif">no name lookups, no port names</tspan>
     </text>
   </g>
 
   
-  <rect x="50" y="630" width="1500" height="400" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="piece-i">
+    <rect x="50" y="380" width="730" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 68 400 L 56 400 L 56 495 L 68 495" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <g transform="translate(80, 420)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="6" y="10" width="44" height="28" rx="4"/>
+      <line x1="16" y1="38" x2="16" y2="48"/>
+      <line x1="28" y1="38" x2="28" y2="48"/>
+      <line x1="40" y1="38" x2="40" y2="48"/>
+      <circle cx="16" cy="22" r="3" fill="#207448"/>
+      <circle cx="28" cy="22" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="155" y="458" font-size="26" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-i eth0: </tspan>
+      <tspan font-family="sans-serif">listen on the eth0 interface</tspan>
+    </text>
+  </g>
 
   
-  
-  <rect x="66" y="644" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="672" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-c 100</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> stops after 100 packets</tspan>
-  </text>
+  <g id="piece-s">
+    <rect x="820" y="380" width="730" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 838 400 L 826 400 L 826 495 L 838 495" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <g transform="translate(850, 420)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="16" cy="18" r="8"/>
+      <circle cx="16" cy="40" r="8"/>
+      <line x1="23" y1="23" x2="46" y2="44"/>
+      <line x1="23" y1="35" x2="46" y2="14"/>
+    </g>
+    
+    <text x="925" y="440" font-size="25" fill="#303a36">
+      <tspan x="925" dy="0" font-family="monospace" font-weight="bold" fill="#207448">-s 96: </tspan>
+      <tspan x="925" dy="34" font-family="sans-serif">keep the first 96 bytes of each packet</tspan>
+    </text>
+  </g>
 
   
-  <rect x="66" y="690" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="718" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-C 100 -W 10</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> ring buffer of 10 files of 100 MB</tspan>
-  </text>
+  <g id="piece-w">
+    <rect x="50" y="535" width="730" height="155" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 68 555 L 56 555 L 56 670 L 68 670" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    
+    <g transform="translate(80, 585)" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <ellipse cx="28" cy="14" rx="20" ry="8"/>
+      <path d="M 8 14 L 8 42 C 8 47 17 50 28 50 C 39 50 48 47 48 42 L 48 14"/>
+      <path d="M 8 28 C 8 33 17 36 28 36 C 39 36 48 33 48 28"/>
+    </g>
+    
+    <text x="155" y="582" font-size="25" fill="#303a36">
+      <tspan x="155" dy="0" font-family="monospace" font-weight="bold" fill="#db8129">-w /tmp/c.pcap: </tspan>
+      <tspan x="155" dy="36" font-family="sans-serif">write packets to a file rather than the screen,</tspan>
+      <tspan x="155" dy="34" font-family="sans-serif">safer than reading live</tspan>
+    </text>
+  </g>
 
   
-  <rect x="66" y="736" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="764" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-G 300</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> rotates every 300 seconds</tspan>
-  </text>
+  <g id="piece-filter">
+    <rect x="820" y="535" width="730" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 838 555 L 826 555 L 826 670 L 838 670" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <g transform="translate(850, 585)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <polygon points="8,10 48,10 32,32 32,48 24,52 24,32"/>
+    </g>
+    
+    <text x="925" y="582" font-size="24" fill="#303a36">
+      <tspan x="925" dy="0" font-family="sans-serif" font-weight="bold" fill="#207448">quoted filter: host 10.0.0.5 and tcp; </tspan>
+      <tspan x="925" dy="36" font-family="sans-serif">single quotes stop the shell from reading</tspan>
+      <tspan x="925" dy="34" font-family="sans-serif">the spaces and the ampersand</tspan>
+    </text>
+  </g>
 
   
-  <rect x="66" y="782" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="810" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-B 4096</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> kernel buffer 4096 KiB</tspan>
-  </text>
+  <g id="variations-strip">
+    <rect x="50" y="715" width="1500" height="435" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    
+    <rect x="52" y="717" width="1496" height="52" fill="#e8f1ea"/>
+    <circle cx="80" cy="743" r="6" fill="#207448"/>
+    <text x="105" y="751" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-c 100 </tspan>
+      <tspan font-family="sans-serif">stops after 100 packets</tspan>
+    </text>
+
+    
+    <rect x="52" y="771" width="1496" height="52" fill="#ffffff"/>
+    <circle cx="80" cy="797" r="6" fill="#207448"/>
+    <text x="105" y="805" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-C 100 -W 10 </tspan>
+      <tspan font-family="sans-serif">ring buffer of 10 files of 100 MB</tspan>
+    </text>
+
+    
+    <rect x="52" y="825" width="1496" height="52" fill="#e8f1ea"/>
+    <circle cx="80" cy="851" r="6" fill="#207448"/>
+    <text x="105" y="859" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-G 300 </tspan>
+      <tspan font-family="sans-serif">rotates every 300 seconds</tspan>
+    </text>
+
+    
+    <rect x="52" y="879" width="1496" height="52" fill="#ffffff"/>
+    <circle cx="80" cy="905" r="6" fill="#207448"/>
+    <text x="105" y="913" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-B 4096 </tspan>
+      <tspan font-family="sans-serif">kernel buffer 4096 KiB</tspan>
+    </text>
+
+    
+    <rect x="52" y="933" width="1496" height="52" fill="#e8f1ea"/>
+    <circle cx="80" cy="959" r="6" fill="#207448"/>
+    <text x="105" y="967" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-Z tcpdump </tspan>
+      <tspan font-family="sans-serif">drops privileges after opening</tspan>
+    </text>
+
+    
+    <rect x="52" y="987" width="1496" height="52" fill="#ffffff"/>
+    <circle cx="80" cy="1013" r="6" fill="#207448"/>
+    <text x="105" y="1021" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-d </tspan>
+      <tspan font-family="sans-serif">shows the compiled BPF bytecode</tspan>
+    </text>
+
+    
+    <rect x="52" y="1041" width="1496" height="52" fill="#e8f1ea"/>
+    <circle cx="80" cy="1067" r="6" fill="#207448"/>
+    <text x="105" y="1075" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-tttt </tspan>
+      <tspan font-family="sans-serif">date and time, </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-ttt </tspan>
+      <tspan font-family="sans-serif">delta, </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-e </tspan>
+      <tspan font-family="sans-serif">link layer, </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">-X </tspan>
+      <tspan font-family="sans-serif">hex plus ASCII</tspan>
+    </text>
+
+    
+    <rect x="52" y="1095" width="1496" height="52" fill="#ffffff"/>
+    <circle cx="80" cy="1121" r="6" fill="#207448"/>
+    <text x="105" y="1129" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">--time-stamp-precision nano -j adapter_unsynced </tspan>
+      <tspan font-family="sans-serif">NIC hardware timestamps</tspan>
+    </text>
+  </g>
 
   
-  <rect x="66" y="828" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="856" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-Z tcpdump</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> drops privileges after opening</tspan>
-  </text>
-
-  
-  <rect x="66" y="874" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="902" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-d</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> shows the compiled BPF bytecode</tspan>
-  </text>
-
-  
-  <rect x="66" y="920" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="948" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-tttt</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> date and time, </tspan>
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-ttt</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> delta, </tspan>
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-e</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> link layer, </tspan>
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">-X</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> hex plus ASCII</tspan>
-  </text>
-
-  
-  <rect x="66" y="966" width="1468" height="40" rx="6" fill="#ffffff" fill-opacity="0.85"/>
-  <text x="86" y="994" font-size="24">
-    <tspan font-family="monospace" font-weight="bold" fill="#207448">--time-stamp-precision nano -j adapter_unsynced</tspan>
-    <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36"> NIC hardware timestamps</tspan>
-  </text>
-
-  
-  <rect x="50" y="1060" width="1500" height="80" rx="10" fill="#207448"/>
-  <text x="800" y="1110" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Each piece has one job, so change one piece without touching the others</text>
+  <g id="bottom-bar">
+    <rect x="50" y="1175" width="1500" height="80" rx="10" fill="#207448"/>
+    <text x="800" y="1225" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Each piece has one job, so change one piece without touching the others</text>
+  </g>
 </svg>

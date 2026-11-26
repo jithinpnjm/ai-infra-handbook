@@ -1,156 +1,120 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
   <title>Reading ss -ti output</title>
-  <desc>Visual explanation of ss -ti output fields including congestion control, round-trip time, window state, pacing, delivery rate, and retransmits.</desc>
+  <desc>Visual guide explaining socket statistics and TCP info output fields including congestion control, RTT, cwnd, retransmits, and pacing rates.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1150" fill="#f5f8f5" />
+  <rect width="1600" height="1000" fill="#f5f8f5" />
 
   
-  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading ss -ti output</text>
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading ss -ti output</text>
 
   
 
   
-  <rect x="60" y="130" width="460" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="50" y="110" width="440" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(84, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 8 42 A 22 22 0 1 1 48 42" />
-    <line x1="28" y1="28" x2="40" y2="18" />
-    <circle cx="28" cy="28" r="4" fill="#207448" />
-    <line x1="12" y1="26" x2="16" y2="27" />
-    <line x1="28" y1="10" x2="28" y2="15" />
-    <line x1="44" y1="26" x2="40" y2="27" />
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none">
+    <line x1="72" y1="150" x2="114" y2="150" />
+    <circle cx="86" cy="150" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <line x1="72" y1="175" x2="114" y2="175" />
+    <circle cx="102" cy="175" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <line x1="72" y1="200" x2="114" y2="200" />
+    <circle cx="80" cy="200" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
   </g>
-  <text x="156" y="188" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">cubic</text>
-  <text x="84" y="260" font-family="sans-serif" font-size="24" fill="#303a36">congestion control</text>
+  <text x="135" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">cubic = congestion control</text>
 
   
-  <rect x="570" y="130" width="460" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="520" y="110" width="470" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(594, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="28" cy="30" r="20" />
-    <polyline points="28,18 28,30 38,30" />
-    <line x1="28" y1="4" x2="28" y2="9" />
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="560" cy="182" r="24" />
+    <polyline points="560,168 560,182 574,182" />
+    <line x1="560" y1="152" x2="560" y2="158" />
   </g>
-  <text x="666" y="188" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">rtt:avg/var</text>
-  <text x="594" y="260" font-family="sans-serif" font-size="24" fill="#303a36">round-trip time</text>
+  <text x="605" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rtt:avg/var = round-trip time</text>
 
   
-  <rect x="1080" y="130" width="460" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="1020" y="110" width="530" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
   
-  <g transform="translate(1104, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="8" width="44" height="40" rx="4" />
-    <line x1="6" y1="24" x2="50" y2="24" />
-    <line x1="28" y1="8" x2="28" y2="48" />
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1045" y="160" width="48" height="42" rx="4" />
+    <line x1="1045" y1="174" x2="1093" y2="174" />
+    <circle cx="1054" cy="167" r="1.5" fill="#207448" />
+    <circle cx="1062" cy="167" r="1.5" fill="#207448" />
   </g>
-  <text x="1176" y="188" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">cwnd and ssthresh</text>
-  <text x="1104" y="260" font-family="sans-serif" font-size="24" fill="#303a36">congestion window state</text>
-
-  
-
-  
-  <path d="M 180 340 L 180 400 L 120 400 L 120 545" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <path d="M 720 340 L 720 400 L 515 400 L 515 545" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <path d="M 1240 340 L 1240 400 L 980 400 L 980 545" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-
-  <rect x="60" y="440" width="1480" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <path d="M 60 452 A 12 12 0 0 1 72 440 L 1528 440 A 12 12 0 0 1 1540 452 L 1540 484 L 60 484 Z" fill="#e8f1ea" />
-  <circle cx="86" cy="462" r="6" fill="#207448" opacity="0.4" />
-  <circle cx="106" cy="462" r="6" fill="#207448" opacity="0.4" />
-  <circle cx="126" cy="462" r="6" fill="#207448" opacity="0.4" />
-
-  
-  <rect x="84" y="555" width="76" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <rect x="424" y="555" width="180" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <rect x="856" y="555" width="248" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <rect x="856" y="617" width="254" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <rect x="1120" y="617" width="276" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <rect x="236" y="679" width="372" height="36" rx="6" fill="#db8129" fill-opacity="0.2" stroke="#db8129" stroke-width="2.5" />
-
-  
-  <rect x="758" y="679" width="154" height="36" rx="6" fill="#207448" fill-opacity="0.1" stroke="#207448" stroke-width="1.5" />
-
-  
-  <text x="88" y="522" font-family="monospace" font-size="24" fill="#303a36">ESTAB 0 0 10.0.0.2:51234 10.0.0.5:443</text>
-
-  
-  <text x="88" y="582" font-family="monospace" font-size="24" fill="#303a36" textLength="1424" lengthAdjust="spacingAndGlyphs">cubic wscale:7,7 rto:204 rtt:0.31/0.12 mss:1448 pmtu:1500 cwnd:10 ssthresh:7 bytes_sent:2.1M bytes_acked:2.1M</text>
-
-  
-  <text x="88" y="644" font-family="monospace" font-size="24" fill="#303a36" textLength="1424" lengthAdjust="spacingAndGlyphs">bytes_retrans:12K segs_out:1500 segs_in:900 send 373Mbps pacing_rate 746Mbps delivery_rate 330Mbps</text>
-
-  
-  <text x="88" y="706" font-family="monospace" font-size="24" fill="#303a36" textLength="1424" lengthAdjust="spacingAndGlyphs">busy:2300ms rwnd_limited:100ms(4.3%) app_limited retrans:0/9 reordering:3 rcv_space:14480</text>
-
-  
-
-  
-  <path d="M 440 850 L 440 800 L 835 800 L 835 725" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <path d="M 983 850 L 983 663" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <path d="M 1258 850 L 1258 663" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-
-  
-  <rect x="60" y="850" width="460" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(84, 870)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 14 28 A 16 16 0 0 1 42 18" />
-    <polyline points="44,10 44,20 34,20" />
-    <path d="M 42 28 A 16 16 0 0 1 14 38" />
-    <polyline points="12,46 12,36 22,36" />
-  </g>
-  <text x="156" y="908" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">retrans:current/total</text>
-  <text x="84" y="980" font-family="sans-serif" font-size="24" fill="#303a36">retransmits</text>
-
-  
-  <rect x="570" y="850" width="460" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(594, 870)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 28 6 L 46 14 C 46 32 28 48 28 48 C 28 48 10 32 10 14 Z" />
-    <polyline points="20,26 26,32 36,20" />
-  </g>
-  <text x="666" y="908" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">pacing_rate</text>
-  <text x="594" y="980" font-family="sans-serif" font-size="24" fill="#303a36">what it is allowed</text>
-
-  
-  <rect x="1080" y="850" width="460" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(1104, 870)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="16,12 30,28 16,44" />
-    <polyline points="28,12 42,28 28,44" />
-    <line x1="6" y1="20" x2="16" y2="20" />
-    <line x1="6" y1="36" x2="16" y2="36" />
-  </g>
-  <text x="1176" y="908" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">delivery_rate</text>
-  <text x="1104" y="970" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1104" dy="0">what the connection </tspan>
-    <tspan x="1104" dy="32">actually achieves</tspan>
+  <text x="1110" y="172" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1110" dy="0">cwnd and ssthresh </tspan>
+    <tspan x="1110" dy="34">= congestion window state</tspan>
   </text>
+
+  
+
+  
+  <rect x="30" y="320" width="1540" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="215" y="580" width="375" height="42" rx="8" fill="#fdeee0" stroke="#db8129" stroke-width="3" />
+
+  
+  <rect x="44" y="434" width="76" height="34" rx="6" fill="#e8f1ea" fill-opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+  <rect x="442" y="434" width="168" height="34" rx="6" fill="#e8f1ea" fill-opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+  <rect x="850" y="434" width="248" height="34" rx="6" fill="#e8f1ea" fill-opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+  <rect x="735" y="584" width="145" height="34" rx="6" fill="#e8f1ea" fill-opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+  <rect x="770" y="509" width="650" height="34" rx="6" fill="#e8f1ea" fill-opacity="0.6" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+
+  
+  <text x="50" y="385" font-family="'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace" font-size="24" font-weight="bold" fill="#207448">ESTAB 0 0 10.0.0.2:51234 10.0.0.5:443</text>
+  <text x="50" y="460" font-family="'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace" font-size="24" fill="#303a36" textLength="1475" lengthAdjust="spacingAndGlyphs">cubic wscale:7,7 rto:204 rtt:0.31/0.12 mss:1448 pmtu:1500 cwnd:10 ssthresh:7 bytes_sent:2.1M bytes_acked:2.1M</text>
+  <text x="50" y="535" font-family="'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace" font-size="24" fill="#303a36" textLength="1360" lengthAdjust="spacingAndGlyphs">bytes_retrans:12K segs_out:1500 segs_in:900 send 373Mbps pacing_rate 746Mbps delivery_rate 330Mbps</text>
+  <text x="50" y="610" font-family="'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace" font-size="24" fill="#303a36" textLength="1200" lengthAdjust="spacingAndGlyphs">busy:2300ms rwnd_limited:100ms(4.3%) app_limited retrans:0/9 reordering:3 rcv_space:14480</text>
+
+  
+
+  
+  <rect x="60" y="745" width="620" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 120 812 A 20 20 0 1 1 110 795" />
+    <polyline points="105,785 110,795 122,793" />
+  </g>
+  <text x="155" y="818" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="155" dy="0">retrans:current/total </tspan>
+    <tspan x="155" dy="34">= retransmits</tspan>
+  </text>
+
+  
+  <rect x="720" y="745" width="830" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 750 830 A 24 24 0 1 1 794 830" />
+    <line x1="772" y1="820" x2="784" y2="805" />
+  </g>
+  <text x="820" y="818" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="820" dy="0">delivery_rate = what the connection actually achieves, </tspan>
+    <tspan x="820" dy="34">pacing_rate = what it is allowed</tspan>
+  </text>
+
+  
+
+  
+  <path d="M 80 255 V 300 H 40 V 445 H 42" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 610 255 V 415 H 520 V 430" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 975 255 V 430" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 500 745 V 680 H 800 V 622" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1320 745 V 547" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
 </svg>

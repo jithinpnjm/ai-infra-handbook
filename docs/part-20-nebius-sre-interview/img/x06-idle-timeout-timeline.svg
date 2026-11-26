@@ -1,179 +1,184 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" width="1600" height="1220">
   <title>A silent stream is reset by the middlebox; a heartbeat keeps it alive</title>
-  <desc>A horizontal timeline illustrating how a silent client connection is closed by a middlebox after an idle timeout and encounters reset or BrokenPipe (BrokenPipeError) on the next write, whereas a heartbeat client sending ping keeps the flow still alive.</desc>
+  <desc>Infographic showing how middlebox idle timeouts silently drop connections, producing an error on the next client write unless kept alive by heartbeats.</desc>
 
   <defs>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    
+    <marker id="orange-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#db8129" />
+    </marker>
+    
+    <marker id="green-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1020" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1220" fill="#f5f8f5" />
 
   
-  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">A silent stream is reset by the middlebox; </tspan>
-    <tspan x="800" dy="54">a heartbeat keeps it alive</tspan>
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">
+    A silent stream is reset by the middlebox; a heartbeat keeps it alive
   </text>
 
   
-  <line x1="380" y1="172" x2="1480" y2="172" stroke="#b8c9c0" stroke-width="2" />
+  <rect x="80" y="95" width="1440" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <text x="360" y="133" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">0 seconds</text>
+  <text x="700" y="133" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">0.3 seconds</text>
+  <text x="1040" y="133" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">0.6 seconds</text>
+  <text x="1380" y="133" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129" text-anchor="middle">the next write</text>
 
   
-  <line x1="430" y1="162" x2="430" y2="182" stroke="#207448" stroke-width="3" />
-  <text x="430" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0 seconds</text>
+  <line x1="1040" y1="151" x2="1040" y2="840" stroke="#db8129" stroke-width="3" stroke-dasharray="8 6" />
 
   
-  <line x1="750" y1="162" x2="750" y2="182" stroke="#207448" stroke-width="3" />
-  <text x="750" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0.3 seconds</text>
+  <rect x="945" y="160" width="190" height="42" rx="21" fill="#db8129" />
+  <text x="1040" y="189" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">idle timeout</text>
 
   
-  <line x1="1070" y1="162" x2="1070" y2="182" stroke="#207448" stroke-width="3" />
-  <text x="1070" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0.6 seconds</text>
-
+  <rect x="80" y="215" width="1440" height="265" rx="12" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
   
-  <line x1="1390" y1="162" x2="1390" y2="182" stroke="#207448" stroke-width="3" />
-  <text x="1390" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">the next write</text>
-
   
-  <rect x="40" y="196" width="1520" height="224" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
+  <rect x="80" y="215" width="230" height="265" rx="12" fill="#edf3ee" />
   
-  <rect x="55" y="210" width="270" height="196" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <g transform="translate(162, 222)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="6" width="48" height="34" rx="4" />
-    <line x1="18" y1="48" x2="38" y2="48" />
-    <line x1="28" y1="40" x2="28" y2="48" />
+  <g transform="translate(167, 280)">
+    <rect x="0" y="0" width="56" height="46" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="7" r="3" fill="#207448" />
+    <circle cx="20" cy="7" r="3" fill="#207448" />
   </g>
-  <text x="190" y="324" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="190" dy="0">silent </tspan>
-    <tspan x="190" dy="36">client</tspan>
+  <text x="195" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">silent client</text>
+
+  
+  <circle cx="360" cy="355" r="14" fill="#207448" />
+  <rect x="290" y="275" width="140" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="360" y="305" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">last byte</text>
+  <line x1="360" y1="319" x2="360" y2="341" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="374" y="337" width="630" height="36" rx="6" fill="#e3e8e5" stroke="#9aa8a1" stroke-width="2" />
+  <text x="689" y="363" font-family="sans-serif" font-size="24" fill="#4d5a54" text-anchor="middle">
+    quiet for longer than the idle timeout
   </text>
 
   
-  <line x1="380" y1="334" x2="1220" y2="334" stroke="#d0ded4" stroke-width="4" stroke-dasharray="4 4" />
-
   
-  <circle cx="430" cy="334" r="10" fill="#207448" stroke="#303a36" stroke-width="2" />
-  <text x="430" y="278" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">last byte</text>
-
-  
-  <rect x="465" y="299" width="530" height="70" rx="8" fill="#e3e8e5" stroke="#a0aba5" stroke-width="2" stroke-dasharray="6 4" />
-  <text x="730" y="329" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="730" dy="0">quiet for longer </tspan>
-    <tspan x="730" dy="28">than the idle timeout</tspan>
-  </text>
-
-  
-  <rect x="1030" y="299" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(1042, 306)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="8" width="44" height="40" rx="6" />
-    <line x1="14" y1="28" x2="42" y2="28" />
-    <polyline points="34,20 42,28 34,36" />
-    <polyline points="22,20 14,28 22,36" />
+  <g transform="translate(1012, 327)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <line x1="10" y1="28" x2="46" y2="28" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="10" x2="28" y2="46" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="28" r="8" fill="#db8129" />
   </g>
-  <text x="1070" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="1070" dy="0">middlebox closes </tspan>
-    <tspan x="1070" dy="26">idle flow</tspan>
+  
+  <rect x="880" y="405" width="320" height="50" rx="8" fill="#fdeddc" stroke="#db8129" stroke-width="2" />
+  <text x="1040" y="438" font-family="sans-serif" font-size="24" font-weight="bold" fill="#9e4e08" text-anchor="middle">
+    middlebox closes idle flow
   </text>
 
   
-  <rect x="1225" y="238" width="315" height="54" rx="8" fill="#fff5ed" stroke="#db8129" stroke-width="2.5" />
-  <text x="1382" y="274" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan>reset or </tspan><tspan font-family="monospace">BrokenPipe</tspan>
-  </text>
-  <line x1="1235" y1="334" x2="1465" y2="334" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  
+  <rect x="1235" y="270" width="250" height="52" rx="8" fill="#fdeddc" stroke="#db8129" stroke-width="3" />
+  <text x="1360" y="305" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">reset or BrokenPipe</text>
+  
+  
+  <line x1="1360" y1="326" x2="1360" y2="400" stroke="#db8129" stroke-width="5" marker-end="url(#orange-arrow)" />
+
 
   
-  <rect x="40" y="432" width="1520" height="84" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <g transform="translate(60, 446)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="6" y="8" width="44" height="40" rx="4" />
-    <polyline points="14,22 22,28 14,34" />
-    <line x1="26" y1="36" x2="38" y2="36" />
+  <rect x="80" y="495" width="1440" height="70" rx="8" fill="#2d3732" stroke="#207448" stroke-width="2" />
+  <text x="800" y="539" font-family="monospace" font-size="24" fill="#c3e88d" text-anchor="middle">
+    Flags [F.] from the server, then ack from the client, then silence, then Flags [R] at the next client write
+  </text>
+
+
+  
+  <rect x="80" y="580" width="1440" height="260" rx="12" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
+  
+  
+  <rect x="80" y="580" width="230" height="260" rx="12" fill="#edf3ee" />
+  
+  <g transform="translate(167, 638)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 30 L 18 30 L 23 15 L 33 45 L 38 30 L 50 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-  <text x="820" y="466" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="820" dy="0">Flags [F.] from the server, then ack from the client, </tspan>
-    <tspan x="820" dy="28">then silence, then Flags [R] at the next client write</tspan>
-  </text>
+  <text x="195" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">heartbeat client</text>
 
   
-  <rect x="40" y="528" width="1520" height="224" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
-  
-  <rect x="55" y="542" width="270" height="196" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <g transform="translate(162, 554)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="6" width="48" height="34" rx="4" />
-    <line x1="18" y1="48" x2="38" y2="48" />
-    <line x1="28" y1="40" x2="28" y2="48" />
+  <g transform="translate(340, 680)">
+    <circle cx="20" cy="20" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 10 20 L 16 20 L 20 10 L 24 30 L 28 20 L 30 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
   </g>
-  <text x="190" y="656" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-    <tspan x="190" dy="0">heartbeat </tspan>
-    <tspan x="190" dy="36">client</tspan>
+
+  
+  <g transform="translate(680, 680)">
+    <circle cx="20" cy="20" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 10 20 L 16 20 L 20 10 L 24 30 L 28 20 L 30 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <g transform="translate(1020, 680)">
+    <circle cx="20" cy="20" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 10 20 L 16 20 L 20 10 L 24 30 L 28 20 L 30 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <line x1="376" y1="700" x2="680" y2="700" stroke="#207448" stroke-width="4" />
+  <line x1="716" y1="700" x2="1020" y2="700" stroke="#207448" stroke-width="4" />
+
+  
+  <rect x="490" y="618" width="420" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="700" y="650" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan font-family="monospace">ping</tspan> every half the idle timeout
   </text>
 
   
-  <text x="750" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan font-family="monospace">ping</tspan><tspan> every half the idle timeout</tspan>
-  </text>
+  <line x1="1056" y1="700" x2="1480" y2="700" stroke="#207448" stroke-width="5" marker-end="url(#green-arrow)" />
+  <rect x="1190" y="630" width="180" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1280" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">still alive</text>
 
-  
-  <polyline points="390,652 420,652 425,626 430,678 435,640 440,652 470,652" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-  
-  <line x1="470" y1="652" x2="710" y2="652" stroke="#207448" stroke-width="4" />
-
-  
-  <polyline points="710,652 740,652 745,626 750,678 755,640 760,652 790,652" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-  
-  <line x1="790" y1="652" x2="1030" y2="652" stroke="#207448" stroke-width="4" />
-
-  
-  <polyline points="1030,652 1060,652 1065,626 1070,678 1075,640 1080,652 1110,652" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-
-  
-  <line x1="1110" y1="652" x2="1490" y2="652" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-  <rect x="1265" y="572" width="210" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <text x="1370" y="605" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">still alive</text>
-
-  
-  <line x1="1070" y1="184" x2="1070" y2="744" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
-  <rect x="965" y="174" width="210" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <text x="1070" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">idle timeout</text>
 
   
   
-  <rect x="40" y="764" width="480" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="82" cy="821" r="24" fill="#207448" />
-  <text x="82" y="830" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-  <text x="125" y="807" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="125" dy="0">find the lowest idle </tspan>
-    <tspan x="125" dy="28">timeout on the path</tspan>
-  </text>
+  <g transform="translate(80, 860)">
+    <rect x="0" y="0" width="450" height="170" rx="10" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="96" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Measure path timeout</text>
+    <text x="30" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
+      find the lowest idle timeout on the path
+    </text>
+  </g>
 
   
-  <rect x="560" y="764" width="480" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="602" cy="821" r="24" fill="#207448" />
-  <text x="602" y="830" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-  <text x="645" y="807" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="645" dy="0">send a heartbeat </tspan>
-    <tspan x="645" dy="28">below it with margin</tspan>
-  </text>
+  <g transform="translate(575, 860)">
+    <rect x="0" y="0" width="450" height="170" rx="10" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="96" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Tune heartbeat interval</text>
+    <text x="30" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
+      send a heartbeat below it with margin
+    </text>
+  </g>
 
   
-  <rect x="1080" y="764" width="480" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <circle cx="1122" cy="821" r="24" fill="#207448" />
-  <text x="1122" y="830" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  <text x="1165" y="807" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1165" dy="0">check no hard total </tspan>
-    <tspan x="1165" dy="28">duration limit applies</tspan>
-  </text>
+  <g transform="translate(1070, 860)">
+    <rect x="0" y="0" width="450" height="170" rx="10" fill="#ffffff" stroke="#c8d6cc" stroke-width="2" />
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">3</text>
+    <text x="96" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Verify lifetime limits</text>
+    <text x="30" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
+      check no hard total duration limit applies
+    </text>
+  </g>
+
 
   
-  <rect x="40" y="894" width="1520" height="92" rx="10" fill="#207448" />
-  <text x="800" y="934" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-    <tspan x="800" dy="0">The reset appears only when the client speaks again, </tspan>
-    <tspan x="800" dy="32">so a silent stream looks fine until its next write.</tspan>
-  </text>
+  <g transform="translate(80, 1060)">
+    <rect x="0" y="0" width="1440" height="100" rx="12" fill="#207448" />
+    <text x="720" y="59" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      The reset appears only when the client speaks again, so a silent stream looks fine until its next write.
+    </text>
+  </g>
 </svg>

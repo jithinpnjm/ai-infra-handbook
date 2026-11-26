@@ -1,171 +1,181 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
-  <title>Slurm is plugins infographic</title>
-  <desc>Grouped map of slurm.conf parameters and typical production choices</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Slurm is plugins: which parameter picks what</title>
+  <desc>Grouped map of slurm.conf parameters and typical production choices across identity, queuing, launch, accounting, and hooks.</desc>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
 
   
-  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Slurm is plugins: which parameter picks what</text>
-  <text x="40" y="105" font-family="sans-serif" font-size="24" fill="#303a36">Grouped map of slurm.conf parameters and typical production choice</text>
+  <text x="40" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Slurm is plugins: which parameter picks what</text>
+  <text x="40" y="94" font-family="sans-serif" font-size="24" fill="#303a36">Grouped map of slurm.conf parameters and typical production choice.</text>
 
   
 
   
-  <rect x="40" y="135" width="480" height="500" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="40" y="120" width="480" height="440" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(60, 155)">
-    <circle cx="16" cy="16" r="10" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="44" cy="16" r="10" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="30" cy="42" r="10" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="22" y1="22" x2="26" y2="34" stroke="#207448" stroke-width="4"/>
-    <line x1="38" y1="22" x2="34" y2="34" stroke="#207448" stroke-width="4"/>
-    <line x1="26" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="4"/>
+  <g transform="translate(56, 134)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M22 6 L40 13 V26 C40 37 22 46 22 46 C22 46 4 37 4 26 V13 Z"/>
+    <path d="M15 24 L20 29 L30 19"/>
   </g>
-  <text x="130" y="193" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Identity and placement</text>
+  <text x="114" y="166" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Identity and placement group</text>
 
   
-  <rect x="58" y="225" width="444" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="76" y="260" font-family="monospace" font-size="24" fill="#303a36">
+  <rect x="58" y="188" width="444" height="98" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="228" font-family="sans-serif" font-size="24" fill="#303a36">
     <tspan x="76" dy="0">AuthType auth/munge</tspan>
-    <tspan x="76" dy="34">(or auth/slurm on newer versions)</tspan>
+    <tspan x="76" dy="32">(or auth/slurm on newer versions)</tspan>
   </text>
 
   
-  <rect x="58" y="350" width="444" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="76" y="382" font-family="monospace" font-size="24" fill="#303a36">
+  <rect x="58" y="298" width="444" height="128" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="336" font-family="sans-serif" font-size="24" fill="#303a36">
     <tspan x="76" dy="0">SelectType select/cons_tres</tspan>
-    <tspan x="76" dy="32" font-family="sans-serif">decides how CPUs, memory and</tspan>
-    <tspan x="76" dy="32" font-family="sans-serif">GPUs are assigned inside nodes</tspan>
+    <tspan x="76" dy="32">decides how CPUs, memory and</tspan>
+    <tspan x="76" dy="32">GPUs are assigned inside nodes</tspan>
   </text>
 
   
-  <rect x="58" y="510" width="444" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="76" y="542" font-family="monospace" font-size="24" fill="#303a36">
+  <rect x="58" y="438" width="444" height="106" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="476" font-family="sans-serif" font-size="24" fill="#303a36">
     <tspan x="76" dy="0">TopologyPlugin topology/tree</tspan>
-    <tspan x="76" dy="32" font-family="sans-serif">or block topology for large IB fabrics</tspan>
+    <tspan x="76" dy="32">or block topology for large IB fabrics</tspan>
   </text>
 
   
-  <rect x="40" y="655" width="480" height="365" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="40" y="580" width="480" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(60, 672)">
-    <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M6,14 v16 c0,4.4 9.8,8 22,8 s22,-3.6 22,-8 v-16" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M6,30 v16 c0,4.4 9.8,8 22,8 s22,-3.6 22,-8 v-16" fill="none" stroke="#207448" stroke-width="4"/>
+  <g transform="translate(56, 594)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="22" cy="24" r="18"/>
+    <polyline points="22,12 22,24 30,28"/>
   </g>
-  <text x="130" y="710" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accounting</text>
+  <text x="114" y="626" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Queue decisions group</text>
 
   
-  <rect x="58" y="745" width="444" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="76" y="780" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="76" dy="0">AccountingStorageType</tspan>
-    <tspan x="76" dy="34">accounting_storage/slurmdbd</tspan>
+  <rect x="58" y="646" width="444" height="74" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="692" font-family="sans-serif" font-size="24" fill="#303a36">SchedulerType sched/backfill</text>
+
+  
+  <rect x="58" y="730" width="444" height="74" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="776" font-family="sans-serif" font-size="24" fill="#303a36">PriorityType priority/multifactor</text>
+
+  
+  <rect x="58" y="814" width="444" height="92" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="76" y="850" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="76" dy="0">PreemptType preempt/qos</tspan>
+    <tspan x="76" dy="32">or preempt/partition_prio</tspan>
   </text>
 
-  
-  <rect x="58" y="880" width="444" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="76" y="915" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="76" dy="0">JobAcctGatherType</tspan>
-    <tspan x="76" dy="34">jobacct_gather/cgroup</tspan>
-  </text>
-
 
   
 
   
-  <rect x="540" y="135" width="480" height="425" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="550" y="120" width="500" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(560, 155)">
-    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4"/>
-    <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <g transform="translate(566, 134)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="8" y="10" width="28" height="28" rx="4"/>
+    <circle cx="22" cy="24" r="6"/>
+    <line x1="14" y1="4" x2="14" y2="10"/>
+    <line x1="22" y1="4" x2="22" y2="10"/>
+    <line x1="30" y1="4" x2="30" y2="10"/>
+    <line x1="14" y1="38" x2="14" y2="44"/>
+    <line x1="22" y1="38" x2="22" y2="44"/>
+    <line x1="30" y1="38" x2="30" y2="44"/>
   </g>
-  <text x="630" y="193" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Queue decisions</text>
+  <text x="624" y="166" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Launch and tracking group</text>
 
   
-  <rect x="558" y="225" width="444" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="278" font-family="monospace" font-size="24" fill="#303a36">SchedulerType sched/backfill</text>
-
-  
-  <rect x="558" y="330" width="444" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="383" font-family="monospace" font-size="24" fill="#303a36">PriorityType priority/multifactor</text>
-
-  
-  <rect x="558" y="435" width="444" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="470" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="576" dy="0">PreemptType preempt/qos</tspan>
-    <tspan x="576" dy="32">or preempt/partition_prio</tspan>
+  <rect x="568" y="188" width="464" height="116" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="586" y="226" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="586" dy="0">ProctrackType proctrack/cgroup</tspan>
+    <tspan x="586" dy="32">finds and kills all processes</tspan>
+    <tspan x="586" dy="32">of a job</tspan>
   </text>
 
   
-  <rect x="540" y="580" width="480" height="440" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="568" y="316" width="464" height="152" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="586" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="586" dy="0">TaskPlugin</tspan>
+    <tspan x="586" dy="32">task/affinity,task/cgroup</tspan>
+    <tspan x="586" dy="32">CPU binding and per-task</tspan>
+    <tspan x="586" dy="32">cgroup constraints</tspan>
+  </text>
+
   
-  <g transform="translate(560, 597)">
-    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="28" y1="4" x2="28" y2="12" stroke="#207448" stroke-width="4"/>
-    <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="4"/>
-    <line x1="4" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="4"/>
-    <line x1="44" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4"/>
+  <rect x="568" y="480" width="464" height="94" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="586" y="518" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="586" dy="0">MpiDefault pmix</tspan>
+    <tspan x="586" dy="32">if built with PMIx</tspan>
+  </text>
+
+  
+  <rect x="550" y="610" width="500" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(566, 624)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="22" cy="12" rx="16" ry="6"/>
+    <path d="M6 12 V36 C6 40 22 43 22 43 C22 43 38 40 38 36 V12"/>
+    <path d="M6 24 C6 28 22 31 22 31 C22 31 38 28 38 24"/>
   </g>
-  <text x="630" y="635" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Launch and tracking</text>
+  <text x="624" y="656" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Accounting group</text>
 
   
-  <rect x="558" y="670" width="444" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="705" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="576" dy="0">ProctrackType proctrack/cgroup</tspan>
-    <tspan x="576" dy="32" font-family="sans-serif">finds and kills all processes of a job</tspan>
+  <rect x="568" y="678" width="464" height="98" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="586" y="716" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="586" dy="0">AccountingStorageType</tspan>
+    <tspan x="586" dy="32">accounting_storage/slurmdbd</tspan>
   </text>
 
   
-  <rect x="558" y="785" width="444" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="818" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="576" dy="0">TaskPlugin task/affinity,task/cgroup</tspan>
-    <tspan x="576" dy="32" font-family="sans-serif">CPU binding and per-task</tspan>
-    <tspan x="576" dy="30" font-family="sans-serif">cgroup constraints</tspan>
-  </text>
-
-  
-  <rect x="558" y="925" width="444" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="576" y="974" font-family="monospace" font-size="24" fill="#303a36">
-    MpiDefault pmix <tspan font-family="sans-serif">if built with PMIx</tspan>
+  <rect x="568" y="788" width="464" height="98" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="586" y="826" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="586" dy="0">JobAcctGatherType</tspan>
+    <tspan x="586" dy="32">jobacct_gather/cgroup</tspan>
   </text>
 
 
   
 
   
-  <rect x="1040" y="135" width="520" height="885" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <rect x="1080" y="120" width="480" height="800" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
   
-  <g transform="translate(1065, 160)">
-    <circle cx="28" cy="14" r="8" fill="none" stroke="#db8129" stroke-width="4"/>
-    <path d="M28,22 v18 c0,8 -8,14 -16,14 s-16,-6 -16,-14" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <g transform="translate(1098, 134)" stroke="#db8129" stroke-width="3" fill="none">
+    <circle cx="22" cy="12" r="6"/>
+    <path d="M22 18 V32 C22 39 12 40 12 34"/>
+    <path d="M30 26 L38 26"/>
+    <path d="M34 22 L34 30"/>
   </g>
-  <text x="1135" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hooks</text>
+  <text x="1156" y="166" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Hooks group</text>
 
   
-  <rect x="1062" y="240" width="476" height="340" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1084" y="285" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1084" dy="0">JobSubmitPlugins lua</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">to validate and rewrite requests,</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">enforce naming,</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">require GPUs via --gres,</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">route to the right partition</tspan>
+  <rect x="1100" y="196" width="440" height="320" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="1120" y="242" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0" font-weight="bold" fill="#207448">JobSubmitPlugins lua</tspan>
+    <tspan x="1120" dy="44">to validate and rewrite</tspan>
+    <tspan x="1120" dy="34">requests, enforce naming,</tspan>
+    <tspan x="1120" dy="34">require GPUs via --gres,</tspan>
+    <tspan x="1120" dy="34">route to the right partition</tspan>
   </text>
 
   
-  <rect x="1062" y="615" width="476" height="375" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1084" y="665" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="1084" dy="0">PlugStackConfig</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">SPANK plugins at launch,</tspan>
-    <tspan x="1084" dy="46" font-family="sans-serif">for example Pyxis (6.13)</tspan>
+  <rect x="1100" y="546" width="440" height="230" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+  <text x="1120" y="604" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0" font-weight="bold" fill="#207448">PlugStackConfig</tspan>
+    <tspan x="1120" dy="38">SPANK plugins at launch,</tspan>
+    <tspan x="1120" dy="34">for example Pyxis (6.13)</tspan>
   </text>
 
 
   
-  <rect x="40" y="1045" width="1520" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="60" y="1082" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="60" dy="0">job_submit and SPANK have stable APIs; other plugin interfaces use internal structures</tspan>
-    <tspan x="60" dy="32">that change per version and break on upgrade; write site policy in job_submit and SPANK;</tspan>
-    <tspan x="60" dy="32">the last column is where to start, check it against your site</tspan>
+  <rect x="40" y="945" width="1520" height="205" rx="12" fill="#207448"/>
+
+  
+  <rect x="68" y="966" width="140" height="34" rx="6" fill="#ffffff"/>
+  <text x="138" y="990" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Rule strip</text>
+
+  
+  <text x="68" y="1036" font-family="sans-serif" font-size="24" fill="#ffffff">
+    <tspan x="68" dy="0">job_submit and SPANK have stable APIs; other plugin interfaces use internal structures that change per version and break on upgrade;</tspan>
+    <tspan x="68" dy="38">write site policy in job_submit and SPANK;</tspan>
+    <tspan x="68" dy="38">the last column is where to start, check it against your site</tspan>
   </text>
 </svg>

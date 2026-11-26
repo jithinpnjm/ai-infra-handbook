@@ -1,217 +1,188 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
   <title>The TLS handshake: what each side sends and how the client checks the server</title>
-  <desc>Visual explanation of the TLS handshake flow, client certificate chain verification, common handshake failures, and connection diagnostic commands.</desc>
+  <desc>Visual explanation of the TLS 1.3 handshake sequence, cryptographic key exchange, client certificate validation checks, common failure modes, and debugging commands.</desc>
 
-  <defs>
-    <marker id="arrow-right" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448"/>
-    </marker>
-    <marker id="arrow-left" viewBox="0 0 18 18" refX="2" refY="9" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 17 2 L 2 9 L 17 16 Z" fill="#207448"/>
-    </marker>
-  </defs>
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <g id="title-group">
+    <text x="60" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">The TLS handshake: what each side sends</text>
+    <text x="60" y="105" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">and how the client checks the server</text>
+  </g>
 
   
-  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">The TLS handshake: what each side sends</tspan>
-    <tspan x="800" dy="54">and how the client checks the server</tspan>
+  
+  <rect x="60" y="135" width="220" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="75" y="147" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M82 165 L89 165 M95 160 L103 165 L95 170" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="120" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Client (curl)</text>
+
+  
+  <rect x="800" y="135" width="220" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="815" y="147" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="821" y1="159" x2="845" y2="159" stroke="#207448" stroke-width="2"/>
+  <line x1="821" y1="171" x2="845" y2="171" stroke="#207448" stroke-width="2"/>
+  <circle cx="841" cy="153" r="2" fill="#207448"/>
+  <circle cx="841" cy="165" r="2" fill="#207448"/>
+  <text x="865" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Server</text>
+
+  
+  <line x1="170" y1="195" x2="170" y2="575" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+  <line x1="910" y1="195" x2="910" y2="575" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+
+  
+  <circle cx="170" cy="305" r="22" fill="#207448"/>
+  <text x="170" y="313" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <line x1="192" y1="305" x2="210" y2="305" stroke="#207448" stroke-width="3"/>
+  <line x1="870" y1="305" x2="905" y2="305" stroke="#207448" stroke-width="3"/>
+  <polygon points="893,296 908,305 893,314" fill="#207448"/>
+
+  
+  <rect x="210" y="210" width="660" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="230" y="244">ClientHello: supported TLS versions and cipher suites,</tspan>
+    <tspan x="230" y="278">a random value, a key share (TLS 1.3: a guessed</tspan>
+    <tspan x="230" y="312">key-exchange group and its public key), SNI example.com</tspan>
+    <tspan x="230" y="346">in clear text so a shared front end picks the right</tspan>
+    <tspan x="230" y="380">certificate, ALPN offering h2 and http/1.1</tspan>
   </text>
 
   
+  <circle cx="910" cy="495" r="22" fill="#207448"/>
+  <text x="910" y="503" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
 
   
-  <line x1="120" y1="235" x2="120" y2="720" stroke="#8fa696" stroke-width="3" stroke-dasharray="8 6"/>
-  <line x1="980" y1="235" x2="980" y2="720" stroke="#8fa696" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="888" y1="495" x2="870" y2="495" stroke="#207448" stroke-width="3"/>
+  <line x1="210" y1="495" x2="175" y2="495" stroke="#207448" stroke-width="3"/>
+  <polygon points="187,486 172,495 187,504" fill="#207448"/>
 
   
-  <rect x="40" y="140" width="160" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="96" y="152" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="108" y1="186" x2="132" y2="186" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-  <polyline points="104,164 112,169 104,174" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="116" y1="174" x2="126" y2="174" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="120" y="218" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Client (curl)</text>
-
-  
-  <rect x="900" y="140" width="160" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  
-  <rect x="956" y="152" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <line x1="956" y1="169" x2="1004" y2="169" stroke="#207448" stroke-width="2"/>
-  <circle cx="968" cy="160" r="2.5" fill="#207448"/>
-  <circle cx="968" cy="177" r="2.5" fill="#207448"/>
-  <text x="980" y="218" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Server</text>
-
-  
-  <rect x="150" y="250" width="800" height="158" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="175" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="175" dy="0" font-weight="bold" fill="#207448">ClientHello:</tspan>
-    <tspan> supported TLS versions and cipher suites, a random value,</tspan>
-    <tspan x="175" dy="28">a key share (TLS 1.3: a guessed key-exchange group and its</tspan>
-    <tspan x="175" dy="28">public key), SNI </tspan>
-    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">example.com</tspan>
-    <tspan> in clear text so a shared front end picks</tspan>
-    <tspan x="175" dy="28">the right certificate, ALPN offering </tspan>
-    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">h2</tspan>
-    <tspan> and </tspan>
-    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">http/1.1</tspan>
-  </text>
-  
-  <line x1="120" y1="422" x2="980" y2="422" stroke="#207448" stroke-width="4" marker-end="url(#arrow-right)"/>
-  <circle cx="155" cy="422" r="22" fill="#207448"/>
-  <text x="155" y="430" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-
-  
-  <rect x="150" y="446" width="800" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
-  
-  <rect x="175" y="492" width="28" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-  <path d="M 182 492 L 182 482 C 182 475 196 475 196 482 L 196 492" fill="none" stroke="#207448" stroke-width="3"/>
-  <circle cx="189" cy="503" r="2.5" fill="#207448"/>
-  <text x="220" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="220" dy="0">both sides derive the session keys; ephemeral Diffie-Hellman gives</tspan>
-    <tspan x="220" dy="28">forward secrecy; TLS 1.3 costs one round trip before application</tspan>
-    <tspan x="220" dy="28">data, TLS 1.2 needs two; 0-RTT resumption sends data earlier but</tspan>
-    <tspan x="220" dy="28">has replay caveats</tspan>
+  <rect x="210" y="425" width="660" height="140" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="230" y="462">ServerHello: chosen parameters, its key share,</tspan>
+    <tspan x="230" y="498">certificate chain leaf then intermediate then root,</tspan>
+    <tspan x="230" y="534">CertificateVerify signature, Finished</tspan>
   </text>
 
   
-  
-  <line x1="980" y1="594" x2="120" y2="594" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)"/>
-  <circle cx="945" cy="594" r="22" fill="#207448"/>
-  <text x="945" y="602" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-  <rect x="150" y="612" width="800" height="108" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="175" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="175" dy="0" font-weight="bold" fill="#207448">ServerHello:</tspan>
-    <tspan> chosen parameters, its key share, certificate</tspan>
-    <tspan x="175" dy="28">chain leaf then intermediate then root, CertificateVerify</tspan>
-    <tspan x="175" dy="28">signature, Finished</tspan>
+  <rect x="60" y="585" width="960" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="622">both sides derive the session keys; ephemeral Diffie-Hellman</tspan>
+    <tspan x="85" y="658">gives forward secrecy; TLS 1.3 costs one round trip before</tspan>
+    <tspan x="85" y="694">application data, TLS 1.2 needs two; 0-RTT resumption</tspan>
+    <tspan x="85" y="730">sends data earlier but has replay caveats</tspan>
   </text>
 
   
-  <rect x="1040" y="140" width="520" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1050" y="135" width="510" height="610" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <circle cx="1080" cy="188" r="24" fill="#207448"/>
-  <text x="1080" y="196" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  
-  <path d="M 1520 162 L 1538 170 L 1538 190 C 1538 206 1520 216 1520 216 C 1520 216 1502 206 1502 190 L 1502 170 Z" fill="none" stroke="#207448" stroke-width="3"/>
-  <polyline points="1512,189 1518,195 1528,183" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1118" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
-    <tspan x="1118" dy="0">Step 3: the client</tspan>
-    <tspan x="1118" dy="36">verifies the chain</tspan>
+  <circle cx="1090" cy="180" r="22" fill="#207448"/>
+  <text x="1090" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1125" y="174">Step 3: the client</tspan>
+    <tspan x="1125" y="206">verifies the chain</tspan>
   </text>
 
   
-  <rect x="1060" y="246" width="480" height="102" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="1090" cy="297" r="15" fill="#e8f1ea"/>
-  <polyline points="1083,297 1088,302 1098,292" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1120" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1120" dy="0">chain against the trust store</tspan>
-    <tspan x="1120" dy="30">(</tspan>
-    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">/etc/ssl/certs</tspan>
-    <tspan>, a CA bundle)</tspan>
+  <rect x="1075" y="235" width="460" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1105" cy="282" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M1099 282 L1103 286 L1111 278" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" y="272">chain against the trust store</tspan>
+    <tspan x="1130" y="302">(/etc/ssl/certs, a CA bundle)</tspan>
   </text>
 
   
-  <rect x="1060" y="362" width="480" height="102" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="1090" cy="413" r="15" fill="#e8f1ea"/>
-  <polyline points="1083,413 1088,418 1098,408" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1120" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1120" dy="0">hostname matches a SAN,</tspan>
-    <tspan x="1120" dy="30">here </tspan>
-    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">example.com</tspan>
+  <rect x="1075" y="345" width="460" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1105" cy="387" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M1099 387 L1103 391 L1111 383" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" y="380">hostname matches a SAN,</tspan>
+    <tspan x="1130" y="410">here example.com</tspan>
   </text>
 
   
-  <rect x="1060" y="478" width="480" height="102" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="1090" cy="529" r="15" fill="#e8f1ea"/>
-  <polyline points="1083,529 1088,534 1098,524" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1120" y="538" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">validity period and key usage</text>
+  <rect x="1075" y="445" width="460" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1105" cy="482" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M1099 482 L1103 486 L1111 478" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1130" y="491" font-family="sans-serif" font-size="24" fill="#303a36">validity period and key usage</text>
 
   
-  <rect x="1060" y="594" width="480" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <circle cx="1090" cy="650" r="15" fill="#e8f1ea"/>
-  <polyline points="1083,650 1088,655 1098,645" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1120" y="640" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1120" dy="0">revocation through OCSP stapling</tspan>
-    <tspan x="1120" dy="30">or CRLs, often soft-fail</tspan>
+  <rect x="1075" y="535" width="460" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1105" cy="582" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M1099 582 L1103 586 L1111 578" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" y="572">revocation through OCSP</tspan>
+    <tspan x="1130" y="602">stapling or CRLs, often soft-fail</tspan>
   </text>
 
   
-  <rect x="40" y="742" width="1520" height="206" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <path d="M1495 155 L1525 168 L1525 188 C1525 204 1512 216 1495 222 C1478 216 1465 204 1465 188 L1465 168 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M1485 188 L1493 196 L1507 178" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
 
   
-  <rect x="60" y="756" width="1120" height="80" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  
-  <polygon points="86,784 94,776 106,776 114,784 114,796 106,804 94,804 86,796" fill="none" stroke="#db8129" stroke-width="2.5"/>
-  <line x1="100" y1="783" x2="100" y2="793" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="100" cy="798" r="1.5" fill="#db8129"/>
-  <text x="130" y="788" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="130" dy="0">certificate verify failed: unable to get local issuer certificate</tspan>
-    <tspan x="130" dy="28">(missing intermediate or CA bundle in a minimal container image)</tspan>
-  </text>
-
-  <rect x="1200" y="756" width="340" height="80" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  
-  <circle cx="1230" cy="796" r="14" fill="none" stroke="#db8129" stroke-width="2.5"/>
-  <polyline points="1230,788 1230,796 1238,796" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="1256" y="804" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">expired certificate</text>
+  <rect x="40" y="765" width="1520" height="340" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
 
   
   
-  <rect x="60" y="848" width="360" height="86" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  <circle cx="85" cy="891" r="5" fill="#db8129"/>
-  <text x="104" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="104" dy="0">hostname mismatch: an IP</tspan>
-    <tspan x="104" dy="28">address or the wrong SNI</tspan>
+  <rect x="65" y="785" width="715" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="816">certificate verify failed: unable to get</tspan>
+    <tspan x="85" y="844">local issuer certificate (missing intermediate</tspan>
+    <tspan x="85" y="872">or CA bundle in a minimal container image)</tspan>
   </text>
 
   
-  <rect x="440" y="848" width="360" height="86" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  <circle cx="465" cy="891" r="5" fill="#db8129"/>
-  <text x="484" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="484" dy="0">corporate proxy with</tspan>
-    <tspan x="484" dy="28">an unknown CA</tspan>
+  <rect x="805" y="785" width="730" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="830" y="842" font-family="sans-serif" font-size="24" fill="#303a36">corporate proxy with an unknown CA</text>
+
+  
+  
+  <rect x="65" y="890" width="715" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="85" y="947" font-family="sans-serif" font-size="24" fill="#303a36">expired certificate</text>
+
+  
+  <rect x="805" y="890" width="730" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="830" y="930">clock skew makes a valid certificate</tspan>
+    <tspan x="830" y="960">look not yet valid</tspan>
   </text>
 
   
-  <rect x="820" y="848" width="360" height="86" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  <circle cx="845" cy="891" r="5" fill="#db8129"/>
-  <text x="864" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="864" dy="0">clock skew makes a valid</tspan>
-    <tspan x="864" dy="28">certificate look not yet valid</tspan>
+  
+  <rect x="65" y="995" width="715" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="1036">hostname mismatch: an IP address</tspan>
+    <tspan x="85" y="1066">or the wrong SNI</tspan>
   </text>
 
   
-  <rect x="1200" y="848" width="340" height="86" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
-  <circle cx="1225" cy="891" r="5" fill="#db8129"/>
-  <text x="1244" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1244" dy="0">old servers: protocol</tspan>
-    <tspan x="1244" dy="28">and cipher mismatches</tspan>
-  </text>
+  <rect x="805" y="995" width="730" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="830" y="1052" font-family="sans-serif" font-size="24" fill="#303a36">old servers: protocol and cipher mismatches</text>
 
   
-  <rect x="40" y="964" width="1520" height="58" rx="10" fill="#24302b"/>
+  <rect x="40" y="1125" width="1520" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <polyline points="65,986 73,993 65,1000" fill="none" stroke="#7ec99e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="77" y1="1000" x2="87" y2="1000" stroke="#7ec99e" stroke-width="3" stroke-linecap="round"/>
-  <text x="104" y="1002" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#e8f1ea">openssl s_client -connect example.com:443 -servername example.com -tls1_3</text>
+  <path d="M65 1150 L75 1160 L65 1170" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="82" y1="1170" x2="94" y2="1170" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="115" y="1169" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">openssl s_client -connect example.com:443 -servername example.com -tls1_3</text>
 
   
-  <rect x="40" y="1036" width="1520" height="54" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <rect x="40" y="1215" width="1520" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   
-  <circle cx="72" cy="1063" r="13" fill="none" stroke="#207448" stroke-width="2.5"/>
-  <line x1="72" y1="1055" x2="72" y2="1063" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="72" y1="1063" x2="79" y2="1063" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="68" y1="1047" x2="76" y2="1047" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
-  <text x="800" y="1072" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">TLS cost = time_appconnect minus time_connect</text>
+  <circle cx="70" cy="1247" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+  <polyline points="70,137 70,147 78,147" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="105" y="1256" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">TLS cost = time_appconnect minus time_connect</text>
 
   
-  <rect x="40" y="1104" width="1520" height="66" rx="12" fill="#207448"/>
-  <circle cx="80" cy="1137" r="14" fill="none" stroke="#ffffff" stroke-width="2.5"/>
-  <line x1="80" y1="1130" x2="80" y2="1138" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="80" cy="1144" r="1.5" fill="#ffffff"/>
-  <text x="800" y="1145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">When TLS fails, test the exact hostname with openssl s_client before you change anything on the server</text>
+  <rect x="40" y="1300" width="1520" height="75" rx="8" fill="#207448"/>
+  
+  <circle cx="75" cy="1337" r="16" fill="#ffffff"/>
+  <path d="M68 1337 L73 1342 L82 1331" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="110" y="1346" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">When TLS fails, test the exact hostname with openssl s_client before you change anything on the server</text>
 </svg>

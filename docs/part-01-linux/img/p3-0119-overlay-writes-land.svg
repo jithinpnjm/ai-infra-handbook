@@ -1,293 +1,227 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>Where does a write land: the image layer or a volume</title>
-  <desc>A decision tree illustrating container write paths: volume bypass versus OverlayFS image layer copy-up, delete whiteouts, and operational consequences.</desc>
+  <desc>A decision tree and consequence map showing how container write operations land on volumes, upperdir, or trigger copy-up and whiteout behavior.</desc>
 
   <defs>
-    
-    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
     </marker>
-
-    
-    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
     </marker>
-
-    
-    <marker id="arrow-dark" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 2 3 L 14 8 L 2 13 z" fill="#303a36" />
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4a5d55" />
     </marker>
+    <filter id="card-shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143324" flood-opacity="0.08" />
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where does a write land: the image layer or a volume</text>
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Where does a write land: the image layer or a volume</text>
 
   
-  
-  <path d="M 800 160 L 800 195" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 340 265 L 255 265 L 255 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 800 335 L 800 350 L 1025 350 L 1025 365" fill="none" stroke="#303a36" stroke-width="3.5" marker-end="url(#arrow-dark)" />
-
-  
-  <path d="M 615 420 L 585 420 L 585 515" fill="none" stroke="#303a36" stroke-width="3.5" marker-end="url(#arrow-dark)" />
-
-  
-  <path d="M 1435 420 L 1465 420 L 1465 515" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
-
-  
-  <path d="M 1025 480 L 1025 650 L 750 650 L 750 670" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1302 850 L 1302 870" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1302 925 L 1302 945" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1302 1015 L 1302 1030" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-
-  
-  
-  <rect x="270" y="235" width="60" height="34" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="300" y="260" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Yes</text>
-
-  
-  <rect x="885" y="332" width="55" height="34" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="1.5" />
-  <text x="912" y="357" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">No</text>
-
-  
-  <rect x="555" y="445" width="55" height="34" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="1.5" />
-  <text x="582" y="470" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">No</text>
-
-  
-  <rect x="1435" y="445" width="60" height="34" rx="6" fill="#fff8f0" stroke="#db8129" stroke-width="1.5" />
-  <text x="1465" y="470" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">Yes</text>
-
-  
-  <g id="node-start">
-    <rect x="460" y="85" width="680" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1120, 130)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="440" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(485, 95)" stroke="#207448" stroke-width="3" fill="none">
-      <rect x="0" y="0" width="52" height="48" rx="6" />
-      <line x1="0" y1="14" x2="52" y2="14" />
-      <circle cx="8" cy="7" r="2.5" fill="#207448" />
-      <circle cx="16" cy="7" r="2.5" fill="#207448" />
-      <path d="M 10 28 L 18 34 L 10 40" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="22" y1="40" x2="34" y2="40" stroke-linecap="round" />
+    <g transform="translate(30, 30)" stroke="#207448" stroke-width="3.5" fill="none">
+      <ellipse cx="28" cy="14" rx="26" ry="10" />
+      <path d="M 2 14 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24" />
+      <path d="M 2 26 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10" />
     </g>
-    <text x="560" y="134" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">A container process writes a file</text>
-  </g>
-
-  
-  <g id="node-diamond-volume">
-    <polygon points="800,195 1260,265 800,335 340,265" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
-      <tspan x="800" y="248" font-size="28" font-weight="bold">Is the path on a volume</tspan>
-      <tspan x="800" y="280" font-size="24">(bind mount, </tspan>
-      <tspan font-family="ui-monospace, monospace" font-size="24">emptyDir</tspan>
-      <tspan font-size="24">, </tspan>
-      <tspan font-family="ui-monospace, monospace" font-size="24">hostPath</tspan>
-      <tspan font-size="24"> or </tspan>
-      <tspan font-family="ui-monospace, monospace" font-size="24">PVC</tspan>
-      <tspan font-size="24">)?</tspan>
+    <text x="100" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Recommended Strategy</text>
+    <line x1="30" y1="105" x2="410" y2="105" stroke="#207448" stroke-opacity="0.3" stroke-width="2" />
+    
+    <text x="35" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="35" dy="0">Put in volumes: mutable and large data,</tspan>
+      <tspan x="35" dy="42">package caches, model weights and</tspan>
+      <tspan x="35" dy="42">datasets (mount them, do not copy</tspan>
+      <tspan x="35" dy="42">them into images)</tspan>
     </text>
   </g>
 
   
-  
-  <g id="node-volumes-bypass">
-    <rect x="40" y="390" width="430" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(360, 115)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="600" height="95" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(65, 412)" stroke="#207448" stroke-width="3.5" fill="none">
-      <path d="M 0 12 C 0 5, 44 5, 44 12 C 44 19, 0 19, 0 12 Z" />
-      <path d="M 0 12 L 0 38 C 0 45, 44 45, 44 38 L 44 12" />
-      <path d="M 0 25 C 0 32, 44 32, 44 25" />
-      
-      <path d="M 54 8 L 54 44" stroke="#207448" stroke-width="3" />
-      <path d="M 48 38 L 54 44 L 60 38" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="54" height="50" rx="6" />
+      <line x1="0" y1="16" x2="54" y2="16" />
+      <circle cx="12" cy="8" r="3" fill="#207448" />
+      <circle cx="22" cy="8" r="3" fill="#207448" />
+      <line x1="14" y1="32" x2="38" y2="32" />
     </g>
-    
-    <text x="145" y="438" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
-      <tspan x="145" dy="0">Volumes bypass</tspan>
-      <tspan x="145" dy="34">overlay completely:</tspan>
-    </text>
-    <text x="65" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="65" dy="0">no copy-up, data stays</tspan>
-      <tspan x="65" dy="32">outside the image storage</tspan>
+    <text x="100" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">A container process writes a file</text>
+  </g>
+
+  
+  <path d="M 660 210 L 660 260" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(330, 270)" filter="url(#card-shadow)">
+    <polygon points="330,0 660,85 330,170 0,85" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    <text x="330" y="74" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="330" dy="0">Is the path on a volume</tspan>
+      <tspan x="330" dy="34">(bind mount, emptyDir, hostPath or PVC)?</tspan>
     </text>
   </g>
 
   
-  <g id="node-side-list">
-    <rect x="40" y="630" width="430" height="455" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" />
-    <rect x="40" y="630" width="430" height="60" rx="12" fill="#e8f1ea" />
-    
-    <g transform="translate(60, 638)" stroke="#207448" stroke-width="3" fill="none">
-      <path d="M 2 10 L 16 10 L 22 16 L 46 16 L 46 38 L 2 38 Z" />
-      <path d="M 14 26 L 34 26" />
-      <path d="M 24 20 L 24 32" />
+  <path d="M 330 355 L 175 355 L 175 490" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="220" y="336" width="65" height="38" rx="8" fill="#207448" />
+  <text x="252" y="363" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+
+  
+  <g transform="translate(40, 500)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="360" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(24, 24)" stroke="#207448" stroke-width="3.5" fill="none">
+      <path d="M 10 40 L 26 56 L 56 16" />
+      <rect x="2" y="2" width="60" height="60" rx="8" stroke-dasharray="6 4" />
     </g>
-    
-    <text x="120" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Put in volumes:</text>
-    <text x="65" y="730" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="65" dy="0">mutable and large data,</tspan>
-      <tspan x="65" dy="44">package caches,</tspan>
-      <tspan x="65" dy="44">model weights and datasets</tspan>
-      <tspan x="65" dy="55" fill="#4a5852">(mount them, do not copy</tspan>
-      <tspan x="65" dy="34" fill="#4a5852">them into images)</tspan>
+    <text x="96" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Direct Mount</text>
+    <text x="24" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Volumes bypass overlay</tspan>
+      <tspan x="24" dy="36">completely: no copy-up,</tspan>
+      <tspan x="24" dy="36">data stays outside the</tspan>
+      <tspan x="24" dy="36">image storage</tspan>
     </text>
   </g>
 
   
-  <g id="node-diamond-lower">
-    <polygon points="1025,360 1435,420 1025,480 615,420" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
-      <tspan x="1025" y="412" font-size="28" font-weight="bold">Does the file already exist</tspan>
-      <tspan x="1025" y="448" font-size="28" font-weight="bold">in a lower image layer?</tspan>
+  <path d="M 660 440 L 660 490" fill="none" stroke="#4a5d55" stroke-width="3" marker-end="url(#arrow-slate)" />
+  <rect x="675" y="445" width="60" height="38" rx="8" fill="#4a5d55" />
+  <text x="705" y="472" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">No</text>
+
+  
+  <g transform="translate(420, 500)" filter="url(#card-shadow)">
+    <polygon points="240,0 480,85 240,170 0,85" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    <text x="240" y="74" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">Does the file already exist</tspan>
+      <tspan x="240" dy="34">in a lower image layer?</tspan>
     </text>
   </g>
 
   
+  <path d="M 900 585 L 1050 585" fill="none" stroke="#4a5d55" stroke-width="3" marker-end="url(#arrow-slate)" />
+  <rect x="945" y="565" width="60" height="38" rx="8" fill="#4a5d55" />
+  <text x="975" y="592" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">No</text>
+
   
-  <g id="node-new-file">
-    <rect x="495" y="515" width="510" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
-    
-    <g transform="translate(520, 542)" stroke="#207448" stroke-width="3.5" fill="none">
-      <path d="M 4 2 L 28 2 L 42 16 L 42 50 L 4 50 Z" />
-      <path d="M 28 2 L 28 16 L 42 16" />
-      <line x1="16" y1="32" x2="30" y2="32" stroke-linecap="round" />
-      <line x1="23" y1="25" x2="23" y2="39" stroke-linecap="round" />
+  <g transform="translate(1060, 520)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="500" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(24, 38)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 8 20 L 32 4 L 56 20 L 56 50 L 8 50 Z" />
+      <line x1="32" y1="26" x2="32" y2="44" />
+      <line x1="22" y1="36" x2="42" y2="36" />
     </g>
-    
-    <text x="590" y="556" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
-      <tspan x="590" dy="0" font-size="28" font-weight="bold">New file lands in </tspan>
-      <tspan font-family="ui-monospace, monospace" font-size="28" font-weight="bold">upperdir</tspan>
-      <tspan x="590" dy="36" font-size="24" fill="#606c66">(the read-write layer)</tspan>
+    <text x="95" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="95" dy="0">New file lands in upperdir</tspan>
+      <tspan x="95" dy="38">(the read-write layer)</tspan>
     </text>
   </g>
 
   
-  <g id="node-delete-whiteout">
-    <rect x="495" y="670" width="510" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <path d="M 660 670 L 660 740" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <rect x="675" y="682" width="65" height="38" rx="8" fill="#db8129" />
+  <text x="707" y="709" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+
+  
+  <g transform="translate(100, 750)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="760" height="180" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
     
-    <g transform="translate(520, 695)" stroke="#207448" stroke-width="3.5" fill="none">
-      <path d="M 6 12 L 42 12" />
-      <path d="M 12 12 L 14 44 L 34 44 L 36 12" />
-      <path d="M 18 12 L 18 6 L 30 6 L 30 12" />
-      
-      <circle cx="24" cy="28" r="9" stroke="#207448" stroke-width="2.5" />
-      <line x1="18" y1="22" x2="30" y2="34" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(24, 24)" stroke="#db8129" stroke-width="3" fill="none">
+      <rect x="4" y="14" width="34" height="42" rx="4" />
+      <path d="M 18 14 V 6 c 0 -2 2 -4 4 -4 h 26 c 2 0 4 2 4 4 v 32 c 0 2 -2 4 -4 4 h -6" />
+      <path d="M 14 34 h 14" />
+      <path d="M 21 27 v 14" />
     </g>
-    
-    <text x="590" y="730" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">
-      rm <tspan font-family="system-ui, -apple-system, sans-serif">of a lower file creates</tspan>
-    </text>
-    <text x="520" y="775" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="520" dy="0">a 0/0 character device whiteout in</tspan>
-      <tspan x="520" dy="34"><tspan font-family="ui-monospace, monospace">upperdir</tspan> (or an opaque-directory</tspan>
-      <tspan x="520" dy="34">xattr for removed directories):</tspan>
-      <tspan x="520" dy="34">the lower data stays on disk,</tspan>
-      <tspan x="520" dy="34">so deleting in a later <tspan font-family="ui-monospace, monospace">Dockerfile</tspan></tspan>
-      <tspan x="520" dy="34">layer does not shrink the image</tspan>
-      <tspan x="520" dy="34">and a baked-in secret can still</tspan>
-      <tspan x="520" dy="34">be extracted</tspan>
+    <text x="85" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">Write / Append Operation</text>
+    <text x="26" y="105" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="26" dy="0">Copy-up: the whole file is copied into upperdir before</tspan>
+      <tspan x="26" dy="36">the write lands (metadata-only changes copy only</tspan>
+      <tspan x="26" dy="36">metadata on modern kernels with metacopy)</tspan>
     </text>
   </g>
 
   
-  
-  <g id="node-copy-up">
-    <rect x="1045" y="515" width="515" height="220" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+  <g transform="translate(900, 750)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="660" height="235" rx="14" fill="#ffffff" stroke="#4a5d55" stroke-width="3" />
     
-    <g transform="translate(1070, 532)" stroke="#db8129" stroke-width="3.5" fill="none">
-      <rect x="2" y="14" width="28" height="34" rx="4" />
-      <rect x="16" y="2" width="28" height="34" rx="4" stroke-dasharray="4 2" />
-      <path d="M 12 30 L 28 14" stroke="#db8129" stroke-width="3" />
-      <path d="M 20 14 L 28 14 L 28 22" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <g transform="translate(24, 24)" stroke="#4a5d55" stroke-width="3" fill="none">
+      <path d="M 8 16 h 40" />
+      <path d="M 20 16 V 8 h 16 v 8" />
+      <path d="M 12 16 l 4 38 h 24 l 4 -38" />
+      <line x1="23" y1="26" x2="23" y2="44" />
+      <line x1="33" y1="26" x2="33" y2="44" />
     </g>
-    
-    <text x="1140" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">Copy-up:</text>
-    <text x="1070" y="602" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1070" dy="0">the whole file is copied into <tspan font-family="ui-monospace, monospace">upperdir</tspan></tspan>
-      <tspan x="1070" dy="32">before the write lands (metadata-only</tspan>
-      <tspan x="1070" dy="32">changes copy only metadata on</tspan>
-      <tspan x="1070" dy="32">modern kernels with <tspan font-family="ui-monospace, monospace">metacopy</tspan>)</tspan>
+    <text x="85" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#4a5d55">Deletion Operation</text>
+    <text x="24" y="105" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">rm of a lower file creates a 0/0 character device whiteout</tspan>
+      <tspan x="24" dy="36">in upperdir (or an opaque-directory xattr for removed</tspan>
+      <tspan x="24" dy="36">directories): the lower data stays on disk, so deleting in a</tspan>
+      <tspan x="24" dy="36">later Dockerfile layer does not shrink the image and a</tspan>
+      <tspan x="24" dy="36">baked-in secret can still be extracted</tspan>
     </text>
   </g>
 
   
-  <g id="node-chain-1">
-    <rect x="1045" y="755" width="515" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 750 635 L 1230 635 L 1230 740" fill="none" stroke="#4a5d55" stroke-width="3" marker-end="url(#arrow-slate)" />
+  <rect x="940" y="616" width="165" height="38" rx="8" fill="#4a5d55" />
+  <text x="1022" y="643" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">File deletion (rm)</text>
+
+  
+  <path d="M 480 930 L 480 970" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <g transform="translate(100, 980)">
     
-    <g transform="translate(1065, 775)" stroke="#207448" stroke-width="2.5" fill="none">
-      <rect x="2" y="2" width="30" height="42" rx="4" />
-      <path d="M 22 2 L 32 12 L 32 44" />
-      <path d="M 38 18 L 46 14" />
-      <path d="M 38 28 L 48 28" />
-      <path d="M 38 38 L 46 42" />
+    <g filter="url(#card-shadow)">
+      <rect x="0" y="0" width="760" height="74" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="37" r="20" fill="#db8129" />
+      <text x="36" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <text x="74" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a job appending to a multi-GB file baked into an image triggers a huge copy</text>
     </g>
-    <text x="1125" y="784" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1125" dy="0">a job appending to a</tspan>
-      <tspan x="1125" dy="28">multi-GB file baked into an image</tspan>
-      <tspan x="1125" dy="28">triggers a huge copy</tspan>
-    </text>
+
+    
+    <path d="M 380 74 L 380 94" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <g transform="translate(0, 100)" filter="url(#card-shadow)">
+      <rect x="0" y="0" width="760" height="74" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="37" r="20" fill="#db8129" />
+      <text x="36" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <text x="74" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">doubles disk use</text>
+    </g>
+
+    
+    <path d="M 380 174 L 380 194" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <g transform="translate(0, 200)" filter="url(#card-shadow)">
+      <rect x="0" y="0" width="760" height="74" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="37" r="20" fill="#db8129" />
+      <text x="36" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <text x="74" y="45" font-family="monospace" font-size="24" fill="#303a36">fills /var/lib/containerd or /var/lib/docker</text>
+    </g>
+
+    
+    <path d="M 380 274 L 380 294" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <g transform="translate(0, 300)" filter="url(#card-shadow)">
+      <rect x="0" y="0" width="760" height="74" rx="10" fill="#fbeee4" stroke="#db8129" stroke-width="2.5" />
+      <circle cx="36" cy="37" r="20" fill="#db8129" />
+      <text x="36" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+      <text x="74" y="45" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">evictions and NodeNotReady</text>
+    </g>
   </g>
 
   
-  <g id="node-chain-2">
-    <rect x="1045" y="870" width="515" height="55" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(1065, 878)" stroke="#207448" stroke-width="2.5" fill="none">
-      <path d="M 4 20 L 36 20" />
-      <path d="M 20 6 L 20 34" />
-      <circle cx="10" cy="12" r="3" />
-      <circle cx="30" cy="28" r="3" />
-    </g>
-    <text x="1125" y="906" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">doubles disk use</text>
-  </g>
-
-  
-  <g id="node-chain-3">
-    <rect x="1045" y="945" width="515" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(1065, 955)" stroke="#207448" stroke-width="2.5" fill="none">
-      <rect x="2" y="4" width="40" height="14" rx="3" />
-      <rect x="2" y="24" width="40" height="14" rx="3" />
-      <line x1="8" y1="11" x2="14" y2="11" />
-      <line x1="8" y1="31" x2="14" y2="31" />
-      <circle cx="34" cy="11" r="2" fill="#207448" />
-      <circle cx="34" cy="31" r="2" fill="#207448" />
-    </g>
-    <text x="1125" y="974" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1125" dy="0">fills <tspan font-family="ui-monospace, monospace">/var/lib/containerd</tspan></tspan>
-      <tspan x="1125" dy="28">or <tspan font-family="ui-monospace, monospace">/var/lib/docker</tspan></tspan>
-    </text>
-  </g>
-
-  
-  <g id="node-chain-4">
-    <rect x="1045" y="1030" width="515" height="55" rx="10" fill="#fbebe8" stroke="#c0392b" stroke-width="2" />
-    
-    <g transform="translate(1065, 1038)" stroke="#c0392b" stroke-width="2.5" fill="none">
-      <path d="M 20 4 L 36 10 L 36 24 C 36 34 20 40 20 40 C 20 40 4 34 4 24 L 4 10 Z" />
-      <line x1="20" y1="15" x2="20" y2="24" stroke-linecap="round" />
-      <circle cx="20" cy="29" r="1.5" fill="#c0392b" />
-    </g>
-    <text x="1125" y="1066" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#96281b">
-      evictions and <tspan font-family="ui-monospace, monospace">NodeNotReady</tspan>
-    </text>
-  </g>
-
-  
-  <g id="node-bottom-bar">
-    <rect x="40" y="1120" width="1520" height="55" rx="10" fill="#207448" />
-    <text x="800" y="1156" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Before you size a node's disk, check whether your writes land in a volume or in the image layer</text>
+  <g transform="translate(40, 1400)">
+    <rect x="0" y="0" width="1520" height="70" rx="12" fill="#207448" />
+    <text x="760" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Before you size a node's disk, check whether your writes land in a volume or in the image layer</text>
   </g>
 </svg>

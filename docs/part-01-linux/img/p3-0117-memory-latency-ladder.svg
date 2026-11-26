@@ -1,176 +1,175 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1330" width="1600" height="1330">
   <title>How far away is the data: cache, DRAM, GPU memory</title>
-  <desc>Visual hierarchy and latency comparison from L1 cache to remote NUMA memory, GPU HBM, and cache line transfers.</desc>
+  <desc>Infographic showing the memory latency hierarchy from CPU caches down to remote NUMA memory, GPU memory pools, and ECC reliability.</desc>
+
+  <rect width="1600" height="1330" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1000" fill="#f5f8f5"/>
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">How far away is the data: cache, DRAM, GPU memory</text>
 
   
-  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">How far away is the data: cache, DRAM, GPU memory</text>
-
-  
-  <rect x="40" y="130" width="250" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(137, 155)">
-    <rect x="0" y="0" width="56" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    <line x1="14" y1="0" x2="14" y2="50" stroke="#207448" stroke-width="2"/>
-    <line x1="28" y1="0" x2="28" y2="50" stroke="#207448" stroke-width="2"/>
-    <line x1="42" y1="0" x2="42" y2="50" stroke="#207448" stroke-width="2"/>
-    <line x1="0" y1="25" x2="56" y2="25" stroke="#207448" stroke-width="2"/>
+  <g id="side-strip">
+    <rect x="70" y="140" width="200" height="305" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(142, 160)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="56" height="50" rx="6"/>
+      <line x1="0" y1="17" x2="56" y2="17"/>
+      <line x1="0" y1="34" x2="56" y2="34"/>
+      <line x1="28" y1="0" x2="28" y2="50"/>
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="170" y="260">The hardware</tspan>
+      <tspan x="170" y="300">moves data in</tspan>
+      <tspan x="170" y="340">cache lines of</tspan>
+      <tspan x="170" y="380" font-weight="bold" fill="#207448">64 bytes</tspan>
+    </text>
   </g>
-  <text x="165" y="245" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
-    <tspan x="165" dy="0">The hardware</tspan>
-    <tspan x="165" dy="34">moves data in</tspan>
-    <tspan x="165" dy="34">cache lines of</tspan>
-    <tspan x="165" dy="34">64 bytes</tspan>
-  </text>
 
   
-
-  
-  <rect x="310" y="130" width="650" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(335, 152)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <rect x="14" y="14" width="28" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <circle cx="28" cy="28" r="5" fill="#207448"/>
+  <g id="rung-l1">
+    <rect x="290" y="140" width="560" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(310, 155)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <line x1="18" y1="2" x2="18" y2="10"/>
+      <line x1="28" y1="2" x2="28" y2="10"/>
+      <line x1="38" y1="2" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="54"/>
+      <line x1="28" y1="46" x2="28" y2="54"/>
+      <line x1="38" y1="46" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="10" y2="18"/>
+      <line x1="2" y1="28" x2="10" y2="28"/>
+      <line x1="2" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="54" y2="18"/>
+      <line x1="46" y1="28" x2="54" y2="28"/>
+      <line x1="46" y1="38" x2="54" y2="38"/>
+    </g>
+    <text x="390" y="192" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">L1 cache, per core: about 1 ns</text>
   </g>
-  
-  <rect x="745" y="154" width="195" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="415" y="188" font-family="sans-serif">
-    <tspan font-size="28" font-weight="bold" fill="#303a36">L1 cache, per core: </tspan>
-    <tspan x="762" font-size="26" font-weight="bold" fill="#207448">about 1 ns</tspan>
-  </text>
 
   
-  <rect x="310" y="250" width="650" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(335, 272)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <rect x="10" y="10" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <rect x="18" y="18" width="20" height="20" fill="#207448"/>
+  <g id="rung-l2">
+    <rect x="290" y="250" width="560" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(310, 265)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <circle cx="28" cy="28" r="8"/>
+    </g>
+    <text x="390" y="302" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">L2 cache: a few ns</text>
   </g>
-  
-  <rect x="650" y="274" width="180" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="415" y="308" font-family="sans-serif">
-    <tspan font-size="28" font-weight="bold" fill="#303a36">L2 cache: </tspan>
-    <tspan x="668" font-size="26" font-weight="bold" fill="#207448">a few ns</tspan>
-  </text>
 
   
-  <rect x="310" y="370" width="650" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(335, 392)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <circle cx="18" cy="18" r="6" fill="#207448"/>
-    <circle cx="38" cy="18" r="6" fill="#207448"/>
-    <circle cx="18" cy="38" r="6" fill="#207448"/>
-    <circle cx="38" cy="38" r="6" fill="#207448"/>
-    <line x1="18" y1="18" x2="38" y2="38" stroke="#207448" stroke-width="2"/>
-    <line x1="38" y1="18" x2="18" y2="38" stroke="#207448" stroke-width="2"/>
+  <g id="rung-l3">
+    <rect x="290" y="360" width="560" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(310, 375)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="44" height="40" rx="4"/>
+      <line x1="6" y1="28" x2="50" y2="28"/>
+      <line x1="28" y1="8" x2="28" y2="48"/>
+    </g>
+    <text x="390" y="412" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">L3 cache, shared: ten-plus ns</text>
   </g>
-  
-  <rect x="715" y="394" width="220" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="415" y="428" font-family="sans-serif">
-    <tspan font-size="28" font-weight="bold" fill="#303a36">L3 cache, shared: </tspan>
-    <tspan x="735" font-size="26" font-weight="bold" fill="#207448">ten-plus ns</tspan>
-  </text>
 
   
-  <rect x="40" y="490" width="510" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(65, 510)">
-    <rect x="0" y="8" width="56" height="34" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <line x1="8" y1="42" x2="8" y2="48" stroke="#207448" stroke-width="3"/>
-    <line x1="16" y1="42" x2="16" y2="48" stroke="#207448" stroke-width="3"/>
-    <line x1="24" y1="42" x2="24" y2="48" stroke="#207448" stroke-width="3"/>
-    <line x1="32" y1="42" x2="32" y2="48" stroke="#207448" stroke-width="3"/>
-    <line x1="40" y1="42" x2="40" y2="48" stroke="#207448" stroke-width="3"/>
-    <line x1="48" y1="42" x2="48" y2="48" stroke="#207448" stroke-width="3"/>
-    <rect x="8" y="14" width="10" height="18" fill="#207448"/>
-    <rect x="23" y="14" width="10" height="18" fill="#207448"/>
-    <rect x="38" y="14" width="10" height="18" fill="#207448"/>
+  <g id="rung-dram">
+    <rect x="70" y="470" width="780" height="390" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(100, 492)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="2" y="10" width="52" height="32" rx="4"/>
+      <line x1="12" y1="42" x2="12" y2="50"/>
+      <line x1="20" y1="42" x2="20" y2="50"/>
+      <line x1="28" y1="42" x2="28" y2="50"/>
+      <line x1="36" y1="42" x2="36" y2="50"/>
+      <line x1="44" y1="42" x2="44" y2="50"/>
+      <circle cx="16" cy="24" r="3" fill="#207448"/>
+      <circle cx="28" cy="24" r="3" fill="#207448"/>
+      <circle cx="40" cy="24" r="3" fill="#207448"/>
+    </g>
+    
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="175" y="515" font-weight="bold">DRAM (DDR4 and DDR5): about 80 to 100 ns,</tspan>
+      <tspan x="175" y="550">including CAS latency of tens of ns plus the</tspan>
+      <tspan x="175" y="585">memory controller and the interconnect</tspan>
+    </text>
+
+    
+    <rect x="95" y="620" width="730" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+    
+    <g transform="translate(120, 645)" stroke="#207448" stroke-width="3" fill="none">
+      <line x1="4" y1="14" x2="48" y2="14"/>
+      <line x1="4" y1="28" x2="48" y2="28"/>
+      <circle cx="12" cy="14" r="4" fill="#207448"/>
+      <circle cx="40" cy="14" r="4" fill="#207448"/>
+      <circle cx="26" cy="28" r="4" fill="#207448"/>
+      <polyline points="38,22 48,28 38,34"/>
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="190" y="675" font-weight="bold" fill="#207448">DDR5-4800 delivers 38.4 GB/s per channel;</tspan>
+      <tspan x="190" y="720">servers have 8 to 12 channels per socket,</tspan>
+      <tspan x="190" y="765">hundreds of GB/s in total</tspan>
+    </text>
   </g>
-  <text x="135" y="540" font-family="sans-serif">
-    <tspan font-size="26" font-weight="bold" fill="#303a36">DRAM (DDR4 and DDR5): </tspan>
-    <tspan x="65" dy="40" font-size="24" font-weight="bold" fill="#207448">about 80 to 100 ns, </tspan>
-    <tspan font-size="24" fill="#303a36">including CAS latency </tspan>
-    <tspan x="65" dy="34" font-size="24" fill="#303a36">of tens of ns plus the memory controller </tspan>
-    <tspan x="65" dy="34" font-size="24" fill="#303a36">and the interconnect</tspan>
-  </text>
 
   
-  <rect x="570" y="490" width="390" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
-  
-  <g transform="translate(595, 510)">
-    <circle cx="28" cy="24" r="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    <path d="M 18 24 L 28 14 L 38 24" fill="none" stroke="#207448" stroke-width="3"/>
-    <line x1="28" y1="14" x2="28" y2="34" stroke="#207448" stroke-width="3"/>
+  <g id="rung-numa">
+    <rect x="70" y="885" width="780" height="275" rx="14" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(100, 915)" stroke="#db8129" stroke-width="3" fill="none">
+      <circle cx="16" cy="20" r="12"/>
+      <circle cx="44" cy="40" r="12"/>
+      <line x1="24" y1="26" x2="36" y2="34"/>
+      <line x1="16" y1="8" x2="16" y2="2"/>
+      <line x1="44" y1="52" x2="44" y2="58"/>
+    </g>
+    <text font-family="sans-serif" fill="#303a36">
+      <tspan x="175" y="945" font-size="30" font-weight="bold" fill="#db8129">Remote NUMA memory:</tspan>
+      <tspan x="175" y="1000" font-size="24">commonly 1.3x to 2x the local latency,</tspan>
+      <tspan x="175" y="1045" font-size="24">with reduced bandwidth</tspan>
+    </text>
   </g>
-  <text x="665" y="538" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan font-weight="bold" fill="#207448">DDR5-4800 delivers</tspan>
-    <tspan x="595" dy="34" font-weight="bold" fill="#207448">38.4 GB/s per channel; </tspan>
-    <tspan font-size="24" fill="#303a36">servers have</tspan>
-    <tspan x="595" dy="34">8 to 12 channels per socket,</tspan>
-    <tspan x="595" dy="34">hundreds of GB/s in total</tspan>
-  </text>
 
   
-  <rect x="40" y="730" width="920" height="130" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="4"/>
-  
-  <g transform="translate(65, 765)">
-    <rect x="0" y="5" width="22" height="46" rx="4" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-    <rect x="42" y="5" width="22" height="46" rx="4" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
-    <line x1="22" y1="20" x2="42" y2="20" stroke="#db8129" stroke-width="3"/>
-    <line x1="22" y1="36" x2="42" y2="36" stroke="#db8129" stroke-width="3"/>
+  <g id="separate-pools">
+    <rect x="880" y="140" width="650" height="520" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(915, 170)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="8" width="22" height="40" rx="4"/>
+      <rect x="34" y="8" width="22" height="40" rx="4"/>
+      <path d="M 26 24 L 34 24"/>
+      <path d="M 26 32 L 34 32"/>
+    </g>
+    <text x="985" y="205" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Separate pools</text>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915" y="275">GPU HBM sits next to the GPU and is</tspan>
+      <tspan x="915" y="318">much faster; Grace LPDDR5X with</tspan>
+      <tspan x="915" y="361">NVLink-C2C on GH200 and GB200 gives</tspan>
+      <tspan x="915" y="404">a coherent CPU-GPU address space;</tspan>
+      <tspan x="915" y="447">Linux still treats CPU DRAM and GPU HBM</tspan>
+      <tspan x="915" y="490">as separate pools and exposes Grace</tspan>
+      <tspan x="915" y="533">memory as NUMA nodes</tspan>
+    </text>
   </g>
-  <text x="155" y="785" font-family="sans-serif">
-    <tspan font-size="28" font-weight="bold" fill="#db8129">Remote NUMA memory: </tspan>
-    <tspan font-size="24" font-weight="bold" fill="#303a36">commonly 1.3x to 2x the </tspan>
-    <tspan x="155" dy="36" font-size="24" font-weight="bold" fill="#303a36">local latency, with reduced bandwidth</tspan>
-  </text>
 
   
-  <rect x="1000" y="130" width="560" height="420" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(1030, 155)">
-    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    <rect x="10" y="10" width="36" height="36" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="28" cy="28" r="8" fill="#207448"/>
-    <rect x="2" y="14" width="6" height="8" fill="#207448"/>
-    <rect x="2" y="34" width="6" height="8" fill="#207448"/>
-    <rect x="48" y="14" width="6" height="8" fill="#207448"/>
-    <rect x="48" y="34" width="6" height="8" fill="#207448"/>
+  <g id="ecc-note">
+    <rect x="880" y="685" width="650" height="475" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(915, 715)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 28 6 L 48 14 L 48 30 C 48 42 28 52 28 52 C 28 52 8 42 8 30 L 8 14 Z"/>
+      <polyline points="20,28 26,34 38,20"/>
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="985" y="750" font-weight="bold" fill="#207448">ECC detects and corrects single-bit</tspan>
+      <tspan x="915" y="805">errors; correctable errors are logged</tspan>
+      <tspan x="915" y="855">by EDAC and are a leading indicator of</tspan>
+      <tspan x="915" y="905">failure; uncorrectable errors crash</tspan>
+      <tspan x="915" y="955">processes or the machine</tspan>
+    </text>
   </g>
-  <text x="1105" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Separate pools</text>
-  <line x1="1030" y1="225" x2="1530" y2="225" stroke="#207448" stroke-width="2"/>
-
-  <text x="1030" y="265" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1030" dy="0">GPU HBM sits next to the GPU and is</tspan>
-    <tspan x="1030" dy="34">much faster; Grace LPDDR5X with</tspan>
-    <tspan x="1030" dy="34">NVLink-C2C on GH200 and GB200</tspan>
-    <tspan x="1030" dy="34">gives a coherent CPU-GPU address</tspan>
-    <tspan x="1030" dy="34">space; Linux still treats CPU DRAM</tspan>
-    <tspan x="1030" dy="34">and GPU HBM as separate pools and</tspan>
-    <tspan x="1030" dy="34">exposes Grace memory as NUMA nodes</tspan>
-  </text>
 
   
-  <rect x="1000" y="580" width="560" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-  
-  <g transform="translate(1030, 605)">
-    <path d="M 28 6 L 50 14 L 50 32 C 50 44 28 52 28 52 C 28 52 6 44 6 32 L 6 14 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <path d="M 18 28 L 25 35 L 38 22" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <g id="bottom-bar">
+    <rect x="70" y="1185" width="1460" height="85" rx="12" fill="#207448"/>
+    <text x="800" y="1238" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Where a page lives decides how fast every access is</text>
   </g>
-  <text x="1030" y="690" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1030" dy="0">ECC detects and corrects single-bit</tspan>
-    <tspan x="1030" dy="34">errors; correctable errors are logged</tspan>
-    <tspan x="1030" dy="34">by EDAC and are a leading indicator</tspan>
-    <tspan x="1030" dy="34">of failure; uncorrectable errors</tspan>
-    <tspan x="1030" dy="34">crash processes or the machine</tspan>
-  </text>
-
-  
-  <rect x="40" y="890" width="1520" height="76" rx="12" fill="#207448"/>
-  <text x="800" y="938" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Where a page lives decides how fast every access is</text>
 </svg>

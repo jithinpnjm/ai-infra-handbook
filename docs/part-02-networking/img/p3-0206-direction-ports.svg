@@ -1,143 +1,195 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
   <title>Who started the connection: reading ephemeral and well-known ports in netstat</title>
-  <desc>Visual infographic explaining how to identify connection initiator using ephemeral and well-known ports in netstat, the 4-tuple, port exhaustion, and listener bindings.</desc>
+  <desc>Visual guide to identifying client and server roles by inspecting ephemeral and well-known ports in netstat output</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1320" fill="#f5f8f5"/>
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
-    <tspan x="800" dy="0">Who started the connection:</tspan>
-    <tspan x="800" dy="54">reading ephemeral and well-known ports in netstat</tspan>
-  </text>
+  <text x="50" y="65" font-family="sans-serif" font-size="38" font-weight="bold" fill="#207448">Who started the connection: reading ephemeral and well-known ports in netstat</text>
 
   
-  
-  <rect x="75" y="155" width="875" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <rect x="75" y="155" width="875" height="30" rx="10" fill="#e8f1ea"/>
-  <circle cx="95" cy="170" r="5" fill="#207448"/>
-  <circle cx="112" cy="170" r="5" fill="#207448" opacity="0.6"/>
-  <circle cx="129" cy="170" r="5" fill="#207448" opacity="0.3"/>
+  <g id="netstat-panel">
+    
+    <rect x="50" y="110" width="940" height="205" rx="12" fill="#1b2820" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="80" cy="135" r="6" fill="#e76f51"/>
+    <circle cx="102" cy="135" r="6" fill="#e9c46a"/>
+    <circle cx="124" cy="135" r="6" fill="#2a9d8f"/>
+    <line x1="50" y1="152" x2="990" y2="152" stroke="#2c3e34" stroke-width="1.5"/>
 
-  
-  <rect x="350" y="195" width="84" height="28" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  <rect x="668" y="195" width="68" height="28" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="362" y="167" width="80" height="30" rx="6" fill="#db8129" fill-opacity="0.25" stroke="#db8129" stroke-width="2"/>
 
-  
-  <text x="95" y="217" font-family="monospace" font-size="24" fill="#303a36">tcp 0 0 10.23.2.4:47626 10.194.79.125:5222 ESTABLISHED</text>
-  <text x="95" y="255" font-family="monospace" font-size="24" fill="#303a36">tcp 0 0 10.23.2.4:41475 172.19.52.144:6667 ESTABLISHED</text>
-  <text x="95" y="293" font-family="monospace" font-size="24" fill="#303a36">tcp 0 0 10.23.2.4:57132 192.168.231.135:22 ESTABLISHED</text>
+    
+    <rect x="660" y="167" width="68" height="30" rx="6" fill="#207448" fill-opacity="0.35" stroke="#52b788" stroke-width="2"/>
 
-  
-  <path d="M 392 195 L 392 142 L 55 142 L 55 360 L 260 360 L 260 422" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    
+    <text x="75" y="190" font-family="monospace" font-size="24" fill="#d1ded6">
+      <tspan>tcp  0  0 10.23.2.4:</tspan><tspan fill="#db8129" font-weight="bold">47626</tspan><tspan> 10.194.79.125:</tspan><tspan fill="#7fd1a5" font-weight="bold">5222</tspan><tspan>   ESTABLISHED</tspan>
+    </text>
 
-  
-  <rect x="70" y="325" width="455" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  <text x="85" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="85" dy="0">looks dynamically assigned:</tspan>
-    <tspan x="85" dy="28">an ephemeral port chosen by the client</tspan>
-  </text>
+    
+    <text x="75" y="235" font-family="monospace" font-size="24" fill="#a4b8ad">tcp  0  0 10.23.2.4:41475 172.19.52.144:6667   ESTABLISHED</text>
 
-  
-  <path d="M 702 195 L 702 142 L 970 142 L 970 360 L 760 360 L 760 422" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
-
-  
-  <rect x="640" y="325" width="310" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  <text x="795" y="369" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">a known service port</text>
-
-  
-  <rect x="180" y="425" width="660" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
-  <text x="510" y="468" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">so your machine is probably the client</text>
-
-  
-  <rect x="1010" y="155" width="550" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <g transform="translate(1035, 175)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="4" y="4" width="48" height="48" rx="8"/>
-    <circle cx="16" cy="16" r="4" fill="#207448"/>
-    <circle cx="40" cy="16" r="4" fill="#207448"/>
-    <circle cx="16" cy="40" r="4" fill="#207448"/>
-    <circle cx="40" cy="40" r="4" fill="#207448"/>
-    <line x1="16" y1="16" x2="40" y2="16"/>
-    <line x1="40" y1="16" x2="40" y2="40"/>
-    <line x1="40" y1="40" x2="16" y2="40"/>
-    <line x1="16" y1="40" x2="16" y2="16"/>
+    
+    <text x="75" y="278" font-family="monospace" font-size="24" fill="#a4b8ad">tcp  0  0 10.23.2.4:57132 192.168.231.135:22    ESTABLISHED</text>
   </g>
-  <text x="1105" y="213" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">The 4-tuple</text>
-  <text x="1035" y="268" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">source IP, source port, destination IP,</tspan>
-    <tspan x="1035" dy="34">destination port identify a connection;</tspan>
-    <tspan x="1035" dy="34">a server accepts a very large number</tspan>
-    <tspan x="1035" dy="34">of connections on one port because</tspan>
-    <tspan x="1035" dy="34">each has its own 4-tuple</tspan>
-  </text>
 
   
-  <rect x="40" y="525" width="1520" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(65, 557)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="8" y="24" width="40" height="28" rx="6"/>
-    <path d="M 18 24 L 18 16 A 10 10 0 0 1 38 16 L 38 24"/>
-    <circle cx="28" cy="38" r="3" fill="#207448"/>
+  <path d="M 402 197 L 402 345" stroke="#db8129" stroke-width="3" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="local-port-label">
+    <rect x="50" y="348" width="550" height="95" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="70" y="386" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">looks dynamically assigned: an</tspan>
+      <tspan x="70" dy="32">ephemeral port chosen by the client</tspan>
+    </text>
   </g>
-  <text x="145" y="573" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="145" dy="0">well-known 0 to 1023 (SSH 22, DNS 53, HTTP 80, HTTPS 443, Kubernetes API 6443),</tspan>
-    <tspan x="145" dy="36">registered 1024 to 49151, ephemeral above; only the superuser can listen on 1 to 1023</tspan>
-  </text>
 
   
-  <rect x="40" y="675" width="820" height="395" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <path d="M 694 197 L 694 345" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)"/>
+
   
-  <g transform="translate(70, 705)" stroke="#db8129" stroke-width="4" fill="none">
-    <circle cx="28" cy="28" r="24"/>
-    <line x1="28" y1="28" x2="42" y2="16"/>
-    <path d="M 12 36 A 18 18 0 0 1 44 36"/>
-    <circle cx="28" cy="28" r="4" fill="#db8129"/>
+  <g id="remote-port-label">
+    <rect x="630" y="348" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="655" y="403" font-family="sans-serif" font-size="24" fill="#303a36">a known service port</text>
   </g>
-  <text x="145" y="743" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Where exhaustion happens</text>
-  <text x="70" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="70" dy="0">on the client side: one source address to one destination</tspan>
-    <tspan x="70" dy="36">address and port leaves only the source port to vary,</tspan>
-    <tspan x="70" dy="36">about 28k ports (net.ipv4.ip_local_port_range defaults</tspan>
-    <tspan x="70" dy="36">to 32768 to 60999), and TIME_WAIT drains them too</tspan>
-  </text>
 
   
-  <rect x="890" y="675" width="670" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <g transform="translate(915, 700)" stroke="#207448" stroke-width="4" fill="none">
-    <circle cx="28" cy="38" r="5" fill="#207448"/>
-    <line x1="28" y1="38" x2="28" y2="52"/>
-    <line x1="18" y1="52" x2="38" y2="52"/>
-    <path d="M 16 26 A 16 16 0 0 1 40 26"/>
-    <path d="M 8 16 A 26 26 0 0 1 48 16"/>
+  <g id="conclusion-box">
+    <rect x="50" y="465" width="940" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="90" cy="502" r="20" fill="#207448"/>
+    <path d="M 81 502 L 87 508 L 100 495" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="125" y="511" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">so your machine is probably the client</text>
   </g>
-  <text x="990" y="735" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="990" dy="0">a listener on 0.0.0.0 accepts connections</tspan>
-    <tspan x="990" dy="36">on every interface; one on 127.0.0.53 accepts</tspan>
-    <tspan x="990" dy="36">only local connections, as systemd-resolved does</tspan>
-  </text>
 
   
-  <rect x="890" y="930" width="670" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  
-  <g transform="translate(915, 955)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="4" y="6" width="48" height="40" rx="6"/>
-    <path d="M 14 20 L 22 26 L 14 32"/>
-    <line x1="26" y1="32" x2="38" y2="32"/>
+  <g id="tuple-panel">
+    <rect x="1020" y="110" width="530" height="430" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1050" y="132" width="20" height="20" rx="4" fill="#207448"/>
+    <rect x="1080" y="132" width="20" height="20" rx="4" fill="#207448"/>
+    <rect x="1050" y="162" width="20" height="20" rx="4" fill="#207448"/>
+    <rect x="1080" y="162" width="20" height="20" rx="4" fill="#207448"/>
+    <line x1="1060" y1="142" x2="1090" y2="172" stroke="#74a88b" stroke-width="2"/>
+    <line x1="1090" y1="142" x2="1060" y2="172" stroke="#74a88b" stroke-width="2"/>
+
+    
+    <text x="1120" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">The 4-tuple</text>
+
+    
+    <text x="1050" y="224" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1050" dy="0">source IP, source port,</tspan>
+      <tspan x="1050" dy="36">destination IP, destination port</tspan>
+      <tspan x="1050" dy="36">identify a connection; a server</tspan>
+      <tspan x="1050" dy="36">accepts a very large number of</tspan>
+      <tspan x="1050" dy="36">connections on one port because</tspan>
+      <tspan x="1050" dy="36">each has its own 4-tuple</tspan>
+    </text>
   </g>
-  <text x="990" y="990" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="990" dy="0">netstat -nt, netstat -ntl,</tspan>
-    <tspan x="990" dy="36">lsof, ss -tlnp</tspan>
-  </text>
 
   
-  <rect x="40" y="1100" width="1520" height="70" rx="10" fill="#207448"/>
-  <text x="800" y="1144" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If the local port is well known, a remote host probably started the connection</text>
+  <g id="port-ranges-panel">
+    <rect x="50" y="565" width="1500" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="80" y="590" width="360" height="42" rx="6" fill="#207448"/>
+    <text x="260" y="619" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">well-known 0 to 1023</text>
+
+    <rect x="450" y="590" width="550" height="42" rx="6" fill="#528e6c"/>
+    <text x="725" y="619" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">registered 1024 to 49151</text>
+
+    <rect x="1010" y="590" width="510" height="42" rx="6" fill="#db8129"/>
+    <text x="1265" y="619" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">ephemeral above</text>
+
+    
+    <text x="80" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">well-known 0 to 1023 (SSH 22, DNS 53, HTTP 80, HTTPS 443, Kubernetes API 6443), registered 1024 to 49151, ephemeral above;</tspan>
+      <tspan x="80" dy="35">only the superuser can listen on 1 to 1023</tspan>
+    </text>
+  </g>
+
+  
+  <g id="exhaustion-panel">
+    <rect x="50" y="775" width="940" height="395" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="2.5"/>
+
+    
+    <g transform="translate(80, 805)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 28 14 L 28 30" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="3.5" fill="#db8129"/>
+    </g>
+
+    
+    <text x="150" y="842" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Where exhaustion happens</text>
+
+    
+    <text x="80" y="900" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">on the client side: one source address to one destination</tspan>
+      <tspan x="80" dy="38">address and port leaves only the source port to vary,</tspan>
+      <tspan x="80" dy="38">about 28k ports (net.ipv4.ip_local_port_range defaults</tspan>
+      <tspan x="80" dy="38">to 32768 to 60999), and TIME_WAIT drains them too</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="commands-panel">
+    <rect x="1020" y="775" width="530" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1048, 798)">
+      <rect x="0" y="0" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 8 9 L 15 14 L 8 19" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="21" x2="27" y2="21" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1098" y="822" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Commands</text>
+
+    
+    <text x="1050" y="866" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1050" dy="0">netstat -nt, netstat -ntl,</tspan>
+      <tspan x="1050" dy="34">lsof, ss -tlnp</tspan>
+    </text>
+  </g>
+
+  
+  <g id="listener-panel">
+    <rect x="1020" y="945" width="530" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1048, 968)">
+      <circle cx="16" cy="16" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="16" cy="16" r="5" fill="#207448"/>
+      <path d="M 16 2 A 14 14 0 0 1 30 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="1098" y="992" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Listener note</text>
+
+    <text x="1050" y="1032" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1050" dy="0">a listener on 0.0.0.0 accepts</tspan>
+      <tspan x="1050" dy="32">connections on every interface; one on</tspan>
+      <tspan x="1050" dy="32">127.0.0.53 accepts only local connections,</tspan>
+      <tspan x="1050" dy="32">as systemd-resolved does</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1195" width="1500" height="85" rx="10" fill="#207448"/>
+    <text x="800" y="1248" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">If the local port is well known, a remote host probably started the connection</text>
+  </g>
 </svg>

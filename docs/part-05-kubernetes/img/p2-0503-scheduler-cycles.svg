@@ -1,183 +1,204 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 930" width="1600" height="930">
   <title>Filter, score and bind: three candidate nodes</title>
-  <desc>Visual explanation of the Kubernetes scheduling flow: Filter, Score, and Binding for three candidate nodes.</desc>
+  <desc>Visual explanation of the Kubernetes scheduling flow: filtering candidate nodes, scoring surviving nodes, and writing a binding.</desc>
 
   <defs>
-    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#c0392b"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="920" fill="#f5f8f5"/>
+  <rect width="1600" height="930" fill="#f5f8f5"/>
 
   
-  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Filter, score and bind: three candidate nodes</text>
+  <text x="50" y="48" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">Filter, score and bind: three candidate nodes</text>
 
   
-  <g id="top-band">
-    <rect x="420" y="80" width="760" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="800" y="114" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Filter is yes or no, Score is a ranking</text>
-  </g>
+  <rect x="50" y="75" width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="110" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Filter is yes or no, Score is a ranking</text>
 
   
-  <g id="phase-1">
-    
-    <rect x="45" y="175" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <circle cx="95" cy="235" r="24" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <polyline points="95,219 95,235 107,235" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-    
-    <text x="140" y="226" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="140" dy="0">Training pod</tspan>
-      <tspan x="140" dy="32">asks for GPUs</tspan>
-    </text>
-
-    
-    <rect x="45" y="325" width="340" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="65" y="362" width="54" height="50" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="72" y1="379" x2="112" y2="379" stroke="#207448" stroke-width="3"/>
-    <line x1="72" y1="395" x2="112" y2="395" stroke="#207448" stroke-width="3"/>
-    <circle cx="76" cy="371" r="2.5" fill="#207448"/>
-    <circle cx="84" cy="371" r="2.5" fill="#207448"/>
-    
-    <text x="135" y="376" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="135" dy="0">Node A:</tspan>
-      <tspan x="135" dy="32">no free GPUs</tspan>
-    </text>
-
-    
-    <rect x="45" y="480" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="65" y="515" width="54" height="50" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="72" y1="532" x2="112" y2="532" stroke="#207448" stroke-width="3"/>
-    <line x1="72" y1="548" x2="112" y2="548" stroke="#207448" stroke-width="3"/>
-    <circle cx="76" cy="524" r="2.5" fill="#207448"/>
-    <circle cx="84" cy="524" r="2.5" fill="#207448"/>
-    
-    <text x="135" y="550" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Node B</text>
-
-    
-    <rect x="45" y="630" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="65" y="665" width="54" height="50" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <line x1="72" y1="682" x2="112" y2="682" stroke="#207448" stroke-width="3"/>
-    <line x1="72" y1="698" x2="112" y2="698" stroke="#207448" stroke-width="3"/>
-    <circle cx="76" cy="674" r="2.5" fill="#207448"/>
-    <circle cx="84" cy="674" r="2.5" fill="#207448"/>
-    
-    <text x="135" y="700" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Node C</text>
-  </g>
+  <rect x="40" y="145" width="360" height="560" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
 
   
-  <g id="phase-2">
-    
-    <rect x="433" y="175" width="340" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="603" y="215" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
-      <tspan x="603" dy="0">Scheduling cycle,</tspan>
-      <tspan x="603" dy="34">Filter</tspan>
-    </text>
-
-    
-    <rect x="433" y="325" width="340" height="125" rx="10" fill="#fdeded" stroke="#d32f2f" stroke-width="2"/>
-    
-    <circle cx="480" cy="387" r="24" fill="#d32f2f"/>
-    <line x1="469" y1="376" x2="491" y2="398" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-    <line x1="491" y1="376" x2="469" y2="398" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-    
-    <text x="525" y="376" font-family="sans-serif" font-size="24" font-weight="bold" fill="#d32f2f">
-      <tspan x="525" dy="0">Filter</tspan>
-      <tspan x="525" dy="32">removes it</tspan>
-    </text>
-
-    
-    <rect x="433" y="480" width="340" height="270" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <circle cx="480" cy="542" r="22" fill="#207448"/>
-    <polyline points="471,542 478,549 489,535" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <line x1="480" y1="570" x2="480" y2="664" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4"/>
-    
-    <circle cx="480" cy="692" r="22" fill="#207448"/>
-    <polyline points="471,692 478,699 489,685" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <text x="610" y="625" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Pass the filter</text>
-  </g>
+  <rect x="55" y="155" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="210" r="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <path d="M 95 210 V 198 M 95 210 H 105" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="135" y="202" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">Training pod</tspan>
+    <tspan x="135" dy="30">asks for GPUs</tspan>
+  </text>
 
   
-  <g id="phase-3">
-    
-    <rect x="820" y="175" width="340" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="990" y="215" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
-      <tspan x="990" dy="0">Scheduling cycle,</tspan>
-      <tspan x="990" dy="34">Score</tspan>
-    </text>
-
-    
-    <rect x="820" y="325" width="340" height="125" rx="10" fill="#fbfdfb" stroke="#b0bec5" stroke-width="1.5" stroke-dasharray="6 6"/>
-
-    
-    <rect x="820" y="480" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <rect x="845" y="505" width="290" height="22" rx="5" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <rect x="845" y="505" width="235" height="22" rx="5" fill="#78909c"/>
-    
-    <text x="990" y="556" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="990" dy="0">Fuller memory</tspan>
-      <tspan x="990" dy="30">footprint</tspan>
-    </text>
-
-    
-    <rect x="820" y="630" width="340" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    
-    <rect x="845" y="655" width="290" height="22" rx="5" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <rect x="845" y="655" width="80" height="22" rx="5" fill="#207448"/>
-    
-    <text x="990" y="718" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">More room</text>
-  </g>
+  <path d="M 220 265 V 290" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
 
   
-  <g id="phase-4">
-    
-    <rect x="1215" y="175" width="340" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="1385" y="217" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Binding cycle</text>
+  <rect x="55" y="295" width="330" height="110" rx="10" fill="#ffffff" stroke="#c0392b" stroke-width="2"/>
+  
+  <rect x="75" y="335" width="38" height="28" rx="4" fill="#ffffff" stroke="#c0392b" stroke-width="2.5"/>
+  <line x1="80" y1="349" x2="108" y2="349" stroke="#c0392b" stroke-width="2"/>
+  <circle cx="104" cy="342" r="2" fill="#c0392b"/>
+  <circle cx="104" cy="356" r="2" fill="#c0392b"/>
+  
+  <text x="130" y="345" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">Node A: no free GPUs</tspan>
+  </text>
 
-    
-    <rect x="1215" y="265" width="340" height="115" rx="10" fill="#fffbf5" stroke="#db8129" stroke-width="3.5"/>
-    
-    <text x="1385" y="318" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="1385" dy="0">Writes a Binding</tspan>
-      <tspan x="1385" dy="32">to Node C</tspan>
-    </text>
+  
+  <rect x="55" y="435" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="75" y="475" width="38" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <line x1="80" y1="489" x2="108" y2="489" stroke="#207448" stroke-width="2"/>
+  <circle cx="104" cy="482" r="2" fill="#207448"/>
+  <circle cx="104" cy="496" r="2" fill="#207448"/>
+  
+  <text x="135" y="500" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Node B</text>
 
-    
-    <line x1="1385" y1="380" x2="1385" y2="440" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)"/>
+  
+  <rect x="55" y="575" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="75" y="615" width="38" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <line x1="80" y1="629" x2="108" y2="629" stroke="#207448" stroke-width="2"/>
+  <circle cx="104" cy="622" r="2" fill="#207448"/>
+  <circle cx="104" cy="636" r="2" fill="#207448"/>
+  
+  <text x="135" y="640" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Node C</text>
 
-    
-    <rect x="1215" y="445" width="340" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    
-    <circle cx="1385" cy="485" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
-    <circle cx="1385" cy="485" r="8" fill="none" stroke="#207448" stroke-width="2.5"/>
-    <line x1="1385" y1="463" x2="1385" y2="477" stroke="#207448" stroke-width="3"/>
-    <line x1="1385" y1="493" x2="1385" y2="507" stroke="#207448" stroke-width="3"/>
-    <line x1="1363" y1="485" x2="1377" y2="485" stroke="#207448" stroke-width="3"/>
-    <line x1="1393" y1="485" x2="1407" y2="485" stroke="#207448" stroke-width="3"/>
-    
-    <text x="1385" y="540" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="1385" dy="0">Kubelet on Node C</tspan>
-      <tspan x="1385" dy="30">notices and starts</tspan>
-      <tspan x="1385" dy="30">the container</tspan>
-    </text>
+  
+  <path d="M 385 350 H 420" stroke="#c0392b" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+  <path d="M 385 490 H 420" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M 385 630 H 420" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
 
-    
-    <rect x="1215" y="675" width="340" height="180" rx="10" fill="#ffffff" stroke="#78909c" stroke-width="2" stroke-dasharray="6 6"/>
-    
-    <text x="1385" y="718" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#546e7a">
-      <tspan x="1385" dy="0">The scheduler never</tspan>
-      <tspan x="1385" dy="30">starts containers.</tspan>
-      <tspan x="1385" dy="30">It does not check</tspan>
-      <tspan x="1385" dy="30">the image on Node C.</tspan>
-    </text>
-  </g>
+  
+  <rect x="410" y="145" width="360" height="560" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <rect x="425" y="155" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="590" y="202" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="590" dy="0">Scheduling cycle,</tspan>
+    <tspan x="590" dy="32">Filter</tspan>
+  </text>
+
+  
+  <rect x="425" y="295" width="330" height="110" rx="10" fill="#fdf2f2" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/>
+  
+  <circle cx="465" cy="350" r="20" fill="#c0392b"/>
+  <line x1="458" y1="343" x2="472" y2="357" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="472" y1="343" x2="458" y2="357" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="500" y="358" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c0392b">Filter removes it</text>
+
+  
+  <rect x="425" y="435" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="465" cy="490" r="20" fill="#207448"/>
+  <path d="M 458 490 L 463 495 L 472 485" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <rect x="505" y="475" width="38" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <line x1="510" y1="489" x2="538" y2="489" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="425" y="575" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="465" cy="630" r="20" fill="#207448"/>
+  <path d="M 458 630 L 463 635 L 472 625" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <rect x="505" y="615" width="38" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <line x1="510" y1="629" x2="538" y2="629" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="480" y="538" width="220" height="44" rx="22" fill="#207448"/>
+  <text x="590" y="568" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Pass the filter</text>
+
+  
+  <path d="M 755 490 H 790" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M 755 630 H 790" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="780" y="145" width="360" height="560" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <rect x="795" y="155" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="960" y="202" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="960" dy="0">Scheduling cycle,</tspan>
+    <tspan x="960" dy="32">Score</tspan>
+  </text>
+
+  
+  <rect x="795" y="295" width="330" height="110" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="840" y1="350" x2="1080" y2="350" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="8 6"/>
+
+  
+  <rect x="795" y="435" width="330" height="110" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  
+  <rect x="820" y="455" width="280" height="20" rx="5" fill="#e2e8f0"/>
+  <rect x="820" y="455" width="220" height="20" rx="5" fill="#64748b"/>
+  <text x="820" y="498" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="820" dy="0">Fuller memory</tspan>
+    <tspan x="820" dy="26">footprint</tspan>
+  </text>
+
+  
+  <rect x="795" y="575" width="330" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="820" y="595" width="280" height="20" rx="5" fill="#e2e8f0"/>
+  <rect x="820" y="595" width="90" height="20" rx="5" fill="#207448"/>
+  <text x="820" y="650" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">More room</text>
+  
+  <polygon points="1070,622 1076,638 1093,638 1080,648 1085,664 1070,654 1055,664 1060,648 1047,638 1064,638" fill="#db8129"/>
+
+  
+  <rect x="1155" y="145" width="405" height="560" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <rect x="1170" y="155" width="375" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1357" y="218" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Binding cycle</text>
+
+  
+  <rect x="1175" y="295" width="365" height="120" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  <text x="1357" y="348" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1357" dy="0">Writes a Binding</tspan>
+    <tspan x="1357" dy="34">to Node C</tspan>
+  </text>
+
+  
+  <path d="M 1125 630 H 1150 V 355 H 1170" stroke="#db8129" stroke-width="3" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <path d="M 1357 415 V 470" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1175" y="475" width="365" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1357" cy="525" r="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <circle cx="1357" cy="525" r="7" fill="#207448"/>
+  <line x1="1357" y1="499" x2="1357" y2="505" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1357" y1="545" x2="1357" y2="551" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1331" y1="525" x2="1337" y2="525" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1377" y1="525" x2="1383" y2="525" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="1357" y="585" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1357" dy="0">Kubelet on Node C</tspan>
+    <tspan x="1357" dy="32">notices and starts</tspan>
+    <tspan x="1357" dy="32">the container</tspan>
+  </text>
+
+  
+  <rect x="780" y="735" width="780" height="150" rx="10" fill="#ffffff" stroke="#78909c" stroke-width="2" stroke-dasharray="6 6"/>
+  
+  <circle cx="830" cy="810" r="18" fill="#e2e8f0" stroke="#78909c" stroke-width="2"/>
+  <text x="830" y="818" font-family="sans-serif" font-size="22" font-weight="bold" fill="#78909c" text-anchor="middle">i</text>
+  
+  <text x="870" y="798" font-family="sans-serif" font-size="24" fill="#475569">
+    <tspan x="870" dy="0">The scheduler never starts containers.</tspan>
+    <tspan x="870" dy="34">It does not check the image on Node C.</tspan>
+  </text>
 </svg>

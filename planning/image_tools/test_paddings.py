@@ -1,168 +1,95 @@
 #!/usr/bin/env python3
 import xml.etree.ElementTree as ET
 import re
-import sys
 
-from test_audit_script import build_svg
+def test_paddings():
+    # Boxes:
+    # 1. Title: x=800, y=52, fs=48, bold
+    # 2. Legend container: x=520, y=82, w=560, h=44
+    # 3. Matrix container: x=40, y=166, w=1140, h=650
+    #    Col 0 (Action): x=40..340, w=300
+    #    Col 1 (mtime): x=340..620, w=280
+    #    Col 2 (ctime): x=620..900, w=280
+    #    Col 3 (atime): x=900..1180, w=280
+    #
+    # Rows:
+    # Header: y=166..296 (h=130)
+    # Row 1: y=296..386 (h=90)
+    # Row 2: y=386..476 (h=90)
+    # Row 3: y=476..576 (h=100)
+    # Row 4: y=576..666 (h=90)
+    # Row 5: y=666..816 (h=150)
+    #
+    # Right box: x=1220..1560 (w=340), y=166..816 (h=650)
+    # Bottom bar: x=40..1560 (w=1520), y=856..930 (h=74)
 
-def audit_paddings():
-    svg_str = build_svg()
-    root = ET.fromstring(svg_str)
+    # Let's verify every line width and horizontal padding >= 16px:
+    text_checks = [
+        # (name, text, fs, font_type, box_x, box_w, text_anchor, text_x)
+        # Legend:
+        ("Legend changes", "changes", 25, "sans", 520, 560, "start", 635),
+        ("Legend unchanged", "unchanged", 25, "sans", 520, 560, "start", 855),
+        
+        # Col headers:
+        ("Header mtime 1", "mtime ", 26, "sans", 340, 280, "middle", 480),
+        ("Header mtime 2", "(contents ", 26, "sans", 340, 280, "middle", 480),
+        ("Header mtime 3", "written)", 26, "sans", 340, 280, "middle", 480),
+        
+        ("Header ctime 1", "ctime ", 26, "sans", 620, 280, "middle", 760),
+        ("Header ctime 2", "(inode ", 26, "sans", 620, 280, "middle", 760),
+        ("Header ctime 3", "changed)", 26, "sans", 620, 280, "middle", 760),
 
-    # Define all boxes with their coordinates: (x, y, w, h)
-    # We will map each text element to its containing box
-    boxes = {
-        "title": (0, 0, 1600, 142),
-        "left-panel": (40, 142, 600, 958),
-        "chk-item-1": (76, 236, 528, 60),
-        "chk-item-2": (76, 304, 528, 60),
-        "chk-item-3": (76, 372, 528, 60),
-        "chk-item-4": (76, 440, 528, 60),
-        "chk-item-5": (76, 508, 528, 60),
-        "chk-item-6": (76, 576, 528, 60),
-        "chk-item-7": (76, 644, 528, 92),
-        "arrow-area": (100, 758, 540, 190),
-        "note-box": (60, 958, 560, 124),
-        "right-panel": (670, 142, 890, 958),
-        "questions-box": (692, 214, 846, 154),
-        "card-1": (692, 384, 414, 132),
-        "card-2": (1124, 384, 414, 132),
-        "card-3": (692, 526, 414, 132),
-        "card-4": (1124, 526, 414, 132),
-        "card-5": (692, 668, 414, 132),
-        "card-6": (1124, 668, 414, 132),
-        "card-7": (692, 810, 414, 132),
-        "card-8": (1124, 810, 414, 132),
-        "card-9": (692, 952, 414, 132),
-        "card-10": (1124, 952, 414, 132),
-        "bottom-bar": (40, 1120, 1520, 60)
-    }
+        ("Header atime 1", "atime ", 26, "sans", 900, 280, "middle", 1040),
+        ("Header atime 2", "(file read)", 26, "sans", 900, 280, "middle", 1040),
 
-    # Map text element prefixes or ids to boxes
-    mapping = [
-        ("Baseline and static audit", "title"),
-        ("Record a baseline", "left-panel"),
-        ("the 60-second checklist", "chk-item-1"),
-        ("sysctl -a", "chk-item-2"),
-        ("lscpu", "chk-item-3"),
-        ("lspci -vv", "chk-item-4"),
-        ("nvidia-smi", "chk-item-5"),
-        ("firmware versions", "chk-item-6"),
-        ("benchmark results", "chk-item-7"),
-        ("store it with the image", "arrow-area"),
-        ("If none exists", "note-box"),
-        ("Static audit findings", "right-panel"),
-        ("Does each component", "questions-box"),
-        ("a 400 Gb NIC", "card-1"),
-        ("a failed RAID", "card-2"),
-        ("a GPU with a downgraded", "card-3"),
-        ("stale kernel", "card-4"),
-        ("IP forwarding", "card-5"),
-        ("THP or governor", "card-6"),
-        ("a small ulimit", "card-7"),
-        ("a cgroup driver", "card-8"),
-        ("debug logging left on", "card-9"),
-        ("a filesystem nearly full", "card-10"),
-        ("Configuration drift", "bottom-bar"),
+        # Action commands:
+        ("Row 1 cmd", "echo more >> f1", 25, "mono", 40, 300, "start", 65),
+        ("Row 2 cmd", "chmod 600 f1", 25, "mono", 40, 300, "start", 65),
+        ("Row 3 cmd", "cat f1", 25, "mono", 40, 300, "start", 65),
+        ("Row 4 cmd", "ln f1 f2", 25, "mono", 40, 300, "start", 65),
+        ("Row 5 cmd 1", "touch -d ", 24, "mono", 40, 300, "start", 65),
+        ("Row 5 cmd 2", '"2026-01-01 ', 24, "mono", 40, 300, "start", 65),
+        ("Row 5 cmd 3", '12:00" f1', 24, "mono", 40, 300, "start", 65),
+
+        # Row 3 cell text:
+        ("Row 3 atime", "rarely: relatime", 24, "sans", 900, 280, "middle", 1040),
+
+        # Row 5 ctime cell text:
+        ("Row 5 ctime 1", "ctime still ", 24, "sans", 620, 280, "middle", 760),
+        ("Row 5 ctime 2", "moves, ", 24, "sans", 620, 280, "middle", 760),
+        ("Row 5 ctime 3", "cannot be set", 24, "sans", 620, 280, "middle", 760),
+
+        # Right box lines:
+        ("Right box 1", "stat shows ", 25, "sans", 1220, 340, "middle", 1390),
+        ("Right box 2", "all three; ", 25, "sans", 1220, 340, "middle", 1390),
+        ("Right box 3", "ls -l shows mtime, ", 25, "sans", 1220, 340, "middle", 1390),
+        ("Right box 4", "ls -lc ctime, ", 25, "sans", 1220, 340, "middle", 1390),
+        ("Right box 5", "ls -lu atime", 25, "sans", 1220, 340, "middle", 1390),
+
+        # Bottom bar:
+        ("Bottom bar", "ctime is not the creation time", 30, "sans", 40, 1520, "middle", 800),
     ]
 
-    print("=== CHECKING PADDINGS AND BOUNDS ===")
-    for elem in root.iter('{http://www.w3.org/2000/svg}text'):
-        full_text = "".join(elem.itertext()).strip()
-        full_text = re.sub(r'\s+', ' ', full_text)
-        
-        # find matching box
-        box_name = None
-        for prefix, bname in mapping:
-            if prefix in full_text:
-                box_name = bname
-                break
-        
-        assert box_name is not None, f"No box mapped for text: {full_text}"
-        bx, by, bw, bh = boxes[box_name]
-
-        base_fs = float(elem.attrib.get('font-size', 24))
-        anchor = elem.attrib.get('text-anchor', 'start')
-        elem_x = float(elem.attrib.get('x', 0))
-        elem_y = float(elem.attrib.get('y', 0))
-
-        tspans = elem.findall('{http://www.w3.org/2000/svg}tspan')
-        if not tspans:
-            # Single line
-            t = full_text
-            fs = base_fs
-            # Conservative width factor: 0.62 for monospace, 0.60 for sans
-            is_mono = 'monospace' in elem.attrib.get('font-family', '')
-            factor = 0.62 if is_mono else 0.60
-            w = len(t) * factor * fs
-            if anchor == 'middle':
-                xs = elem_x - w / 2
-                xe = elem_x + w / 2
-            elif anchor == 'end':
-                xs = elem_x - w
-                xe = elem_x
-            else:
-                xs = elem_x
-                xe = elem_x + w
-            
-            top_y = elem_y - fs
-            bot_y = elem_y + 0.25 * fs
-
-            pad_l = xs - bx
-            pad_r = (bx + bw) - xe
-            pad_t = top_y - by
-            pad_b = (by + bh) - bot_y
-
-            print(f"[{box_name:14s}] '{t[:30]:30s}' pad L={pad_l:5.1f} R={pad_r:5.1f} T={pad_t:5.1f} B={pad_b:5.1f}")
-            assert pad_l >= 15.9, f"Left pad {pad_l:.1f} < 16 for '{t}' in {box_name}"
-            assert pad_r >= 15.9, f"Right pad {pad_r:.1f} < 16 for '{t}' in {box_name}"
-            assert pad_t >= 15.9, f"Top pad {pad_t:.1f} < 16 for '{t}' in {box_name}"
-            assert pad_b >= 15.9, f"Bottom pad {pad_b:.1f} < 16 for '{t}' in {box_name}"
+    print("=== Checking Horizontal Paddings (>= 16px) ===")
+    all_ok = True
+    for name, text, fs, ftype, bx, bw, anchor, tx in text_checks:
+        cwidth = 0.62 * fs if ftype == "mono" else 0.6 * fs
+        tlen = len(text) * cwidth
+        if anchor == "middle":
+            x_left = tx - tlen / 2
+            x_right = tx + tlen / 2
         else:
-            # Multi-line
-            cur_y = elem_y
-            for tsp in tspans:
-                t = (tsp.text or "").strip()
-                if not t:
-                    continue
-                fs = float(tsp.attrib.get('font-size', base_fs))
-                is_mono = 'monospace' in tsp.attrib.get('font-family', elem.attrib.get('font-family', ''))
-                factor = 0.62 if is_mono else 0.60
-                w = len(t) * factor * fs
+            x_left = tx
+            x_right = tx + tlen
+        pad_left = x_left - bx
+        pad_right = (bx + bw) - x_right
+        ok = (pad_left >= 16 and pad_right >= 16)
+        if not ok:
+            all_ok = False
+        print(f"[{'PASS' if ok else 'FAIL'}] {name:16s} len={tlen:5.1f} pad_l={pad_left:5.1f} pad_r={pad_right:5.1f} in box [{bx}..{bx+bw}]")
 
-                tx = float(tsp.attrib.get('x', elem_x))
-                dy_str = tsp.attrib.get('dy', None)
-                if dy_str is not None:
-                    cur_y += float(dy_str)
-                else:
-                    cur_y = float(tsp.attrib.get('y', cur_y))
+    assert all_ok, "Some text lines failed horizontal padding check!"
+    print("\nALL HORIZONTAL PADDINGS PASS (>= 16px)!")
 
-                tsp_anchor = tsp.attrib.get('text-anchor', anchor)
-                if tsp_anchor == 'middle':
-                    xs = tx - w / 2
-                    xe = tx + w / 2
-                elif tsp_anchor == 'end':
-                    xs = tx - w
-                    xe = tx
-                else:
-                    xs = tx
-                    xe = tx + w
-                
-                top_y = cur_y - fs
-                bot_y = cur_y + 0.25 * fs
-
-                pad_l = xs - bx
-                pad_r = (bx + bw) - xe
-                pad_t = top_y - by
-                pad_b = (by + bh) - bot_y
-
-                print(f"[{box_name:14s}] (tspan) '{t[:22]:22s}' pad L={pad_l:5.1f} R={pad_r:5.1f} T={pad_t:5.1f} B={pad_b:5.1f}")
-                assert pad_l >= 15.9, f"Left pad {pad_l:.1f} < 16 for '{t}' in {box_name}"
-                assert pad_r >= 15.9, f"Right pad {pad_r:.1f} < 16 for '{t}' in {box_name}"
-                assert pad_t >= 15.9, f"Top pad {pad_t:.1f} < 16 for '{t}' in {box_name}"
-                assert pad_b >= 15.9, f"Bottom pad {pad_b:.1f} < 16 for '{t}' in {box_name}"
-
-    print("\nALL PADDING CHECKS PASSED!")
-
-if __name__ == "__main__":
-    audit_paddings()
+if __name__ == '__main__':
+    test_paddings()

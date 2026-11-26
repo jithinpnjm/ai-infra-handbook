@@ -1,220 +1,193 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1360" width="1600" height="1360">
   <title>Where TCP limits each AI workload</title>
-  <desc>Where TCP limits each AI workload</desc>
+  <desc>Matrix showing how TCP affects NCCL, data loading, inference serving, Kubernetes, and incast tail latency across AI workloads.</desc>
+
+  <rect width="1600" height="1360" fill="#f5f8f5"/>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="46" font-weight="bold" fill="#207448">Where TCP limits each AI workload</text>
 
   
-  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Where TCP limits each AI workload</text>
+  
+  <rect x="365" y="85" width="310" height="52" rx="8" fill="#207448"/>
+  <text x="520" y="120" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">How it uses TCP</text>
 
   
-  <rect x="370" y="85" width="305" height="48" rx="6" fill="#207448" />
-  <text x="522" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">How it uses TCP</text>
-
-  <rect x="690" y="85" width="570" height="48" rx="6" fill="#207448" />
-  <text x="975" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">What limits it</text>
-
-  <rect x="1275" y="85" width="295" height="48" rx="6" fill="#207448" />
-  <text x="1422" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Usual fixes</text>
+  <rect x="690" y="85" width="600" height="52" rx="8" fill="#207448"/>
+  <text x="990" y="120" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">What limits it</text>
 
   
-  <g>
-    
-    <rect x="30" y="145" width="325" height="230" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(165, 175)">
-      <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448" />
-      <line x1="18" y1="0" x2="18" y2="8" stroke="#207448" stroke-width="4" />
-      <line x1="38" y1="0" x2="38" y2="8" stroke="#207448" stroke-width="4" />
-      <line x1="18" y1="48" x2="18" y2="56" stroke="#207448" stroke-width="4" />
-      <line x1="38" y1="48" x2="38" y2="56" stroke="#207448" stroke-width="4" />
-      <line x1="0" y1="18" x2="8" y2="18" stroke="#207448" stroke-width="4" />
-      <line x1="0" y1="38" x2="8" y2="38" stroke="#207448" stroke-width="4" />
-      <line x1="48" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
-      <line x1="48" y1="38" x2="56" y2="38" stroke="#207448" stroke-width="4" />
-    </g>
-    <text x="192" y="275" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">NCCL</text>
-
-    
-    <rect x="370" y="145" width="305" height="230" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="386" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="386" dy="0">bootstrap (rank</tspan>
-      <tspan x="386" dy="28">exchange) and a</tspan>
-      <tspan x="386" dy="28">fallback transport</tspan>
-      <tspan x="386" dy="28">when no IB or</tspan>
-      <tspan x="386" dy="28">RoCE is available</tspan>
-    </text>
-
-    
-    <rect x="690" y="145" width="570" height="230" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="706" y="177" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="706" dy="0"><tspan font-family="monospace">NCCL_SOCKET_IFNAME</tspan>, sockets per</tspan>
-      <tspan x="706" dy="26">connection (<tspan font-family="monospace">NCCL_SOCKET_NTHREADS</tspan>,</tspan>
-      <tspan x="706" dy="26"><tspan font-family="monospace">NCCL_NSOCKS_PERTHREAD</tspan>),</tspan>
-      <tspan x="706" dy="26"><tspan font-family="monospace">TCP_NODELAY</tspan>, buffer sizes,</tspan>
-      <tspan x="706" dy="26">IRQ affinity, MTU; throughput</tspan>
-      <tspan x="706" dy="26">far below RDMA because every byte</tspan>
-      <tspan x="706" dy="26">passes through kernel copies</tspan>
-      <tspan x="706" dy="26">and costs CPU</tspan>
-    </text>
-
-    
-    <rect x="1275" y="145" width="295" height="230" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="1291" y="245" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1291" dy="0">GPUDirect RDMA</tspan>
-      <tspan x="1291" dy="30">(Part 11)</tspan>
-    </text>
-  </g>
+  <rect x="1305" y="85" width="255" height="52" rx="8" fill="#207448"/>
+  <text x="1432" y="120" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Usual fixes</text>
 
   
-  <g>
-    
-    <rect x="30" y="385" width="325" height="170" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(164, 395)">
-      <ellipse cx="28" cy="10" rx="26" ry="7" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 2 10 V 24 C 2 31 54 31 54 24 V 10" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 2 24 V 38 C 2 45 54 45 54 38 V 24" fill="none" stroke="#207448" stroke-width="4" />
-    </g>
-    <text x="192" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="192" dy="0">Data loading and</tspan>
-      <tspan x="192" dy="26">checkpoint I/O</tspan>
-      <tspan x="192" dy="26">over NFS, S3</tspan>
-      <tspan x="192" dy="26">or HTTP</tspan>
-    </text>
-
-    
-    <rect x="370" y="385" width="305" height="170" rx="8" fill="#e8f1ea" fill-opacity="0.35" stroke="#d0ded2" stroke-width="1.5" />
-
-    
-    <rect x="690" y="385" width="570" height="170" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="706" y="455" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="706" dy="0">window and BDP on long paths; CPU on</tspan>
-      <tspan x="706" dy="30">100G+ links without offloads</tspan>
-    </text>
-
-    
-    <rect x="1275" y="385" width="295" height="170" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="1291" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1291" dy="0">parallel streams,</tspan>
-      <tspan x="1291" dy="28">large MTU on</tspan>
-      <tspan x="1291" dy="28">internal</tspan>
-      <tspan x="1291" dy="28">networks, tuned</tspan>
-      <tspan x="1291" dy="28">buffers</tspan>
-    </text>
-  </g>
+  
+  
+  
+  <rect x="40" y="150" width="310" height="280" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="167" y="180" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="181" y="194" width="28" height="28" fill="#207448"/>
+  <line x1="179" y1="172" x2="179" y2="180" stroke="#207448" stroke-width="3"/>
+  <line x1="195" y1="172" x2="195" y2="180" stroke="#207448" stroke-width="3"/>
+  <line x1="211" y1="172" x2="211" y2="180" stroke="#207448" stroke-width="3"/>
+  <line x1="179" y1="236" x2="179" y2="244" stroke="#207448" stroke-width="3"/>
+  <line x1="195" y1="236" x2="195" y2="244" stroke="#207448" stroke-width="3"/>
+  <line x1="211" y1="236" x2="211" y2="244" stroke="#207448" stroke-width="3"/>
+  <line x1="159" y1="192" x2="167" y2="192" stroke="#207448" stroke-width="3"/>
+  <line x1="159" y1="208" x2="167" y2="208" stroke="#207448" stroke-width="3"/>
+  <line x1="159" y1="224" x2="167" y2="224" stroke="#207448" stroke-width="3"/>
+  <line x1="223" y1="192" x2="231" y2="192" stroke="#207448" stroke-width="3"/>
+  <line x1="223" y1="208" x2="231" y2="208" stroke="#207448" stroke-width="3"/>
+  <line x1="223" y1="224" x2="231" y2="224" stroke="#207448" stroke-width="3"/>
+  
+  <text x="195" y="295" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">NCCL</text>
 
   
-  <g>
-    
-    <rect x="30" y="565" width="325" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(164, 575)">
-      <rect x="4" y="6" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="14" cy="15" r="2.5" fill="#207448" />
-      <line x1="24" y1="15" x2="44" y2="15" stroke="#207448" stroke-width="3" />
-      <rect x="4" y="30" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="14" cy="39" r="2.5" fill="#207448" />
-      <line x1="24" y1="39" x2="44" y2="39" stroke="#207448" stroke-width="3" />
-    </g>
-    <text x="192" y="642" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="192" dy="0">Inference</tspan>
-      <tspan x="192" dy="30">serving over</tspan>
-      <tspan x="192" dy="30">HTTP/2 and gRPC</tspan>
-    </text>
-
-    
-    <rect x="370" y="565" width="305" height="155" rx="8" fill="#e8f1ea" fill-opacity="0.35" stroke="#d0ded2" stroke-width="1.5" />
-
-    
-    <rect x="690" y="565" width="570" height="155" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="706" y="597" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="706" dy="0">connection reuse, keepalive settings,</tspan>
-      <tspan x="706" dy="26">load balancer idle timeouts, Nagle</tspan>
-      <tspan x="706" dy="26">with delayed ACK, and head-of-line</tspan>
-      <tspan x="706" dy="26">blocking: a lost packet stalls every</tspan>
-      <tspan x="706" dy="26">stream on the connection</tspan>
-    </text>
-
-    
-    <rect x="1275" y="565" width="295" height="155" rx="8" fill="#e8f1ea" fill-opacity="0.35" stroke="#d0ded2" stroke-width="1.5" />
-  </g>
+  <rect x="365" y="150" width="310" height="280" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" y="220">bootstrap (rank exchange)</tspan>
+    <tspan x="385" y="258">and a fallback transport</tspan>
+    <tspan x="385" y="296">when no IB or RoCE is</tspan>
+    <tspan x="385" y="334">available</tspan>
+  </text>
 
   
-  <g>
-    
-    <rect x="30" y="730" width="325" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(164, 742)">
-      <circle cx="28" cy="28" r="18" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="28" cy="28" r="6" fill="#207448" />
-      <line x1="28" y1="2" x2="28" y2="54" stroke="#207448" stroke-width="4" />
-      <line x1="6" y1="15" x2="50" y2="41" stroke="#207448" stroke-width="4" />
-      <line x1="6" y1="41" x2="50" y2="15" stroke="#207448" stroke-width="4" />
-    </g>
-    <text x="192" y="845" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Kubernetes</text>
-
-    
-    <rect x="370" y="730" width="305" height="155" rx="8" fill="#e8f1ea" fill-opacity="0.35" stroke="#d0ded2" stroke-width="1.5" />
-
-    
-    <rect x="690" y="730" width="570" height="155" rx="8" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
-    <text x="706" y="762" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="706" dy="0">overlays can shrink the MTU,</tspan>
-      <tspan x="706" dy="26">conntrack and kube-proxy NAT keep</tspan>
-      <tspan x="706" dy="26">state and timeouts, service load</tspan>
-      <tspan x="706" dy="26">balancing can reset long-lived</tspan>
-      <tspan x="706" dy="26">connections when endpoints change</tspan>
-    </text>
-
-    
-    <rect x="1275" y="730" width="295" height="155" rx="8" fill="#e8f1ea" fill-opacity="0.35" stroke="#d0ded2" stroke-width="1.5" />
-  </g>
+  <rect x="690" y="150" width="600" height="280" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="2"/>
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="712" y="188">NCCL_SOCKET_IFNAME, sockets per</tspan>
+    <tspan x="712" y="222">connection (NCCL_SOCKET_NTHREADS,</tspan>
+    <tspan x="712" y="256">NCCL_NSOCKS_PERTHREAD), TCP_NODELAY,</tspan>
+    <tspan x="712" y="290">buffer sizes, IRQ affinity, MTU;</tspan>
+    <tspan x="712" y="324" font-family="sans-serif">throughput far below RDMA because every</tspan>
+    <tspan x="712" y="358" font-family="sans-serif">byte passes through kernel copies and</tspan>
+    <tspan x="712" y="392" font-family="sans-serif">costs CPU</tspan>
+  </text>
 
   
-  <g>
-    
-    <rect x="30" y="895" width="325" height="160" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
-    
-    <g transform="translate(164, 908)">
-      <circle cx="28" cy="30" r="22" fill="none" stroke="#db8129" stroke-width="4" />
-      <polyline points="28,16 28,30 38,30" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="28" y1="2" x2="28" y2="8" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="12" y1="5" x2="16" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="44" y1="5" x2="40" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-    </g>
-    <text x="192" y="990" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">
-      <tspan x="192" dy="0">Incast and</tspan>
-      <tspan x="192" dy="30">tail latency</tspan>
-    </text>
-
-    
-    <rect x="370" y="895" width="305" height="160" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2" />
-    <text x="386" y="935" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="386" dy="0">many-to-one bursts</tspan>
-      <tspan x="386" dy="28">and synchronized</tspan>
-      <tspan x="386" dy="28">all-reduce barrier</tspan>
-      <tspan x="386" dy="28">waits</tspan>
-    </text>
-
-    
-    <rect x="690" y="895" width="570" height="160" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2" />
-    <text x="706" y="960" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="706" dy="0">a single 200 ms RTO costs hundreds</tspan>
-      <tspan x="706" dy="30">of milliseconds of GPU idle per step</tspan>
-    </text>
-
-    
-    <rect x="1275" y="895" width="295" height="160" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2" />
-    <text x="1291" y="960" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1291" dy="0">see the</tspan>
-      <tspan x="1291" dy="30">incast figure</tspan>
-    </text>
-  </g>
+  <rect x="1305" y="150" width="255" height="280" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1325" y="275">GPUDirect RDMA</tspan>
+    <tspan x="1325" y="310">(Part 11)</tspan>
+  </text>
 
   
-  <rect x="30" y="1080" width="1540" height="70" rx="8" fill="#207448" />
-  <text x="800" y="1124" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Capture <tspan font-family="monospace">TCPTimeouts</tspan> and retransmit rates during any training job that uses socket transports</text>
+  
+  
+  
+  <rect x="40" y="445" width="310" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <ellipse cx="195" cy="478" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 167 478 v 28 c 0 6 12 10 28 10 s 28 -4 28 -10 v -28" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 167 492 c 0 6 12 10 28 10 s 28 -4 28 -10" fill="none" stroke="#207448" stroke-width="3"/>
+  
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="60" y="548">Data loading and</tspan>
+    <tspan x="60" y="582">checkpoint I/O over</tspan>
+    <tspan x="60" y="616">NFS, S3 or HTTP</tspan>
+  </text>
+
+  
+  <rect x="365" y="445" width="925" height="210" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="395" y="535">window and BDP on long paths; CPU on 100G+ links without offloads</tspan>
+  </text>
+
+  
+  <rect x="1305" y="445" width="255" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#207448">
+    <tspan x="1325" y="515">parallel streams,</tspan>
+    <tspan x="1325" y="550">large MTU on</tspan>
+    <tspan x="1325" y="585">internal networks,</tspan>
+    <tspan x="1325" y="620">tuned buffers</tspan>
+  </text>
+
+  
+  
+  
+  
+  <rect x="40" y="670" width="310" height="170" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="167" y="694" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="167" y1="708" x2="223" y2="708" stroke="#207448" stroke-width="3"/>
+  <circle cx="178" cy="701" r="2.5" fill="#207448"/>
+  <circle cx="188" cy="701" r="2.5" fill="#207448"/>
+  <circle cx="198" cy="701" r="2.5" fill="#207448"/>
+  
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="60" y="775">Inference serving</tspan>
+    <tspan x="60" y="808">over HTTP/2 and gRPC</tspan>
+  </text>
+
+  
+  <rect x="365" y="670" width="1195" height="170" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="395" y="742">connection reuse, keepalive settings, load balancer idle timeouts, Nagle with delayed ACK,</tspan>
+    <tspan x="395" y="780">and head-of-line blocking: a lost packet stalls every stream on the connection</tspan>
+  </text>
+
+  
+  
+  
+  
+  <rect x="40" y="855" width="310" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="195" cy="898" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="195" cy="898" r="6" fill="#207448"/>
+  <line x1="195" y1="876" x2="195" y2="870" stroke="#207448" stroke-width="4"/>
+  <line x1="195" y1="920" x2="195" y2="926" stroke="#207448" stroke-width="4"/>
+  <line x1="173" y1="898" x2="167" y2="898" stroke="#207448" stroke-width="4"/>
+  <line x1="217" y1="898" x2="223" y2="898" stroke="#207448" stroke-width="4"/>
+  
+  <text x="195" y="970" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Kubernetes</text>
+
+  
+  <rect x="365" y="855" width="1195" height="160" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="395" y="924">overlays can shrink the MTU, conntrack and kube-proxy NAT keep state and timeouts,</tspan>
+    <tspan x="395" y="962">service load balancing can reset long-lived connections when endpoints change</tspan>
+  </text>
+
+  
+  
+  
+  
+  <rect x="40" y="1030" width="310" height="200" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="195" cy="1075" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+  <polyline points="181,1078 190,1065 197,1085 204,1072 211,1078" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  
+  <text font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+    <tspan x="60" y="1150">Incast and</tspan>
+    <tspan x="60" y="1185">tail latency</tspan>
+  </text>
+
+  
+  <rect x="365" y="1030" width="310" height="200" rx="10" fill="#ffffff" stroke="#f0c294" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" y="1090">many-to-one bursts</tspan>
+    <tspan x="385" y="1126">and synchronized</tspan>
+    <tspan x="385" y="1162">all-reduce barrier</tspan>
+    <tspan x="385" y="1198">waits</tspan>
+  </text>
+
+  
+  <rect x="690" y="1030" width="600" height="200" rx="10" fill="#ffffff" stroke="#f0c294" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="712" y="1118">a single 200 ms RTO costs hundreds of</tspan>
+    <tspan x="712" y="1156">milliseconds of GPU idle per step</tspan>
+  </text>
+
+  
+  <rect x="1305" y="1030" width="255" height="200" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="2"/>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1325" y="1122">see the incast</tspan>
+    <tspan x="1325" y="1158">figure</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="1255" width="1520" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1298" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Capture TCPTimeouts and retransmit rates during any training job that uses socket transports</text>
 </svg>

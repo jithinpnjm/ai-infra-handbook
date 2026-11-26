@@ -1,153 +1,138 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
   <title>Rendering Slurm node lines from inventory, one host at a time</title>
-  <desc>Infographic explaining the Jinja2 template rendering for Slurm nodes with inventory variables, default fallback, and host overrides.</desc>
+  <desc>Infographic illustrating the rendering of Slurm configuration node lines from an Ansible inventory template with fallback defaults and per-host variable overrides.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="100%" height="100%" fill="#f5f8f5"/>
+  <rect width="1600" height="1420" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">Rendering Slurm node lines from inventory,</tspan>
-    <tspan x="800" dy="56">one host at a time</tspan>
-  </text>
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Rendering Slurm node lines from inventory, one host at a time</text>
 
   
-  <rect x="40" y="165" width="850" height="845" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g id="left-template">
+    <rect x="60" y="110" width="840" height="760" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(90, 135)">
+      <rect x="0" y="0" width="46" height="56" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="10" y1="16" x2="36" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="28" x2="36" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="40" x2="24" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
 
-  
-  <g transform="translate(68, 185)">
-    <rect x="0" y="0" width="42" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="8" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="8" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <line x1="8" y1="38" x2="24" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <rect x="90" y="215" width="780" height="54" rx="8" fill="#e8f1ea" />
+    <text x="110" y="250" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448"># {{ ansible_managed }}</text>
+
+    
+    <rect x="90" y="285" width="780" height="54" rx="8" fill="#e8f1ea" />
+    <text x="110" y="320" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">for host in groups[gpu] | sort</text>
+
+    
+    <rect x="120" y="355" width="750" height="54" rx="8" fill="#e8f1ea" />
+    <text x="140" y="390" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">set h = hostvars[host]</text>
+
+    
+    <rect x="120" y="425" width="750" height="235" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="140" y="465" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">NodeName={{ host }} NodeAddr={{ h.ansible_host }}<tspan x="140" dy="48">CPUs={{ h.ansible_processor_vcpus }}</tspan><tspan x="140" dy="48">RealMemory={{ (h.ansible_memtotal_mb * 0.95) | int }}</tspan><tspan x="140" dy="48">Gres=gpu:{{ h.gpu_count | default(8) }} State=UNKNOWN</tspan></text>
+
+    
+    <rect x="90" y="675" width="780" height="54" rx="8" fill="#e8f1ea" />
+    <text x="110" y="710" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">endfor</text>
+
+    
+    <rect x="90" y="745" width="780" height="105" rx="8" fill="#e8f1ea" />
+    <text x="110" y="785" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">PartitionName=gpu Nodes={{ groups[gpu] | join(,) }}<tspan x="110" dy="44">Default=YES MaxTime=INFINITE State=UP</tspan></text>
   </g>
 
   
-  <rect x="135" y="185" width="730" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="155" y="220" font-family="monospace" font-size="24" fill="#303a36"># {{ ansible_managed }}</text>
+  <g id="left-callouts">
+    <rect x="60" y="900" width="840" height="375" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(90, 930)">
+      <circle cx="26" cy="26" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="26" y1="22" x2="26" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="26" cy="14" r="2.5" fill="#207448" />
+    </g>
 
-  
-  <rect x="65" y="260" width="800" height="555" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-
-  
-  <rect x="85" y="280" width="760" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  <text x="105" y="315" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">for host in groups[gpu] | sort</text>
-
-  
-  <rect x="115" y="350" width="730" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-  <text x="135" y="385" font-family="monospace" font-size="24" fill="#303a36">set h = hostvars[host]</text>
-
-  
-  <rect x="115" y="420" width="730" height="290" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
-  <text x="135" y="456" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="135" dy="0">NodeName={{ host }} </tspan>
-    <tspan x="135" dy="38">NodeAddr={{ h.ansible_host }} </tspan>
-    <tspan x="135" dy="38">CPUs={{ h.ansible_processor_vcpus }} </tspan>
-    <tspan x="135" dy="38">RealMemory={{ (h.ansible_memtotal_mb * </tspan>
-    <tspan x="135" dy="38">0.95) | int }} </tspan>
-    <tspan x="135" dy="38">Gres=gpu:{{ h.gpu_count | default(8) }} </tspan>
-    <tspan x="135" dy="38">State=UNKNOWN</tspan>
-  </text>
-
-  
-  <rect x="85" y="735" width="760" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-  <text x="105" y="770" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">endfor</text>
-
-  
-  <rect x="65" y="835" width="800" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <text x="85" y="874" font-family="monospace" font-size="24" fill="#303a36">
-    <tspan x="85" dy="0">PartitionName=gpu </tspan>
-    <tspan x="85" dy="38">Nodes={{ groups[gpu] | join(,) }} </tspan>
-    <tspan x="85" dy="38">Default=YES MaxTime=INFINITE State=UP</tspan>
-  </text>
-
-  
-  <rect x="930" y="165" width="630" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(955, 185)">
-    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="24" y1="12" x2="24" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="24" cy="36" r="2.5" fill="#207448"/>
+    
+    <text x="90" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">loop runs once per name in groups[gpu], sorted alphabetically;<tspan x="90" dy="70">set h gives a short handle on that host's variables;</tspan><tspan x="90" dy="70">RealMemory takes 95 percent of the memory total as an integer</tspan></text>
   </g>
-  <text x="960" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="960" dy="0">loop runs once per name in </tspan>
-    <tspan x="960" dy="28">groups[gpu], sorted alphabetically; </tspan>
-    <tspan x="960" dy="28">set h gives a short handle on </tspan>
-    <tspan x="960" dy="28">that host's variables; </tspan>
-    <tspan x="960" dy="28">RealMemory takes 95 percent </tspan>
-    <tspan x="960" dy="28">of the memory total as an integer</tspan>
-  </text>
 
   
-  <rect x="930" y="450" width="630" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(955, 470)">
-    <rect x="8" y="8" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="3"/>
-    <line x1="26" y1="0" x2="26" y2="8" stroke="#207448" stroke-width="3"/>
-    <line x1="36" y1="0" x2="36" y2="8" stroke="#207448" stroke-width="3"/>
-    <line x1="16" y1="44" x2="16" y2="52" stroke="#207448" stroke-width="3"/>
-    <line x1="26" y1="44" x2="26" y2="52" stroke="#207448" stroke-width="3"/>
-    <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="26" x2="8" y2="26" stroke="#207448" stroke-width="3"/>
-    <line x1="0" y1="36" x2="8" y2="36" stroke="#207448" stroke-width="3"/>
-    <line x1="44" y1="16" x2="52" y2="16" stroke="#207448" stroke-width="3"/>
-    <line x1="44" y1="26" x2="52" y2="26" stroke="#207448" stroke-width="3"/>
-    <line x1="44" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3"/>
+  <g id="walk-a">
+    <rect x="940" y="110" width="600" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(975, 140)">
+      <rect x="0" y="0" width="52" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="14" y="14" width="24" height="24" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="10" y1="0" x2="10" y2="-8" stroke="#207448" stroke-width="4" />
+      <line x1="26" y1="0" x2="26" y2="-8" stroke="#207448" stroke-width="4" />
+      <line x1="42" y1="0" x2="42" y2="-8" stroke="#207448" stroke-width="4" />
+      <line x1="10" y1="52" x2="10" y2="60" stroke="#207448" stroke-width="4" />
+      <line x1="26" y1="52" x2="26" y2="60" stroke="#207448" stroke-width="4" />
+      <line x1="42" y1="52" x2="42" y2="60" stroke="#207448" stroke-width="4" />
+    </g>
+
+    
+    <text x="975" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">host without a gpu_count variable:<tspan x="975" dy="50">default(8) fills the gap,</tspan><tspan x="975" dy="50">the line reads Gres=gpu:8</tspan></text>
   </g>
-  <text x="960" y="535" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="960" dy="0">host without a gpu_count variable: </tspan>
-    <tspan x="960" dy="32">default(8) fills the gap, the line </tspan>
-    <tspan x="960" dy="32">reads Gres=gpu:8</tspan>
-  </text>
 
   
-  <rect x="930" y="655" width="630" height="175" rx="16" fill="#fff8f0" stroke="#db8129" stroke-width="2.5"/>
-  <g transform="translate(955, 675)">
-    <rect x="8" y="8" width="36" height="36" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
-    <line x1="16" y1="0" x2="16" y2="8" stroke="#db8129" stroke-width="3"/>
-    <line x1="36" y1="0" x2="36" y2="8" stroke="#db8129" stroke-width="3"/>
-    <line x1="16" y1="44" x2="16" y2="52" stroke="#db8129" stroke-width="3"/>
-    <line x1="36" y1="44" x2="36" y2="52" stroke="#db8129" stroke-width="3"/>
-    <line x1="0" y1="16" x2="8" y2="16" stroke="#db8129" stroke-width="3"/>
-    <line x1="0" y1="36" x2="8" y2="36" stroke="#db8129" stroke-width="3"/>
-    <line x1="44" y1="16" x2="52" y2="16" stroke="#db8129" stroke-width="3"/>
-    <line x1="44" y1="36" x2="52" y2="36" stroke="#db8129" stroke-width="3"/>
+  <g id="walk-b">
+    <rect x="940" y="480" width="600" height="340" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    
+    <g transform="translate(975, 510)">
+      <rect x="0" y="0" width="52" height="52" rx="8" fill="none" stroke="#db8129" stroke-width="4" />
+      <rect x="14" y="14" width="24" height="24" fill="#fff5ed" stroke="#db8129" stroke-width="3" />
+      <line x1="10" y1="0" x2="10" y2="-8" stroke="#db8129" stroke-width="4" />
+      <line x1="26" y1="0" x2="26" y2="-8" stroke="#db8129" stroke-width="4" />
+      <line x1="42" y1="0" x2="42" y2="-8" stroke="#db8129" stroke-width="4" />
+      <line x1="10" y1="52" x2="10" y2="60" stroke="#db8129" stroke-width="4" />
+      <line x1="26" y1="52" x2="26" y2="60" stroke="#db8129" stroke-width="4" />
+      <line x1="42" y1="52" x2="42" y2="60" stroke="#db8129" stroke-width="4" />
+    </g>
+
+    
+    <text x="975" y="635" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">host sets gpu_count to 4:<tspan x="975" dy="54" fill="#db8129" font-weight="bold">the line reads Gres=gpu:4</tspan></text>
   </g>
-  <text x="960" y="745" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="960" dy="0">host sets gpu_count to 4: </tspan>
-    <tspan x="960" dy="36">the line reads Gres=gpu:4</tspan>
-  </text>
 
   
-  <rect x="930" y="855" width="630" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(955, 875)">
-    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="14" y1="20" x2="34" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <line x1="14" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <g id="note-box">
+    <rect x="940" y="850" width="600" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(975, 885)">
+      <circle cx="26" cy="26" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 14 26 L 22 34 L 38 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="975" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">the rest of the line stays the same either way</text>
   </g>
-  <text x="960" y="930" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="960" dy="0">the rest of the line </tspan>
-    <tspan x="960" dy="34">stays the same either way</tspan>
-  </text>
 
   
-  <path d="M 845 645 L 890 645 L 890 540 L 928 540" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <path d="M 845 665 L 890 665 L 890 742 L 928 742" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  
+  <path d="M 870 575 L 905 575 L 905 280 L 938 280" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <rect x="40" y="1035" width="1520" height="75" rx="12" fill="#207448"/>
-  <g transform="translate(65, 1047)">
-    <circle cx="25" cy="25" r="22" fill="none" stroke="#ffffff" stroke-width="3"/>
-    <path d="M 16 26 L 22 32 L 34 18" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 870 595 L 905 595 L 905 650 L 938 650" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1310" width="1480" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1354" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">One loop over the inventory builds the whole node list</text>
   </g>
-  <text x="800" y="1082" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">One loop over the inventory builds the whole node list</text>
 </svg>

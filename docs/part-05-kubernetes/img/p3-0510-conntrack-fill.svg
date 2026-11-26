@@ -1,209 +1,216 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
   <title>conntrack: the hidden table that fills up</title>
-  <desc>Visual infographic explaining conntrack table exhaustion, NAT translation rows, full state dropping packets, and fixes.</desc>
+  <desc>Visual infographic explaining Linux conntrack table exhaustion in Kubernetes, packet dropping behavior, and mitigation techniques.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 1 L 16 9 L 0 17 Z" fill="#db8129" />
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1,1 L 11,7 L 1,13 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1,1 L 11,7 L 1,13 Z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1140" fill="#f5f8f5" />
+  <rect width="1600" height="1380" fill="#f5f8f5" />
 
   
-  <text x="800" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">conntrack: the hidden table that fills up</text>
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">conntrack: the hidden table that fills up</text>
 
   
-  <g transform="translate(40, 100)">
-    
-    <rect width="660" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <g transform="translate(30, 24)">
-      <rect x="0" y="0" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
-      <line x1="28" y1="18" x2="28" y2="56" stroke="#207448" stroke-width="3" />
-      <line x1="0" y1="36" x2="56" y2="36" stroke="#207448" stroke-width="3" />
-    </g>
-
-    
-    
-    <rect x="20" y="100" width="145" height="150" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="92" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="92" dy="0">pre-NAT</tspan>
-      <tspan x="92" dy="30">source</tspan>
-      <tspan x="92" dy="30">IP:port</tspan>
-    </text>
-
-    
-    <rect x="175" y="100" width="170" height="150" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="260" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="260" dy="0">pre-NAT</tspan>
-      <tspan x="260" dy="30">destination</tspan>
-      <tspan x="260" dy="30">ClusterIP:</tspan>
-      <tspan x="260" dy="30">port</tspan>
-    </text>
-
-    
-    <rect x="355" y="100" width="160" height="150" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="435" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="435" dy="0">post-NAT</tspan>
-      <tspan x="435" dy="30">destination</tspan>
-      <tspan x="435" dy="30">PodIP:</tspan>
-      <tspan x="435" dy="30">port</tspan>
-    </text>
-
-    
-    <rect x="525" y="100" width="115" height="150" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="582" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="582" dy="0">state and</tspan>
-      <tspan x="582" dy="30">timeout</tspan>
-    </text>
-
-    
-    <g transform="translate(20, 265)">
-      <rect x="0" y="0" width="145" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
-      <circle cx="72" cy="42" r="10" fill="none" stroke="#207448" stroke-width="3" />
-
-      <rect x="155" y="0" width="170" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
-      <rect x="220" y="32" width="40" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-
-      <rect x="335" y="0" width="160" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
-      <rect x="395" y="27" width="40" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-
-      <rect x="505" y="0" width="115" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
-      <circle cx="562" cy="42" r="14" fill="none" stroke="#207448" stroke-width="3" />
-      <polyline points="562,34 562,42 569,42" fill="none" stroke="#207448" stroke-width="3" />
-    </g>
-
-    
-    <rect x="20" y="375" width="620" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="330" y="460" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
-      <tspan x="330" dy="0">each NAT'd Service connection</tspan>
-      <tspan x="330" dy="38">uses one row (overlay setups may</tspan>
-      <tspan x="330" dy="38">use another on the reverse path)</tspan>
-    </text>
-  </g>
+  
+  
+  <rect x="40" y="120" width="680" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
 
   
-  <g transform="translate(725, 100)">
-    
-    <rect width="410" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-    
-    <g transform="translate(25, 24)">
-      <path d="M 6 46 A 24 24 0 1 1 50 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <circle cx="28" cy="38" r="4" fill="#207448" />
-      <line x1="28" y1="38" x2="44" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
-
-    
-    <g transform="translate(205, 125)">
-      
-      <path d="M -110 50 A 120 120 0 1 1 110 50" fill="none" stroke="#cbdcd0" stroke-width="22" stroke-linecap="round" />
-      
-      <path d="M -110 50 A 120 120 0 1 1 80 -89" fill="none" stroke="#207448" stroke-width="22" stroke-linecap="round" />
-      
-      <path d="M 80 -89 A 120 120 0 0 1 110 50" fill="none" stroke="#db8129" stroke-width="22" stroke-linecap="round" />
-      
-      <circle cx="0" cy="50" r="10" fill="#207448" />
-      <line x1="0" y1="50" x2="88" y2="-45" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
-    </g>
-
-    
-    <text x="205" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="205" dy="0">nf_conntrack_count</tspan>
-      <tspan x="205" dy="30">rising toward</tspan>
-      <tspan x="205" dy="30">nf_conntrack_max</tspan>
-    </text>
-
-    
-    <rect x="25" y="325" width="360" height="120" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
-    <text x="205" y="365" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
-      <tspan x="205" dy="0">dmesg: nf_conntrack:</tspan>
-      <tspan x="205" dy="32">table full,</tspan>
-      <tspan x="205" dy="32">dropping packet</tspan>
-    </text>
-
-    
-    <line x1="205" y1="445" x2="205" y2="475" stroke="#db8129" stroke-width="4" marker-end="url(#arrow)" />
-
-    
-    <rect x="25" y="480" width="360" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="205" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
-      <tspan x="205" dy="0">random connection</tspan>
-      <tspan x="205" dy="28">failures on ingress</tspan>
-      <tspan x="205" dy="28">gateways, NAT egress</tspan>
-      <tspan x="205" dy="28">and during DNS storms</tspan>
-    </text>
-  </g>
+  <rect x="64" y="145" width="632" height="435" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
 
   
-  <g transform="translate(1160, 100)">
-    
-    <rect width="400" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-    
-    <g transform="translate(25, 24)">
-      <path d="M 28 6 L 50 14 L 50 32 C 50 46 28 54 28 54 C 28 54 6 46 6 32 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-      <polyline points="18,30 25,37 38,22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-
-    
-    <rect x="20" y="100" width="360" height="510" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="200" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
-      <tspan x="200" dy="0" font-weight="bold">raise nf_conntrack_max</tspan>
-      <tspan x="200" dy="42">and buckets,</tspan>
-      <tspan x="200" dy="50">shorten lifetimes,</tspan>
-      <tspan x="200" dy="50">avoid per-request</tspan>
-      <tspan x="200" dy="42">connections,</tspan>
-      <tspan x="200" dy="50" font-weight="bold">NodeLocal DNSCache,</tspan>
-      <tspan x="200" dy="50" font-weight="bold">eBPF datapath,</tspan>
-      <tspan x="200" dy="50" font-weight="bold">NOTRACK for</tspan>
-      <tspan x="200" dy="42" font-weight="bold">NodeLocal UDP DNS</tspan>
-    </text>
-  </g>
+  <path d="M 66,157 A 10,10 0 0,1 76,147 L 684,147 A 10,10 0 0,1 694,157 L 694,290 L 66,290 Z" fill="#d8e8dc" />
 
   
-  <g transform="translate(40, 755)">
-    <rect width="1520" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    
-    <g transform="translate(30, 40)">
-      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
-      <polyline points="28,12 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
-
-    
-    <rect x="110" y="18" width="1385" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="802" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36" text-anchor="middle">
-      <tspan x="802" dy="0">TCP established default 5 days; kube-proxy sets</tspan>
-      <tspan x="802" dy="36">tcpEstablishedTimeout 24 h and tcpCloseWaitTimeout 1 h</tspan>
-    </text>
-  </g>
+  <line x1="214" y1="147" x2="214" y2="580" stroke="#b2cfbe" stroke-width="2" />
+  <line x1="384" y1="147" x2="384" y2="580" stroke="#b2cfbe" stroke-width="2" />
+  <line x1="554" y1="147" x2="554" y2="580" stroke="#b2cfbe" stroke-width="2" />
 
   
-  <g transform="translate(40, 915)">
-    <rect width="1520" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="64" y1="290" x2="696" y2="290" stroke="#207448" stroke-width="2" />
 
-    
-    <g transform="translate(30, 70)">
-      <rect x="0" y="0" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-      <polyline points="14,18 26,28 14,38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="30" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
+  
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="139" y="210">pre-NAT</tspan>
+    <tspan x="139" y="242">source</tspan>
+    <tspan x="139" y="274">IP:port</tspan>
+  </text>
 
-    
-    <rect x="110" y="20" width="1385" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="802" y="63" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">sysctl net.netfilter.nf_conntrack_max net.netfilter.nf_conntrack_count</text>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="299" y="210">pre-NAT</tspan>
+    <tspan x="299" y="242">destination</tspan>
+    <tspan x="299" y="274">ClusterIP:port</tspan>
+  </text>
 
-    
-    <rect x="110" y="105" width="680" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="450" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">conntrack -S</text>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="469" y="210">post-NAT</tspan>
+    <tspan x="469" y="242">destination</tspan>
+    <tspan x="469" y="274">PodIP:port</tspan>
+  </text>
 
-    
-    <rect x="815" y="105" width="680" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="1155" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">conntrack -L -d ClusterIP</text>
-  </g>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="625" y="225">state and</tspan>
+    <tspan x="625" y="257">timeout</tspan>
+  </text>
+
+  
+  <line x1="64" y1="362" x2="696" y2="362" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="64" y1="434" x2="696" y2="434" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="64" y1="506" x2="696" y2="506" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <rect x="79" y="315" width="120" height="22" rx="4" fill="#eef5f0" />
+  <rect x="229" y="315" width="140" height="22" rx="4" fill="#eef5f0" />
+  <rect x="399" y="315" width="140" height="22" rx="4" fill="#eef5f0" />
+  <rect x="569" y="315" width="112" height="22" rx="4" fill="#eef5f0" />
+
+  <rect x="79" y="387" width="120" height="22" rx="4" fill="#f5faf6" />
+  <rect x="229" y="387" width="140" height="22" rx="4" fill="#f5faf6" />
+  <rect x="399" y="387" width="140" height="22" rx="4" fill="#f5faf6" />
+  <rect x="569" y="387" width="112" height="22" rx="4" fill="#f5faf6" />
+
+  <rect x="79" y="459" width="120" height="22" rx="4" fill="#eef5f0" />
+  <rect x="229" y="459" width="140" height="22" rx="4" fill="#eef5f0" />
+  <rect x="399" y="459" width="140" height="22" rx="4" fill="#eef5f0" />
+  <rect x="569" y="459" width="112" height="22" rx="4" fill="#eef5f0" />
+
+  <rect x="79" y="531" width="120" height="22" rx="4" fill="#f5faf6" />
+  <rect x="229" y="531" width="140" height="22" rx="4" fill="#f5faf6" />
+  <rect x="399" y="531" width="140" height="22" rx="4" fill="#f5faf6" />
+  <rect x="569" y="531" width="112" height="22" rx="4" fill="#f5faf6" />
+
+  
+  <rect x="64" y="605" width="632" height="160" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="380" y="650">each NAT'd Service connection</tspan>
+    <tspan x="380" y="686">uses one row (overlay setups</tspan>
+    <tspan x="380" y="722">may use another on the</tspan>
+    <tspan x="380" y="758">reverse path)</tspan>
+  </text>
+
+  
+  <rect x="64" y="790" width="632" height="215" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <circle cx="104" cy="830" r="18" fill="none" stroke="#207448" stroke-width="3" />
+  <polyline points="104,818 104,830 114,830" fill="none" stroke="#207448" stroke-width="3" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="390" y="845">TCP established default 5 days;</tspan>
+    <tspan x="390" y="885">kube-proxy sets</tspan>
+    <tspan x="390" y="925">tcpEstablishedTimeout 24 h and</tspan>
+    <tspan x="390" y="965">tcpCloseWaitTimeout 1 h</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="745" y="120" width="420" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="765" y="145" width="380" height="310" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+
+  
+  
+  <path d="M 881,317 A 85,85 0 1,1 1029,317" fill="none" stroke="#e0e8e2" stroke-width="18" stroke-linecap="round" />
+  
+  <path d="M 881,317 A 85,85 0 0,1 955,190" fill="none" stroke="#207448" stroke-width="18" stroke-linecap="round" />
+  
+  <path d="M 955,190 A 85,85 0 0,1 1029,317" fill="none" stroke="#db8129" stroke-width="18" stroke-linecap="round" />
+
+  
+  <circle cx="955" cy="275" r="10" fill="#db8129" />
+  <line x1="955" y1="275" x2="1018" y2="215" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+
+  
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="955" y="385">nf_conntrack_count rising</tspan>
+    <tspan x="955" y="420">toward nf_conntrack_max</tspan>
+  </text>
+
+  
+  <rect x="765" y="485" width="380" height="180" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+  <text text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#c0392b">
+    <tspan x="955" y="550">dmesg:</tspan>
+    <tspan x="955" y="588">nf_conntrack: table full,</tspan>
+    <tspan x="955" y="626">dropping packet</tspan>
+  </text>
+
+  
+  <path d="M 955,680 L 955,730" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="765" y="745" width="380" height="260" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="955" y="810">random connection</tspan>
+    <tspan x="955" y="852">failures on ingress</tspan>
+    <tspan x="955" y="894">gateways, NAT egress and</tspan>
+    <tspan x="955" y="936">during DNS storms</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="1190" y="120" width="370" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="1210" y="145" width="330" height="120" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,205 1240,215 1255,195" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1270" y="195">raise nf_conntrack_max</tspan>
+    <tspan x="1270" y="230">and buckets,</tspan>
+  </text>
+
+  
+  <rect x="1210" y="285" width="330" height="100" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,335 1240,345 1255,325" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1270" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">shorten lifetimes,</text>
+
+  
+  <rect x="1210" y="405" width="330" height="120" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,465 1240,475 1255,455" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1270" y="455">avoid per-request</tspan>
+    <tspan x="1270" y="490">connections,</tspan>
+  </text>
+
+  
+  <rect x="1210" y="545" width="330" height="100" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,595 1240,605 1255,585" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1270" y="605" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">NodeLocal DNSCache,</text>
+
+  
+  <rect x="1210" y="665" width="330" height="100" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,715 1240,725 1255,705" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1270" y="725" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">eBPF datapath,</text>
+
+  
+  <rect x="1210" y="785" width="330" height="125" rx="12" fill="#ffffff" stroke="#b2cfbe" stroke-width="2" />
+  <polyline points="1230,845 1240,855 1255,835" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1270" y="835">NOTRACK for</tspan>
+    <tspan x="1270" y="870">NodeLocal UDP DNS</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="1060" width="1520" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="65" y="1085" width="1470" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="1142" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sysctl net.netfilter.nf_conntrack_max net.netfilter.nf_conntrack_count</text>
+
+  
+  <rect x="65" y="1195" width="715" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="422" y="1254" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">conntrack -S</text>
+
+  
+  <rect x="820" y="1195" width="715" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1177" y="1254" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">conntrack -L -d ClusterIP</text>
 </svg>

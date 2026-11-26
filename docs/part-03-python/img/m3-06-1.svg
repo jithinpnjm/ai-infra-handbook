@@ -1,206 +1,196 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
-  <title>Concepts</title>
-  <desc>Visual decision tree flowchart for selecting Python concurrency and parallelism models based on whether runtime is I/O-bound or CPU-bound.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
+  <title>Concepts - Concurrency &amp; Parallelism Decision Tree</title>
+  <desc>A flowchart decision tree guiding choices between ThreadPoolExecutor, asyncio, ProcessPoolExecutor, and Vectorized/Native calls based on runtime bottlenecks.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
     </marker>
-    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%" filterUnits="userSpaceOnUse">
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <filter id="card-shadow" x="-4%" y="-3%" width="108%" height="108%">
       <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
     </filter>
   </defs>
 
   
-  <rect width="1600" height="1100" fill="#f5f8f5" />
+  <rect width="1600" height="1350" fill="#f5f8f5" />
 
   
-  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Concepts</text>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Concepts</text>
 
   
-
   
-  <path d="M 640 190 V 238 H 420 V 288" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 960 190 V 238 H 1180 V 288" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 290 410 V 558" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 600 410 V 848" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1060 410 V 558" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 1360 410 V 848" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-
-  
-
-  
-  <g transform="translate(130, 206)">
-    <rect width="550" height="62" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="275" y="27" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">I/O-Bound:</text>
-    <text x="275" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Waiting on network, BMCs, APIs, disk</text>
-  </g>
-
-  
-  <g transform="translate(920, 206)">
-    <rect width="550" height="62" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="275" y="27" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">CPU-Bound:</text>
-    <text x="275" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Parsing, hashing, math, compression</text>
-  </g>
-
-  
-  <g transform="translate(45, 442)">
-    <rect width="490" height="86" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="245" y="28" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">10 to 200 concurrent calls</text>
-    <text x="245" y="54" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(blocking libs: requests,</text>
-    <text x="245" y="78" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">paramiko, boto3)</text>
-  </g>
-
-  
-  <g transform="translate(240, 752)">
-    <rect width="530" height="86" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="265" y="28" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1,000 to 10,000+ connections</text>
-    <text x="265" y="54" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(async libs: httpx.AsyncClient,</text>
-    <text x="265" y="78" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">aiohttp, asyncpg)</text>
-  </g>
-
-  
-  <g transform="translate(820, 442)">
-    <rect width="480" height="86" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="240" y="32" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pure Python</text>
-    <text x="240" y="66" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(is_prime, AST/JSON transforms)</text>
-  </g>
-
-  
-  <g transform="translate(1040, 752)">
-    <rect width="500" height="86" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
-    <text x="250" y="32" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Native C/CUDA</text>
-    <text x="250" y="66" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(NumPy, PyTorch, hashlib, zlib)</text>
-  </g>
-
-  
-
-  
-  <g transform="translate(470, 80)">
-    <rect width="660" height="110" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4" filter="url(#card-shadow)" />
+  <g filter="url(#card-shadow)">
+    <rect x="440" y="105" width="720" height="110" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
     
-    <g transform="translate(32, 27)">
-      <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="4" />
-      <path d="M 12 36 A 20 20 0 1 1 44 36" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <line x1="28" y1="28" x2="38" y2="16" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-      <circle cx="28" cy="28" r="4" fill="#db8129" />
-    </g>
-    <text x="375" y="66" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">What dominates runtime?</text>
+    <circle cx="495" cy="160" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="495,144 495,160 508,160" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="540" y="169" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What dominates runtime?</text>
   </g>
 
   
-  <g transform="translate(90, 290)">
-    <rect width="660" height="120" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
-    
-    <g transform="translate(36, 32)">
-      <circle cx="14" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="42" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4" />
-      <circle cx="28" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="20" y1="18" x2="36" y2="18" stroke="#207448" stroke-width="4" />
-      <line x1="18" y1="20" x2="24" y2="36" stroke="#207448" stroke-width="4" />
-      <line x1="38" y1="20" x2="32" y2="36" stroke="#207448" stroke-width="4" />
-    </g>
-    <text x="375" y="52" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Concurrency scale &amp;</text>
-    <text x="375" y="90" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">library support?</text>
+  
+  <path d="M 600 215 L 600 270 L 412 270 L 412 470" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <path d="M 1000 215 L 1000 270 L 1188 270 L 1188 470" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="232" y="295" width="360" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="412" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">I/O-Bound:</text>
+    <text x="412" y="364" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Waiting on network,</text>
+    <text x="412" y="394" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">BMCs, APIs, disk</text>
   </g>
 
   
-  <g transform="translate(850, 290)">
-    <rect width="660" height="120" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
-    
-    <g transform="translate(36, 32)">
-      <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <rect x="20" y="20" width="16" height="16" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="18" y1="4" x2="18" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="28" y1="4" x2="28" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="38" y1="4" x2="38" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="18" y1="44" x2="18" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="38" y1="44" x2="38" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="4" y1="18" x2="12" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="4" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="4" y1="38" x2="12" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="44" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="44" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="44" y1="38" x2="52" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
-    <text x="375" y="52" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pure Python or</text>
-    <text x="375" y="90" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Native C/Rust/CUDA?</text>
+  <g filter="url(#card-shadow)">
+    <rect x="1008" y="295" width="360" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1188" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">CPU-Bound:</text>
+    <text x="1188" y="364" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Parsing, hashing,</text>
+    <text x="1188" y="394" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">math, compression</text>
   </g>
 
   
-  <g transform="translate(80, 560)">
-    <rect width="420" height="180" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+  
+  <g filter="url(#card-shadow)">
+    <rect x="55" y="475" width="715" height="110" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
     
-    <g transform="translate(182, 16)">
-      <rect x="14" y="6" width="28" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="8" y1="6" x2="48" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="8" y1="50" x2="48" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="3" />
-      <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="3" />
-      <line x1="14" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="3" />
-    </g>
-    <text x="210" y="102" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ThreadPoolExecutor</text>
-    <text x="210" y="136" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(GIL released</text>
-    <text x="210" y="164" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">during OS I/O)</text>
+    <circle cx="110" cy="530" r="10" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="145" cy="512" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="145" cy="548" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="120" y1="524" x2="138" y2="515" stroke="#207448" stroke-width="3" />
+    <line x1="120" y1="536" x2="138" y2="545" stroke="#207448" stroke-width="3" />
+    <text x="175" y="539" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Concurrency scale &amp; library support?</text>
   </g>
 
   
-  <g transform="translate(330, 850)">
-    <rect width="480" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+  <g filter="url(#card-shadow)">
+    <rect x="830" y="475" width="715" height="110" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
     
-    <g transform="translate(212, 14)">
-      <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="18 8" />
-      <polyline points="38,8 48,10 44,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      <polyline points="18,48 8,46 12,36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    <text x="240" y="98" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">asyncio Event Loop</text>
-    <text x="240" y="132" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">+ Semaphore</text>
-    <text x="240" y="172" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(offload disk/sync calls</text>
-    <text x="240" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">via asyncio.to_thread)</text>
+    <rect x="880" y="510" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="872" y1="520" x2="880" y2="520" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="872" y1="536" x2="880" y2="536" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="916" y1="520" x2="924" y2="520" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="916" y1="536" x2="924" y2="536" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="890" y1="502" x2="890" y2="510" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="906" y1="502" x2="906" y2="510" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="890" y1="546" x2="890" y2="554" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="906" y1="546" x2="906" y2="554" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="945" y="539" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pure Python or Native C/Rust/CUDA?</text>
   </g>
 
   
-  <g transform="translate(850, 560)">
-    <rect width="420" height="180" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
-    
-    <g transform="translate(182, 16)">
-      <rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="32" y="8" width="16" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="8" y="32" width="16" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="32" y="32" width="16" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
-      <circle cx="16" cy="16" r="3" fill="#207448" />
-      <circle cx="40" cy="16" r="3" fill="#207448" />
-      <circle cx="16" cy="40" r="3" fill="#207448" />
-      <circle cx="40" cy="40" r="3" fill="#207448" />
-    </g>
-    <text x="210" y="88" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ProcessPoolExecutor /</text>
-    <text x="210" y="120" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">multiprocessing</text>
-    <text x="210" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(1 process per physical</text>
-    <text x="210" y="174" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">core, separate GILs)</text>
+  
+  <path d="M 225 585 L 225 870" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <path d="M 600 585 L 600 870" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <path d="M 1000 585 L 1000 870" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <path d="M 1375 585 L 1375 870" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="55" y="640" width="340" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="225" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">10 to 200</text>
+    <text x="225" y="708" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">concurrent calls</text>
+    <text x="225" y="744" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(blocking libs:</text>
+    <text x="225" y="774" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">requests, paramiko,</text>
+    <text x="225" y="804" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">boto3)</text>
   </g>
 
   
-  <g transform="translate(1100, 850)">
-    <rect width="450" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+  <g filter="url(#card-shadow)">
+    <rect x="430" y="640" width="340" height="180" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="600" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">1,000 to 10,000+</text>
+    <text x="600" y="708" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">connections</text>
+    <text x="600" y="744" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(async libs:</text>
+    <text x="600" y="774" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">httpx.AsyncClient,</text>
+    <text x="600" y="804" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">aiohttp, asyncpg)</text>
+  </g>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="830" y="640" width="340" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1000" y="690" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pure Python</text>
+    <text x="1000" y="730" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(is_prime,</text>
+    <text x="1000" y="764" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">AST/JSON</text>
+    <text x="1000" y="798" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">transforms)</text>
+  </g>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1205" y="640" width="340" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="690" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Native C/CUDA</text>
+    <text x="1375" y="730" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(NumPy, PyTorch,</text>
+    <text x="1375" y="764" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">hashlib,</text>
+    <text x="1375" y="798" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">zlib)</text>
+  </g>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="55" y="875" width="340" height="380" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(197, 14)">
-      <rect x="8" y="10" width="40" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 28 4 L 18 26 L 30 26 L 24 50 L 38 24 L 26 24 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <g transform="translate(197, 905)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 16 28 C 16 18, 40 18, 40 28 C 40 38, 16 38, 16 28" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="28" y1="8" x2="28" y2="48" stroke="#207448" stroke-width="2.5" />
     </g>
-    <text x="225" y="98" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Vectorized /</text>
-    <text x="225" y="132" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Native Calls</text>
-    <text x="225" y="172" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(release GIL in C or use</text>
-    <text x="225" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">process-per-GPU torchrun)</text>
+    <text x="225" y="1005" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">ThreadPoolExecutor</text>
+    <text x="225" y="1080" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(GIL released</text>
+    <text x="225" y="1120" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">during OS I/O)</text>
+  </g>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="430" y="875" width="340" height="380" rx="18" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(572, 905)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="28 10" />
+      <polyline points="48,20 54,28 44,30" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline points="8,36 2,28 12,26" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="600" y="995" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">asyncio Event Loop</text>
+    <text x="600" y="1035" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">+ Semaphore</text>
+    <text x="600" y="1095" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(offload disk/sync calls</text>
+    <text x="600" y="1135" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">via</text>
+    <text x="600" y="1175" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">asyncio.to_thread)</text>
+  </g>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="830" y="875" width="340" height="380" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(972, 905)">
+      <rect x="6" y="6" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+      <rect x="30" y="6" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+      <rect x="6" y="30" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+      <rect x="30" y="30" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+    </g>
+    <text x="1000" y="995" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">ProcessPoolExecutor /</text>
+    <text x="1000" y="1035" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">multiprocessing</text>
+    <text x="1000" y="1095" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(1 process per physical</text>
+    <text x="1000" y="1135" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">core, separate GILs)</text>
+  </g>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1205" y="875" width="340" height="380" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1347, 905)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3" />
+      <polygon points="30,12 18,30 28,30 26,44 38,26 28,26" fill="#207448" />
+    </g>
+    <text x="1375" y="995" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Vectorized /</text>
+    <text x="1375" y="1035" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Native Calls</text>
+    <text x="1375" y="1085" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(release GIL in C</text>
+    <text x="1375" y="1120" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">or use process-per-GPU</text>
+    <text x="1375" y="1155" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">torchrun)</text>
   </g>
 </svg>

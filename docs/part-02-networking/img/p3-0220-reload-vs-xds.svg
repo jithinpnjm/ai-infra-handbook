@@ -1,265 +1,277 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1490" width="1600" height="1490">
   <title>Adding a backend: nginx reload versus an Envoy xDS update</title>
-  <desc>Visual comparison between open source nginx configuration reload behavior and Envoy dynamic xDS endpoint updates for adding backend services.</desc>
-  
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <desc>Visual comparison showing backend addition mechanics between nginx configuration reload and Envoy dynamic xDS updates.</desc>
+
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 1 2 L 7 5 L 1 8 z" fill="#207448"/>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
     </marker>
   </defs>
-  <style>
-    .title { font-family: system-ui, -apple-system, sans-serif; font-size: 48px; font-weight: bold; fill: #303a36; text-anchor: middle; }
-    .col-title { font-family: system-ui, -apple-system, sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
-    .text-body { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; line-height: 1.35; }
-    .text-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 24px; fill: #303a36; }
-    .step-num { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
-    .bar-text { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
-  </style>
+
   
-  <text x="800" y="65" class="title">Adding a backend: nginx reload versus an Envoy xDS update</text>
+  <rect width="1600" height="1490" fill="#f5f8f5" />
+
   
-  <rect x="35" y="105" width="440" height="965" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="55" y="152" class="col-title">nginx (open source)</text>
+  <text x="50" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Adding a backend: nginx reload versus an Envoy xDS update</text>
+
   
-  <rect x="50" y="175" width="410" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="82" cy="207" r="24" fill="#207448"/>
-  <text x="82" y="207" class="step-num">1</text>
-  <g transform="translate(400, 187)" stroke="#207448" stroke-width="3" fill="none">
-    <path d="M 4 2 L 24 2 L 32 10 L 32 34 L 4 34 Z"/>
-    <path d="M 12 18 A 7 7 0 1 1 19 25"/>
-    <polyline points="19,21 19,25 15,25"/>
+  
+  
+  <rect x="40" y="110" width="470" height="1235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="40" y="110" width="470" height="60" rx="12" fill="#e8f1ea" />
+  <rect x="40" y="150" width="470" height="20" fill="#e8f1ea" />
+  <text x="65" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">nginx (open source)</text>
+
+  
+  <g id="nginx-step-1">
+    <rect x="60" y="190" width="430" height="210" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    
+    <circle cx="95" cy="230" r="20" fill="#207448" />
+    <text x="95" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" y="238">upstream hostnames are</tspan>
+      <tspan x="75" y="280">resolved when the configuration</tspan>
+      <tspan x="75" y="322">loads, so new endpoints need</tspan>
+      <tspan x="75" y="364">a reload</tspan>
+    </text>
   </g>
-  <text x="68" y="246" class="text-body">
-    <tspan x="68" dy="0">upstream hostnames are</tspan>
-    <tspan x="68" dy="28">resolved when the</tspan>
-    <tspan x="68" dy="28">configuration loads, so</tspan>
-    <tspan x="68" dy="28">new endpoints need</tspan>
-    <tspan x="68" dy="28">a reload</tspan>
-  </text>
-  <line x1="255" y1="340" x2="255" y2="360" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
   
-  <rect x="50" y="360" width="410" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="82" cy="402" r="24" fill="#207448"/>
-  <text x="82" y="402" class="step-num">2</text>
-  <g transform="translate(400, 378)" stroke="#207448" stroke-width="3" fill="none">
-    <circle cx="12" cy="12" r="7"/>
-    <circle cx="26" cy="24" r="7"/>
-    <path d="M 12 5 L 12 1 M 12 23 L 12 19 M 5 12 L 1 12 M 23 12 L 19 12"/>
+  <line x1="275" y1="400" x2="275" y2="435" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="nginx-step-2">
+    <rect x="60" y="445" width="430" height="110" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    
+    <circle cx="95" cy="500" r="20" fill="#207448" />
+    <text x="95" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" y="490">reload starts</tspan>
+      <tspan x="135" y="525">new workers</tspan>
+    </text>
   </g>
-  <text x="68" y="396" class="text-body">
-    <tspan x="68" dy="0">reload starts</tspan>
-    <tspan x="68" dy="28">new workers</tspan>
-  </text>
-  <line x1="255" y1="445" x2="255" y2="465" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
   
-  <rect x="50" y="465" width="410" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="82" cy="512" r="24" fill="#207448"/>
-  <text x="82" y="512" class="step-num">3</text>
-  <g transform="translate(400, 483)" stroke="#207448" stroke-width="3" fill="none">
-    <circle cx="18" cy="18" r="14"/>
-    <polyline points="18,10 18,18 24,18"/>
-    <path d="M 4 32 L 32 32"/>
+  <line x1="275" y1="555" x2="275" y2="590" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="nginx-step-3">
+    <rect x="60" y="600" width="430" height="120" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    
+    <circle cx="95" cy="660" r="20" fill="#207448" />
+    <text x="95" y="668" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" y="648">old workers live until</tspan>
+      <tspan x="135" y="686">their connections end</tspan>
+    </text>
   </g>
-  <text x="68" y="508" class="text-body">
-    <tspan x="68" dy="0">old workers live until</tspan>
-    <tspan x="68" dy="28">their connections end</tspan>
-  </text>
-  <line x1="255" y1="560" x2="255" y2="580" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
   
-  <rect x="50" y="580" width="410" height="160" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
-  <circle cx="82" cy="615" r="24" fill="#db8129"/>
-  <text x="82" y="615" class="step-num">4</text>
-  <g transform="translate(400, 595)" stroke="#db8129" stroke-width="3" fill="none">
-    <circle cx="18" cy="18" r="14"/>
-    <polyline points="18,10 18,18 24,18"/>
-    <line x1="2" y1="34" x2="34" y2="2"/>
+  <line x1="275" y1="720" x2="275" y2="755" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="nginx-step-4">
+    <rect x="60" y="765" width="430" height="195" rx="8" fill="#fff9f5" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="95" cy="815" r="20" fill="#db8129" />
+    <text x="95" y="823" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="135" y="823">worker_shutdown_timeout</tspan>
+    </text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" y="875">can cap them, but it cuts</tspan>
+      <tspan x="75" y="915">streams short</tspan>
+    </text>
   </g>
-  <text x="68" y="656" class="text-body">
-    <tspan x="68" dy="0" class="text-mono" font-weight="bold">worker_shutdown_timeout</tspan>
-    <tspan x="68" dy="28">can cap them, but</tspan>
-    <tspan x="68" dy="28">it cuts streams short</tspan>
-  </text>
+
   
-  <rect x="50" y="770" width="410" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
-  <g transform="translate(400, 788)" stroke="#207448" stroke-width="3" fill="none">
-    <line x1="4" y1="10" x2="32" y2="10"/>
-    <line x1="4" y1="24" x2="32" y2="24"/>
-    <circle cx="12" cy="10" r="4" fill="#ffffff"/>
-    <circle cx="24" cy="24" r="4" fill="#ffffff"/>
+  <g id="nginx-workaround">
+    <rect x="60" y="990" width="430" height="175" rx="8" fill="#f5f8f5" stroke="#789280" stroke-width="2" stroke-dasharray="6,4" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" y="1060">resolver and variables, or dynamic</tspan>
+      <tspan x="80" y="1105">upstreams in nginx Plus</tspan>
+    </text>
   </g>
-  <text x="68" y="818" class="text-body">
-    <tspan x="68" dy="0">resolver and variables,</tspan>
-    <tspan x="68" dy="28">or dynamic upstreams</tspan>
-    <tspan x="68" dy="28">in nginx Plus</tspan>
-  </text>
+
   
-  <rect x="505" y="105" width="570" height="965" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="525" y="152" class="col-title">Envoy with xDS</text>
   
-  <rect x="525" y="175" width="530" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="227" r="24" fill="#207448"/>
-  <text x="555" y="227" class="step-num">1</text>
-  <g transform="translate(592, 207)" stroke="#207448" stroke-width="3" fill="none">
-    <polygon points="20,4 36,12 36,28 20,36 4,28 4,12"/>
-    <circle cx="20" cy="20" r="5"/>
+  
+  <rect x="535" y="110" width="500" height="1235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="535" y="110" width="500" height="60" rx="12" fill="#e8f1ea" />
+  <rect x="535" y="150" width="500" height="20" fill="#e8f1ea" />
+  <text x="560" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Envoy with xDS</text>
+
+  
+  <g id="envoy-node-1">
+    <rect x="555" y="190" width="460" height="125" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" y="243">a control plane sees the new Triton</tspan>
+      <tspan x="575" y="283">pod through the Kubernetes endpoints</tspan>
+    </text>
   </g>
-  <text x="645" y="210" class="text-body">
-    <tspan x="645" dy="0">a control plane sees the</tspan>
-    <tspan x="645" dy="28">new Triton pod through</tspan>
-    <tspan x="645" dy="28">the Kubernetes endpoints</tspan>
-  </text>
-  <line x1="790" y1="280" x2="790" y2="300" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="315" x2="785" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="300" width="530" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="342" r="24" fill="#207448"/>
-  <text x="555" y="342" class="step-num">2</text>
-  <g transform="translate(592, 322)" stroke="#207448" stroke-width="3" fill="none">
-    <line x1="4" y1="20" x2="36" y2="20"/>
-    <polyline points="26,10 36,20 26,30"/>
-    <circle cx="8" cy="20" r="4" fill="#207448"/>
+  <g id="envoy-node-2">
+    <rect x="555" y="355" width="460" height="115" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" y="405">pushes a new endpoint list to</tspan>
+      <tspan x="575" y="443">Envoy over xDS</tspan>
+    </text>
   </g>
-  <text x="645" y="336" class="text-body">
-    <tspan x="645" dy="0">pushes a new endpoint list</tspan>
-    <tspan x="645" dy="28">to Envoy over xDS</tspan>
-  </text>
-  <line x1="790" y1="385" x2="790" y2="405" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="470" x2="785" y2="500" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="405" width="530" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="447" r="24" fill="#207448"/>
-  <text x="555" y="447" class="step-num">3</text>
-  <g transform="translate(592, 427)" stroke="#207448" stroke-width="3" fill="none">
-    <rect x="4" y="6" width="32" height="28" rx="4"/>
-    <line x1="20" y1="14" x2="20" y2="26"/>
-    <line x1="14" y1="20" x2="26" y2="20"/>
+  <g id="envoy-node-3">
+    <rect x="555" y="510" width="460" height="85" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text x="575" y="562" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Envoy adds the host to the cluster</text>
   </g>
-  <text x="645" y="441" class="text-body">
-    <tspan x="645" dy="0">Envoy adds the host</tspan>
-    <tspan x="645" dy="28">to the cluster</tspan>
-  </text>
-  <line x1="790" y1="490" x2="790" y2="510" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="595" x2="785" y2="625" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="510" width="530" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="562" r="24" fill="#207448"/>
-  <text x="555" y="562" class="step-num">4</text>
-  <g transform="translate(592, 542)" stroke="#207448" stroke-width="3" fill="none">
-    <path d="M 6 32 L 14 24 L 22 24 L 22 14 L 32 14 L 32 6"/>
-    <polyline points="28,6 34,6 34,12"/>
+  <g id="envoy-node-4">
+    <rect x="555" y="635" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" y="685">starts it in slow start so it does</tspan>
+      <tspan x="575" y="723">not take a full share at once</tspan>
+    </text>
   </g>
-  <text x="645" y="545" class="text-body">
-    <tspan x="645" dy="0">starts it in slow start so</tspan>
-    <tspan x="645" dy="28">it does not take a full</tspan>
-    <tspan x="645" dy="28">share at once</tspan>
-  </text>
-  <line x1="790" y1="615" x2="790" y2="635" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="755" x2="785" y2="785" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="635" width="530" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="677" r="24" fill="#207448"/>
-  <text x="555" y="677" class="step-num">5</text>
-  <g transform="translate(592, 657)" stroke="#207448" stroke-width="3" fill="none">
-    <path d="M 20 4 L 34 10 L 34 22 C 34 30 20 36 20 36 C 20 36 6 30 6 22 L 6 10 Z"/>
-    <line x1="14" y1="18" x2="26" y2="18"/>
+  <g id="envoy-node-5">
+    <rect x="555" y="795" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" y="845">keeps existing streams on the</tspan>
+      <tspan x="575" y="883">old hosts untouched</tspan>
+    </text>
   </g>
-  <text x="645" y="671" class="text-body">
-    <tspan x="645" dy="0">keeps existing streams on</tspan>
-    <tspan x="645" dy="28">the old hosts untouched</tspan>
-  </text>
-  <line x1="790" y1="720" x2="790" y2="740" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="915" x2="785" y2="945" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="740" width="530" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="782" r="24" fill="#207448"/>
-  <text x="555" y="782" class="step-num">6</text>
-  <g transform="translate(592, 762)" stroke="#207448" stroke-width="3" fill="none">
-    <circle cx="20" cy="20" r="14"/>
-    <polyline points="12,20 18,26 28,14"/>
+  <g id="envoy-node-6">
+    <rect x="555" y="955" width="460" height="85" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text x="575" y="1007" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">no listener restarted, no worker lingers</text>
   </g>
-  <text x="645" y="776" class="text-body">
-    <tspan x="645" dy="0">no listener restarted,</tspan>
-    <tspan x="645" dy="28">no worker lingers</tspan>
-  </text>
-  <line x1="790" y1="825" x2="790" y2="845" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <line x1="785" y1="1040" x2="785" y2="1070" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
   
-  <rect x="525" y="845" width="530" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="555" cy="887" r="24" fill="#207448"/>
-  <text x="555" y="887" class="step-num">7</text>
-  <g transform="translate(592, 867)" stroke="#207448" stroke-width="3" fill="none">
-    <circle cx="10" cy="20" r="5"/>
-    <path d="M 15 20 L 25 10 L 34 10"/>
-    <path d="M 15 20 L 25 30 L 34 30"/>
-    <polyline points="30,6 34,10 30,14"/>
+  <g id="envoy-node-7">
+    <rect x="555" y="1080" width="460" height="85" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2" />
+    <text x="575" y="1132" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">takes effect for new requests only</text>
   </g>
-  <text x="645" y="881" class="text-body">
-    <tspan x="645" dy="0">takes effect for</tspan>
-    <tspan x="645" dy="28">new requests only</tspan>
-  </text>
+
   
-  <rect x="1105" y="105" width="460" height="965" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="1125" y="152" class="col-title">Envoy features</text>
   
-  <rect x="1125" y="175" width="420" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="202" class="text-body">
-    <tspan x="1140" dy="0">xDS APIs for listeners,</tspan>
-    <tspan x="1140" dy="28">routes, clusters,</tspan>
-    <tspan x="1140" dy="28">endpoints and secrets</tspan>
-  </text>
   
-  <rect x="1125" y="257" width="420" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="284" class="text-body">
-    <tspan x="1140" dy="0">least-request with P2C,</tspan>
-    <tspan x="1140" dy="28">ring-hash and Maglev</tspan>
-  </text>
+  <rect x="1060" y="110" width="500" height="1235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="1060" y="110" width="500" height="60" rx="12" fill="#e8f1ea" />
+  <rect x="1060" y="150" width="500" height="20" fill="#e8f1ea" />
+  <text x="1085" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Envoy features</text>
+
   
-  <rect x="1125" y="327" width="420" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="356" class="text-body">slow start windows</text>
-  
-  <rect x="1125" y="377" width="420" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="406" class="text-body">outlier detection</text>
-  
-  <rect x="1125" y="427" width="420" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="454" class="text-body">
-    <tspan x="1140" dy="0">locality-weighted</tspan>
-    <tspan x="1140" dy="28">balancing</tspan>
-  </text>
-  
-  <rect x="1125" y="497" width="420" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="524" class="text-body">
-    <tspan x="1140" dy="0">panic thresholds:</tspan>
-    <tspan x="1140" dy="28">when too many hosts</tspan>
-    <tspan x="1140" dy="28">are unhealthy, spread</tspan>
-    <tspan x="1140" dy="28">traffic to all rather</tspan>
-    <tspan x="1140" dy="28">than overload the few</tspan>
-    <tspan x="1140" dy="28">that remain</tspan>
-  </text>
-  
-  <rect x="1125" y="680" width="420" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="707" class="text-body">
-    <tspan x="1140" dy="0">retry budgets, hedging,</tspan>
-    <tspan x="1140" dy="28">rate limiting</tspan>
-  </text>
-  
-  <rect x="1125" y="750" width="420" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="777" class="text-body">
-    <tspan x="1140" dy="0">connection draining on</tspan>
-    <tspan x="1140" dy="28">listener updates</tspan>
-  </text>
-  
-  <rect x="1125" y="820" width="420" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1140" y="847" class="text-body">
-    <tspan x="1140" dy="0">admin interface</tspan>
-    <tspan x="1140" dy="28"><tspan class="text-mono">/clusters</tspan> and <tspan class="text-mono">/stats</tspan></tspan>
-  </text>
-  
-  <rect x="1125" y="890" width="420" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <g transform="translate(1495, 905)" stroke="#207448" stroke-width="3" fill="none">
-    <path d="M 6 22 C 2 22 0 18 2 14 C 4 10 10 10 12 12 C 14 6 24 6 26 12 C 30 12 34 16 32 20 C 30 24 26 24 24 24 Z"/>
+  <g id="feature-1">
+    <rect x="1080" y="185" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="235">xDS APIs for listeners, routes,</tspan>
+      <tspan x="1100" y="275">clusters, endpoints and secrets</tspan>
+    </text>
   </g>
-  <text x="1140" y="930" class="text-body">
-    <tspan x="1140" dy="0">Istio, Contour, Envoy</tspan>
-    <tspan x="1140" dy="28">Gateway, Gloo,</tspan>
-    <tspan x="1140" dy="28">Ambassador and many</tspan>
-    <tspan x="1140" dy="28">cloud edges</tspan>
-  </text>
+
   
-  <rect x="35" y="1095" width="1530" height="75" rx="14" fill="#207448"/>
-  <text x="800" y="1133" class="bar-text">Pick the proxy whose xDS and drain behaviour matches your streams</text>
+  <g id="feature-2">
+    <rect x="1080" y="315" width="460" height="95" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="355">least-request with P2C,</tspan>
+      <tspan x="1100" y="390">ring-hash and Maglev</tspan>
+    </text>
+  </g>
+
+  
+  <g id="feature-3">
+    <rect x="1080" y="420" width="460" height="65" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="1100" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">slow start windows</text>
+  </g>
+
+  
+  <g id="feature-4">
+    <rect x="1080" y="495" width="460" height="65" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="1100" y="537" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">outlier detection</text>
+  </g>
+
+  
+  <g id="feature-5">
+    <rect x="1080" y="570" width="460" height="65" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="1100" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">locality-weighted balancing</text>
+  </g>
+
+  
+  <g id="feature-6">
+    <rect x="1080" y="645" width="460" height="195" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="688">panic thresholds: when too many</tspan>
+      <tspan x="1100" y="728">hosts are unhealthy, spread traffic</tspan>
+      <tspan x="1100" y="768">to all rather than overload</tspan>
+      <tspan x="1100" y="808">the few that remain</tspan>
+    </text>
+  </g>
+
+  
+  <g id="feature-7">
+    <rect x="1080" y="850" width="460" height="95" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="890">retry budgets, hedging,</tspan>
+      <tspan x="1100" y="926">rate limiting</tspan>
+    </text>
+  </g>
+
+  
+  <g id="feature-8">
+    <rect x="1080" y="955" width="460" height="90" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="995">connection draining on</tspan>
+      <tspan x="1100" y="1030">listener updates</tspan>
+    </text>
+  </g>
+
+  
+  <g id="feature-9">
+    <rect x="1080" y="1055" width="460" height="90" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="1092">admin interface</tspan>
+    </text>
+    <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="1100" y="1127">/clusters and /stats</tspan>
+    </text>
+  </g>
+
+  
+  <g id="feature-ecosystem">
+    <rect x="1080" y="1155" width="460" height="170" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="1205">Istio, Contour, Envoy Gateway,</tspan>
+      <tspan x="1100" y="1248">Gloo, Ambassador and</tspan>
+      <tspan x="1100" y="1291">many cloud edges</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <rect x="40" y="1375" width="1520" height="80" rx="10" fill="#207448" />
+  <text x="800" y="1426" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Pick the proxy whose xDS and drain behaviour matches your streams</text>
+
 </svg>

@@ -1,164 +1,273 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1280" width="1600" height="1280">
   <title>An if statement runs a command and branches on its exit code</title>
-  <desc>Flowchart showing how an if statement runs a command, branches on its exit code, and proceeds to fi.</desc>
+  <desc>Flowchart showing how Bash if and elif statements branch on command exit codes rather than testing boolean expressions.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
     </marker>
+
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1080" fill="#f5f8f5"/>
+  <rect width="1600" height="1280" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">An if statement runs a command and branches on its exit code</text>
+  <g opacity="0.25" stroke="#207448" stroke-width="1" stroke-dasharray="4 8">
+    <line x1="80" y1="120" x2="1520" y2="120" />
+    <line x1="80" y1="1200" x2="1520" y2="1200" />
+  </g>
 
   
-  
-  <g>
-    <rect x="1040" y="225" width="480" height="185" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
-    <text x="1070" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="1070" dy="0">if does not test an expression.</tspan>
-      <tspan x="1070" dy="38">It runs a command and reads</tspan>
-      <tspan x="1070" dy="38">the exit code.</tspan>
+  <g transform="translate(80, 70)">
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+      An if statement runs a command and branches on its exit code
     </text>
   </g>
 
   
-  <g>
-    <rect x="1040" y="450" width="480" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <text x="1070" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="1070" dy="0">Zero means true.</tspan>
-      <tspan x="1070" dy="38">Anything non-zero</tspan>
-      <tspan x="1070" dy="38">means false.</tspan>
+
+  
+  <path d="M 570 230 L 570 300" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 370 400 L 250 400 L 250 780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 570 500 L 570 580" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  
+  <path d="M 570 740 L 570 780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 750 660 L 1140 660 L 1140 780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 250 930 L 250 1040 L 570 1040" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 570 930 L 570 1040" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 1140 930 L 1140 1040 L 570 1040" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 570 1040 L 570 1090" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+
+  
+
+  
+  <g transform="translate(570, 180)" filter="url(#card-shadow)">
+    <rect x="-310" y="-50" width="620" height="100" rx="50" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(-275, -24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="48" height="48" rx="8" />
+      <path d="M 12 18 L 22 24 L 12 30" />
+      <path d="M 26 32 L 36 32" />
+    </g>
+    <text x="30" y="10" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+      if grep -q daemon: /etc/passwd
+    </text>
+  </g>
+
+
+  
+  <g transform="translate(570, 400)" filter="url(#card-shadow)">
+    
+    <polygon points="0,-100 200,0 0,100 -200,0" fill="#ffffff" stroke="#db8129" stroke-width="5" />
+    
+    
+    <g transform="translate(-24, -68)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="11" />
+      <path d="M24 3 v6 M24 39 v6 M3 24 h6 M39 24 h6 M9.2 9.2 l4.2 4.2 M34.6 34.6 l4.2 4.2 M9.2 38.8 l4.2 -4.2 M34.6 13.4 l4.2 -4.2" />
+    </g>
+
+    
+    <text x="0" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Exit code 0?
+    </text>
+  </g>
+
+
+  
+  <g transform="translate(570, 660)" filter="url(#card-shadow)">
+    
+    <polygon points="0,-80 180,0 0,80 -180,0" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    
+    
+    <g transform="translate(-22, -58)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 4 h 18 l 10 10 v 26 h -28 z" />
+      <path d="M 26 4 v 10 h 10" />
+      <circle cx="20" cy="28" r="5" />
+      <path d="M 24 32 l 5 5" />
+    </g>
+
+    <text x="0" y="20" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      elif -e /etc/passwd ?
+    </text>
+  </g>
+
+
+  
+
+  
+  <g transform="translate(250, 855)" filter="url(#card-shadow)">
+    <rect x="-170" y="-75" width="340" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(-142, -50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="20" />
+      <path d="M 12 22 L 18 28 L 32 14" />
+    </g>
+    <text x="14" y="-8" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+      then:
+    </text>
+    <text x="14" y="32" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      echo found
+    </text>
+  </g>
+
+
+  
+  <g transform="translate(570, 855)" filter="url(#card-shadow)">
+    <rect x="-190" y="-75" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(-165, -50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="36" height="42" rx="6" />
+      <line x1="12" y1="12" x2="32" y2="12" />
+      <line x1="12" y1="20" x2="26" y2="20" />
+      <circle cx="22" cy="32" r="2" fill="#207448" />
+    </g>
+    <text x="15" y="-12" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      echo file exists
+    </text>
+    <text x="15" y="22" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      but no daemon user
+    </text>
+  </g>
+
+
+  
+  <g transform="translate(1140, 855)" filter="url(#card-shadow)">
+    <rect x="-240" y="-75" width="480" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(-215, -50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 40 38 L 4 38 Z" />
+      <line x1="22" y1="16" x2="22" y2="26" />
+      <circle cx="22" cy="32" r="2" fill="#207448" />
+    </g>
+    <text x="18" y="-18" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+      else:
+    </text>
+    <text x="18" y="16" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      echo no passwd file
+    </text>
+    <text x="18" y="48" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      at all to stderr
+    </text>
+  </g>
+
+
+  
+  <g transform="translate(570, 1140)" filter="url(#card-shadow)">
+    <rect x="-140" y="-45" width="280" height="90" rx="45" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(-105, -22)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="44" height="44" rx="8" />
+      <rect x="14" y="14" width="16" height="16" fill="#207448" />
+    </g>
+    <text x="20" y="11" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36" text-anchor="middle">
+      fi
+    </text>
+  </g>
+
+
+  
+
+  
+  <g transform="translate(250, 400)">
+    <rect x="-70" y="-22" width="140" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="0" y="8" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      yes, true
     </text>
   </g>
 
   
-  <g>
-    <rect x="160" y="115" width="720" height="80" rx="40" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
-    
-    <g transform="translate(195, 127)">
-      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-      <path d="M 12 20 L 24 28 L 12 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <line x1="28" y1="36" x2="44" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    </g>
-    <text x="275" y="165" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">if grep -q daemon: /etc/passwd</text>
-  </g>
-
-  
-  <path d="M 520 195 L 520 248" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <g>
-    <polygon points="520,250 710,335 520,420 330,335" fill="#fff9f2" stroke="#db8129" stroke-width="4"/>
-    
-    <g transform="translate(492, 270)">
-      <circle cx="28" cy="28" r="11" fill="none" stroke="#db8129" stroke-width="3.5"/>
-      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-    </g>
-    <text x="520" y="372" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exit code 0?</text>
-  </g>
-
-  
-  <path d="M 330 335 L 180 335 L 180 478" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <rect x="195" y="303" width="110" height="34" rx="6" fill="#f5f8f5"/>
-  <text x="250" y="327" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes, true</text>
-
-  
-  <g>
-    <rect x="40" y="480" width="300" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
-    
-    <g transform="translate(60, 502)">
-      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
-      <path d="M 16 28 L 24 36 L 40 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
-    <text x="130" y="527" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="130" dy="0">then:</tspan>
-      <tspan x="130" dy="30">echo found</tspan>
+  <g transform="translate(570, 538)">
+    <rect x="-68" y="-22" width="136" height="44" rx="22" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <text x="0" y="8" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      no, false
     </text>
   </g>
 
   
-  <path d="M 520 420 L 520 445 L 620 445 L 620 478" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <rect x="522" y="425" width="105" height="34" rx="6" fill="#f5f8f5"/>
-  <text x="574" y="449" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no, false</text>
-
-  
-  <g>
-    <polygon points="620,480 840,570 620,660 400,570" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
-    
-    <g transform="translate(592, 498)">
-      <path d="M 12 6 L 34 6 L 44 16 L 44 50 L 12 50 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-      <path d="M 34 6 L 34 16 L 44 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-      <circle cx="28" cy="33" r="7" fill="none" stroke="#207448" stroke-width="3"/>
-    </g>
-    <text x="620" y="582" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="620" dy="0">elif -e</tspan>
-      <tspan x="620" dy="32">/etc/passwd ?</tspan>
+  <g transform="translate(570, 755)">
+    <rect x="-42" y="-20" width="84" height="40" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="0" y="7" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      yes
     </text>
   </g>
 
   
-  <path d="M 400 570 L 320 570 L 320 738" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <rect x="330" y="548" width="55" height="34" rx="6" fill="#f5f8f5"/>
-  <text x="357" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
-
-  
-  <g>
-    <rect x="160" y="740" width="400" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
-    
-    <g transform="translate(178, 767)">
-      <circle cx="28" cy="20" r="10" fill="none" stroke="#207448" stroke-width="3.5"/>
-      <path d="M 12 48 C 12 36 20 32 28 32 C 36 32 44 36 44 48" fill="none" stroke="#207448" stroke-width="3.5"/>
-    </g>
-    <text x="245" y="788" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="245" dy="0">echo file exists</tspan>
-      <tspan x="245" dy="32">but no daemon user</tspan>
+  <g transform="translate(930, 660)">
+    <rect x="-40" y="-20" width="80" height="40" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="0" y="7" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      no
     </text>
   </g>
 
-  
-  <path d="M 840 570 L 880 570 L 880 738" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <rect x="850" y="548" width="45" height="34" rx="6" fill="#f5f8f5"/>
-  <text x="872" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no</text>
 
   
-  <g>
-    <rect x="660" y="740" width="460" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+  
+  <g transform="translate(860, 310)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="660" height="150" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
     
-    <g transform="translate(678, 767)">
-      <polygon points="28,6 50,46 6,46" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
-      <line x1="28" y1="20" x2="28" y2="32" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
-      <circle cx="28" cy="40" r="2.5" fill="#207448"/>
+    <path d="M 0 50 L -20 65 L 0 80 Z" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <line x1="0" y1="52" x2="0" y2="78" stroke="#ffffff" stroke-width="5" />
+    
+    
+    <g transform="translate(30, 48)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 28 A 16 16 0 1 1 32 28 C 30 34 26 36 26 42 L 18 42 C 18 36 14 34 12 28 Z" />
+      <line x1="18" y1="48" x2="26" y2="48" />
     </g>
-    <text x="748" y="788" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="748" dy="0">else: echo no passwd</tspan>
-      <tspan x="748" dy="32">file at all to stderr</tspan>
+
+    <text x="90" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      if does not test an expression.
+    </text>
+    <text x="90" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      It runs a command and reads the exit code.
     </text>
   </g>
 
-  
-  
-  <path d="M 100 580 L 100 980 L 438 980" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <path d="M 360 850 L 360 905 L 880 905 L 880 850" fill="none" stroke="#207448" stroke-width="4"/>
-  <path d="M 620 905 L 620 938" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <g>
-    <rect x="440" y="940" width="280" height="80" rx="40" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g transform="translate(860, 490)" filter="url(#card-shadow)">
+    <rect x="0" y="0" width="660" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(475, 952)">
-      <line x1="14" y1="8" x2="14" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-      <polygon points="14,10 44,22 14,34" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <g transform="translate(30, 30)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 38 12 V 26 C 38 38 22 48 22 48 C 22 48 6 38 6 26 V 12 Z" />
+      <path d="M 16 26 L 22 32 L 30 18" />
     </g>
-    <text x="560" y="991" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="bold" fill="#303a36">fi</text>
+
+    <text x="90" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      Zero means true. Anything non-zero means false.
+    </text>
   </g>
+
 </svg>

@@ -1,146 +1,152 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
   <title>Startup, readiness and liveness probes cover different windows of an engine's life</title>
-  <desc>Visual infographic showing how startup, readiness, and liveness probes cover distinct operational windows of an engine's lifecycle.</desc>
+  <desc>Infographic explaining Kubernetes startup, readiness, and liveness probe timing windows, configurations, and best practices for engine containers.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+    <marker id="axis-arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#303a36" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1160" fill="#f5f8f5"/>
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
 
   
-  <text x="60" y="75" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Startup, readiness and liveness probes</text>
-  <text x="60" y="132" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">cover different windows of an engine's life</text>
+  <text x="60" y="68" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Startup, readiness and liveness probes cover</text>
+  <text x="60" y="120" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">different windows of an engine's life</text>
 
   
   <g id="time-axis">
-    <rect x="60" y="170" width="1480" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="340" y1="185" x2="1520" y2="185" stroke="#303a36" stroke-width="4" marker-end="url(#axis-arrow)" />
     
     
-    <g transform="translate(90, 186)">
-      <circle cx="24" cy="24" r="22" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
-      <path d="M 24 12 L 24 24 L 33 24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+    <line x1="360" y1="175" x2="360" y2="195" stroke="#303a36" stroke-width="4" />
+    <text x="360" y="165" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">0 s</text>
     
     
-    <text x="155" y="221" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Pod life in seconds from start</text>
+    <line x1="840" y1="170" x2="840" y2="920" stroke="#207448" stroke-dasharray="8 8" stroke-width="3" />
+    <rect x="740" y="145" width="200" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="840" y="170" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">~600 s</text>
+
     
-    
-    <line x1="580" y1="210" x2="1500" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="1040" y="145" width="450" height="36" rx="8" fill="#303a36" />
+    <text x="1265" y="171" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">Pod life in seconds from start</text>
   </g>
 
   
-  <line x1="840" y1="250" x2="840" y2="990" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45"/>
-
-  
   <g id="lane-startup">
-    <rect x="60" y="275" width="1480" height="225" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
+    <rect x="60" y="215" width="1480" height="215" rx="16" fill="#ffffff" stroke="#d5e2d7" stroke-width="2" />
+
     
-    <rect x="75" y="290" width="240" height="195" rx="10" fill="#e8f1ea"/>
+    <rect x="80" y="235" width="250" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(165, 315)">
-      <circle cx="30" cy="30" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <path d="M 30 14 L 30 30 M 20 20 A 16 16 0 1 0 40 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <g transform="translate(177, 252)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
     </g>
-    <text x="195" y="420" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448" text-anchor="middle">Startup probe</text>
+    <text x="205" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Startup probe</text>
 
     
-    <rect x="335" y="295" width="495" height="70" rx="10" fill="#207448"/>
-    <text x="582" y="340" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">load and compile</text>
+    <rect x="360" y="240" width="480" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <rect x="335" y="380" width="495" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-    <text x="355" y="418" font-family="monospace" font-size="24px" fill="#303a36">failureThreshold 60 times</text>
-    <text x="355" y="455" font-family="monospace" font-size="24px" fill="#303a36">periodSeconds 10 equals 600 s</text>
+    <rect x="380" y="255" width="230" height="40" rx="8" fill="#207448" />
+    <text x="495" y="283" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">load and compile</text>
 
     
-    <rect x="850" y="318" width="665" height="25" rx="5" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6"/>
+    <text x="380" y="330" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">failureThreshold 60 times</text>
+    <text x="380" y="365" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">periodSeconds 10 equals 600 s</text>
 
     
-    <rect x="860" y="365" width="650" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="1185" y="402" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448" text-anchor="middle">its length must be at least</text>
-    <text x="1185" y="434" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448" text-anchor="middle">the measured cold start</text>
+    <rect x="870" y="265" width="650" height="115" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="895" y="315" font-family="sans-serif" font-size="26" font-style="italic" fill="#303a36">must be at least the measured cold start</text>
+    <text x="895" y="352" font-family="sans-serif" font-size="24" fill="#303a36">(protects slow initial weight loading and JIT)</text>
   </g>
 
   
   <g id="lane-readiness">
-    <rect x="60" y="525" width="1480" height="225" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
+    <rect x="60" y="450" width="1480" height="215" rx="16" fill="#ffffff" stroke="#d5e2d7" stroke-width="2" />
+
     
-    <rect x="75" y="540" width="240" height="195" rx="10" fill="#e8f1ea"/>
+    <rect x="80" y="470" width="250" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(165, 565)">
-      <circle cx="30" cy="30" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-      <path d="M 18 30 L 26 38 L 42 22" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(177, 487)">
+      <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="16,28 25,37 40,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
     </g>
-    <text x="195" y="670" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448" text-anchor="middle">Readiness probe</text>
+    <text x="205" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Readiness probe</text>
 
     
-    <rect x="335" y="618" width="485" height="25" rx="5" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6"/>
+    <rect x="360" y="515" width="460" height="85" rx="8" fill="#f5f8f5" stroke="#d5e2d7" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="590" y="565" font-family="sans-serif" font-size="24" fill="#889988" text-anchor="middle">held off until startup succeeds</text>
 
     
-    <rect x="840" y="540" width="460" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="1070" y="572" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">when the startup probe succeeds</text>
+    <rect x="840" y="475" width="680" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <rect x="840" y="598" width="675" height="66" rx="10" fill="#207448"/>
-    <text x="1177" y="640" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">can complete a real one-token request</text>
+    <rect x="860" y="495" width="640" height="50" rx="8" fill="#207448" />
+    <text x="1180" y="530" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">can complete a real one-token request</text>
 
     
-    <rect x="840" y="677" width="675" height="48" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-    <text x="1177" y="709" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">periodSeconds 5 and failureThreshold 2</text>
+    <text x="865" y="595" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">periodSeconds 5 and failureThreshold 2</text>
   </g>
 
   
   <g id="lane-liveness">
-    <rect x="60" y="775" width="1480" height="225" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
+    <rect x="60" y="685" width="1480" height="235" rx="16" fill="#ffffff" stroke="#d5e2d7" stroke-width="2" />
+
     
-    <rect x="75" y="790" width="240" height="195" rx="10" fill="#e8f1ea"/>
+    <rect x="80" y="705" width="250" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(165, 810)">
-      <path d="M 30 6 C 48 6 54 12 54 26 C 54 44 30 54 30 54 C 30 54 6 44 6 26 C 6 12 12 6 30 6 Z" fill="#ffffff" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <g transform="translate(177, 720)">
+      <path d="M 28 6 L 48 14 C 48 34 38 48 28 54 C 18 48 8 34 8 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
     </g>
-    <text x="195" y="920" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448" text-anchor="middle">Liveness probe</text>
+    <text x="205" y="830" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Liveness probe</text>
 
     
-    <rect x="335" y="865" width="280" height="25" rx="5" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6"/>
+    <rect x="360" y="760" width="460" height="85" rx="8" fill="#f5f8f5" stroke="#d5e2d7" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="590" y="810" font-family="sans-serif" font-size="24" fill="#889988" text-anchor="middle">held off until startup succeeds</text>
 
     
-    <rect x="840" y="790" width="390" height="48" rx="8" fill="#207448"/>
-    <line x1="860" y1="814" x2="1205" y2="814" stroke="#ffffff" stroke-width="4" stroke-dasharray="10 8"/>
+    <rect x="840" y="705" width="680" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <rect x="640" y="850" width="590" height="68" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
-    <text x="935" y="878" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">periodSeconds 10, timeoutSeconds 5,</text>
-    <text x="935" y="906" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">failureThreshold 6</text>
+    <text x="865" y="745" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">periodSeconds 10, timeoutSeconds 5,</text>
+    <text x="865" y="780" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">failureThreshold 6</text>
 
     
-    <rect x="640" y="928" width="590" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
-    <text x="935" y="961" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">cheap and local, generous tolerance</text>
+    <text x="865" y="820" font-family="sans-serif" font-size="25" font-style="italic" fill="#303a36">cheap and local, generous tolerance</text>
 
     
-    <rect x="1255" y="790" width="265" height="195" rx="12" fill="#fdf5ee" stroke="#db8129" stroke-width="2.5"/>
-    
-    
-    <g transform="translate(1363, 808)">
-      <circle cx="25" cy="25" r="22" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
-      <path d="M 25 11 A 14 14 0 1 1 14 20" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
-      <polygon points="10,12 21,19 12,25" fill="#db8129"/>
+    <g transform="translate(865, 840)">
+      <rect x="0" y="0" width="630" height="48" rx="8" fill="#db8129" />
+      
+      <g transform="translate(18, 10)">
+        <path d="M 22 8 A 12 12 0 1 0 26 18" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+        <polyline points="28,8 22,8 22,2" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      <text x="60" y="33" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">restart is the costliest action</text>
     </g>
-    
-    <text x="1387" y="895" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">restart is the</text>
-    <text x="1387" y="930" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">costliest action</text>
   </g>
 
   
   <g id="takeaway-bar">
-    <rect x="60" y="1025" width="1480" height="100" rx="12" fill="#207448"/>
-    <text x="800" y="1063" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#ffffff" text-anchor="middle">Make readiness mean can complete a real request, keep liveness local and tolerant,</text>
-    <text x="800" y="1101" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#ffffff" text-anchor="middle">and size the startup probe to your measured cold start.</text>
+    <rect x="60" y="945" width="1480" height="120" rx="16" fill="#207448" />
+    
+    <g transform="translate(85, 977)">
+      <circle cx="28" cy="28" r="24" fill="#ffffff" />
+      <text x="28" y="37" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">i</text>
+    </g>
+    
+    <text x="160" y="995" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Make readiness mean can complete a real request, keep liveness local and tolerant,</text>
+    <text x="160" y="1035" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">and size the startup probe to your measured cold start.</text>
   </g>
 </svg>

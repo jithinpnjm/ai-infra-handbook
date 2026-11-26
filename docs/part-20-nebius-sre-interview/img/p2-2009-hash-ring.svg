@@ -1,129 +1,146 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
   <title>Consistent hashing ring with virtual nodes</title>
-  <desc>SVG infographic showing a consistent hashing ring with virtual nodes, key assignment, and node insertion.</desc>
+  <desc>Visual explanation of consistent hashing ring with virtual nodes, key assignment, and node addition.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#303a36" />
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
     </marker>
 
     
     <g id="disk-icon-green">
-      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 27 C 6 35 50 35 50 27" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 40 C 6 48 50 48 50 40" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="6" y1="14" x2="6" y2="40" stroke="#207448" stroke-width="4" />
-      <line x1="50" y1="14" x2="50" y2="40" stroke="#207448" stroke-width="4" />
+      <ellipse cx="0" cy="-10" rx="14" ry="5" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <path d="M -14 -10 v 10 a 14 5 0 0 0 28 0 v -10" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M -14 0 v 10 a 14 5 0 0 0 28 0 v -10" fill="none" stroke="#207448" stroke-width="2.5" />
     </g>
-
-    
     <g id="disk-icon-orange">
-      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#db8129" stroke-width="4" />
-      <path d="M 6 27 C 6 35 50 35 50 27" fill="none" stroke="#db8129" stroke-width="4" />
-      <path d="M 6 40 C 6 48 50 48 50 40" fill="none" stroke="#db8129" stroke-width="4" />
-      <line x1="6" y1="14" x2="6" y2="40" stroke="#db8129" stroke-width="4" />
-      <line x1="50" y1="14" x2="50" y2="40" stroke="#db8129" stroke-width="4" />
+      <ellipse cx="0" cy="-10" rx="14" ry="5" fill="#fff3e6" stroke="#db8129" stroke-width="2.5" />
+      <path d="M -14 -10 v 10 a 14 5 0 0 0 28 0 v -10" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <path d="M -14 0 v 10 a 14 5 0 0 0 28 0 v -10" fill="none" stroke="#db8129" stroke-width="2.5" />
     </g>
   </defs>
 
   
-  <rect width="1600" height="980" fill="#f5f8f5" />
+  <rect width="1600" height="1050" fill="#f5f8f5" />
 
   
-  <text x="60" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Consistent hashing ring with virtual nodes</text>
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Consistent hashing ring with virtual nodes</text>
 
   
-  <circle cx="480" cy="510" r="260" fill="none" stroke="#207448" stroke-width="16" />
-  <text x="480" y="520" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Hash ring</text>
 
   
-  <circle cx="590" cy="274" r="8" fill="#8a9a92" />
-  <circle cx="413" cy="259" r="8" fill="#8a9a92" />
-  <circle cx="221" cy="533" r="8" fill="#8a9a92" />
-  <circle cx="503" cy="769" r="8" fill="#8a9a92" />
-  <circle cx="610" cy="735" r="8" fill="#8a9a92" />
-  <circle cx="739" cy="487" r="8" fill="#8a9a92" />
-
-  
-  <line x1="330" y1="210" x2="405" y2="253" stroke="#8a9a92" stroke-width="2" stroke-dasharray="4 4" />
-  <text x="240" y="200" font-family="sans-serif" font-size="24" font-weight="bold" fill="#71827a">virtual points</text>
-
-  
-  <path d="M 590 274 A 260 260 0 0 1 716 400" fill="none" stroke="#db8129" stroke-width="12" stroke-dasharray="10 8" />
-  <path d="M 602 254 A 282 282 0 0 1 738 390" fill="none" stroke="#db8129" stroke-width="4" />
-  <text x="760" y="345" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">moved keys</text>
-
-  
-  <rect x="580" y="140" width="370" height="86" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <text x="605" y="176" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="605" dy="0">Adding a node steals only</tspan>
-    <tspan x="605" dy="32">the arc just before it</tspan>
+  <rect x="90" y="130" width="560" height="110" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="370" y="178" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="370" dy="0">Adding a node steals only</tspan>
+    <tspan x="370" dy="36">the arc just before it</tspan>
   </text>
-  <line x1="720" y1="226" x2="665" y2="305" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+  
+  <line x1="370" y1="240" x2="370" y2="385" stroke="#db8129" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-orange)" />
 
   
-  <circle cx="267" cy="361" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
-  <circle cx="724" cy="599" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
-  <circle cx="331" cy="723" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
-  <circle cx="716" cy="400" r="14" fill="#db8129" stroke="#ffffff" stroke-width="3" />
+  <circle cx="500" cy="580" r="250" fill="none" stroke="#207448" stroke-width="12" opacity="0.9" />
 
   
-  <line x1="240" y1="360" x2="267" y2="361" stroke="#207448" stroke-width="2" />
-  <line x1="724" y1="599" x2="760" y2="630" stroke="#207448" stroke-width="2" />
-  <line x1="331" y1="723" x2="290" y2="820" stroke="#207448" stroke-width="2" />
-  <line x1="716" y1="400" x2="760" y2="430" stroke="#db8129" stroke-width="2" stroke-dasharray="4 4" />
-
-  
-  <rect x="20" y="320" width="220" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <use href="#disk-icon-green" x="35" y="334" />
-  <text x="104" y="372" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node A</text>
-
-  
-  <rect x="760" y="610" width="220" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <use href="#disk-icon-green" x="775" y="624" />
-  <text x="844" y="662" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node B</text>
-
-  
-  <rect x="180" y="820" width="220" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  <use href="#disk-icon-green" x="195" y="834" />
-  <text x="264" y="872" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node C</text>
-
-  
-  <rect x="760" y="410" width="220" height="80" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4" />
-  <use href="#disk-icon-orange" x="775" y="424" />
-  <text x="844" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Node D</text>
+  <circle cx="500" cy="580" r="110" fill="#ffffff" stroke="#e8f1ea" stroke-width="4" />
+  <text x="500" y="590" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36">Hash ring</text>
 
   
   
-  <rect x="247" y="632" width="16" height="16" fill="#303a36" rx="2" />
-  <path d="M 245 625 A 250 250 0 0 1 225 545" fill="none" stroke="#303a36" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 283.5 455 A 250 250 0 0 1 456.6 333.8" fill="none" stroke="#db8129" stroke-width="14" stroke-dasharray="10 8" />
 
   
-  <rect x="323" y="289" width="16" height="16" fill="#303a36" rx="2" />
-  <path d="M 335 292 A 250 250 0 0 1 405 264" fill="none" stroke="#303a36" stroke-width="3" marker-end="url(#arrow)" />
+  <circle cx="414" cy="815" r="8" fill="#78887f" stroke="#ffffff" stroke-width="2" />
+  <circle cx="265" cy="665" r="8" fill="#78887f" stroke="#ffffff" stroke-width="2" />
+  <circle cx="606" cy="353" r="8" fill="#78887f" stroke="#ffffff" stroke-width="2" />
+  <circle cx="749" cy="558" r="8" fill="#78887f" stroke="#ffffff" stroke-width="2" />
+  <circle cx="677" cy="757" r="8" fill="#78887f" stroke="#ffffff" stroke-width="2" />
 
   
-  <rect x="656" y="318" width="16" height="16" fill="#303a36" rx="2" />
-  <path d="M 670 332 A 250 250 0 0 1 712 390" fill="none" stroke="#303a36" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="50" y="690" width="180" height="50" rx="10" fill="#e8f1ea" stroke="#78887f" stroke-width="1.5" />
+  <text x="140" y="724" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">virtual points</text>
+  <path d="M 230 710 L 258 672" fill="none" stroke="#78887f" stroke-width="2" />
 
   
-  <text x="480" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">first node clockwise</text>
-  <line x1="410" y1="395" x2="368" y2="305" stroke="#303a36" stroke-width="2" stroke-dasharray="4 4" />
+  <circle cx="250" cy="580" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <line x1="210" y1="580" x2="236" y2="580" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(50, 545)">
+    <rect width="160" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#disk-icon-green" x="32" y="38" />
+    <text x="64" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Node A</text>
+  </g>
 
   
-  <rect x="1010" y="340" width="550" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="716" cy="455" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <line x1="716" y1="455" x2="745" y2="455" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(745, 420)">
+    <rect width="160" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#disk-icon-green" x="32" y="38" />
+    <text x="64" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Node B</text>
+  </g>
 
   
-  <rect x="1030" y="375" width="510" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <text x="1055" y="417" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">vnodes = 1: balance ratio 1.935</text>
+  <circle cx="586" cy="815" r="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <line x1="586" y1="815" x2="586" y2="865" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(506, 865)">
+    <rect width="160" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#disk-icon-green" x="32" y="38" />
+    <text x="64" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Node C</text>
+  </g>
 
   
-  <rect x="1030" y="465" width="510" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <text x="1055" y="507" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">vnodes = 1000: balance ratio 1.035</text>
+  <circle cx="457" cy="334" r="14" fill="#db8129" stroke="#ffffff" stroke-width="3" />
+  <line x1="457" y1="334" x2="480" y2="305" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(480, 260)">
+    <rect width="160" height="70" rx="12" fill="#fff3e6" stroke="#db8129" stroke-width="3" stroke-dasharray="6 3" />
+    <use href="#disk-icon-orange" x="32" y="38" />
+    <text x="64" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Node D</text>
+  </g>
 
   
-  <text x="1035" y="585" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1035" dy="0">Balance is the highest node load</tspan>
-    <tspan x="1035" dy="34">divided by the mean.</tspan>
+
+  
+  <rect x="313" y="747" width="20" height="20" rx="3" fill="#ffffff" stroke="#303a36" stroke-width="3.5" />
+  
+  <path d="M 330 720 A 215 215 0 0 1 285 625" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="140" y="805" width="280" height="52" rx="26" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="280" y="840" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="600" fill="#303a36">first node clockwise</text>
+  <line x1="280" y1="805" x2="315" y2="765" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="313" y="393" width="20" height="20" rx="3" fill="#ffffff" stroke="#303a36" stroke-width="3.5" />
+  
+  <path d="M 345 422 A 215 215 0 0 1 428 375" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="725" y="655" width="20" height="20" rx="3" fill="#ffffff" stroke="#303a36" stroke-width="3.5" />
+  
+  <path d="M 700 680 A 215 215 0 0 1 625 765" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="940" y="220" width="620" height="640" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+  
+  
+  <rect x="970" y="300" width="560" height="110" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <text x="1005" y="365" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">vnodes = 1: balance ratio 1.935</text>
+
+  
+  <rect x="970" y="450" width="560" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="1005" y="515" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">vnodes = 1000: balance ratio 1.035</text>
+
+  
+  <rect x="970" y="620" width="560" height="160" rx="14" fill="#ffffff" stroke="#78887f" stroke-width="1.5" stroke-dasharray="6 4" />
+  <text x="1250" y="688" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1250" dy="0">Balance is the highest node load</tspan>
+    <tspan x="1250" dy="38">divided by the mean.</tspan>
   </text>
+
 </svg>

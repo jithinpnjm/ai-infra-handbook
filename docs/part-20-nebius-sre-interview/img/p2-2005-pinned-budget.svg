@@ -1,207 +1,151 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 970" width="1600" height="970">
   <title>Pinned memory budget for a 24 GiB pod</title>
-  <desc>A worked host-memory budget where four workers with pinned and runtime memory total 28 GiB against a 24 GiB limit, so an OOM kill is expected.</desc>
+  <desc>Visual infographic explaining why an inference pod with four workers and pinned staging buffers exceeds a 24 GiB memory limit, resulting in an OOM kill.</desc>
 
-  <defs>
-    <pattern id="hatchCache" width="20" height="20" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
-      <rect width="20" height="20" fill="#e8f1ea"/>
-      <line x1="0" y1="0" x2="0" y2="20" stroke="#a9c4b3" stroke-width="4"/>
-    </pattern>
-  </defs>
+  <rect width="1600" height="970" fill="#f5f8f5"/>
 
-  <!-- Background -->
-  <rect width="1600" height="1060" fill="#f5f8f5"/>
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Pinned memory budget for a 24 GiB pod</text>
 
-  <!-- Title (48px bold) -->
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pinned memory budget for a 24 GiB pod</text>
-
-  <!-- ================= ROW 1: THREE COLUMNS ================= -->
-
-  <!-- LEFT COLUMN: Hypothetical inference pod (x=50, y=110, w=380, h=565) -->
+  
   <g id="input-card">
-    <rect x="50" y="110" width="380" height="565" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="40" y="105" width="380" height="465" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <!-- Pod / Container icon (48x40, stroke 4) -->
-    <g transform="translate(75, 135)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="6" width="48" height="38" rx="6"/>
-      <line x1="4" y1="18" x2="52" y2="18"/>
-      <circle cx="14" cy="12" r="2.5" fill="#207448"/>
-      <circle cx="24" cy="12" r="2.5" fill="#207448"/>
+    
+    <g transform="translate(65, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="44" height="14" rx="3"/>
+      <rect x="0" y="18" width="44" height="14" rx="3"/>
+      <circle cx="9" cy="7" r="1.5" fill="#207448"/>
+      <circle cx="9" cy="25" r="1.5" fill="#207448"/>
+      <line x1="20" y1="7" x2="35" y2="7"/>
+      <line x1="20" y1="25" x2="35" y2="25"/>
     </g>
     
-    <!-- Title: Hypothetical inference pod (30px bold) -->
-    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
-      <tspan x="145" y="156">Hypothetical </tspan>
-      <tspan x="145" y="192">inference pod</tspan>
+    
+    <text x="125" y="155" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Hypothetical inference pod</text>
+
+    
+    <rect x="60" y="190" width="340" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="75" y="224" font-family="sans-serif" font-size="24" fill="#303a36">Limit: 24 GiB</text>
+
+    <rect x="60" y="252" width="340" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="75" y="286" font-family="sans-serif" font-size="24" fill="#303a36">Worker processes: 4</text>
+
+    <rect x="60" y="314" width="340" height="74" rx="8" fill="#e8f1ea"/>
+    <text x="75" y="344" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Pinned staging buffers </tspan>
+      <tspan x="75" dy="28">per worker: 4 GiB</tspan>
     </text>
 
-    <!-- Item 1: Limit: 24 GiB (24px bold) -->
-    <rect x="70" y="212" width="340" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text x="240" y="252" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Limit: 24 GiB</text>
-
-    <!-- Item 2: Worker processes: 4 (24px) -->
-    <rect x="70" y="280" width="340" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text x="240" y="320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Worker processes: 4</text>
-
-    <!-- Item 3: Pinned staging buffers per worker: 4 GiB (24px) -->
-    <rect x="70" y="348" width="340" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="90" y="388">Pinned staging </tspan>
-      <tspan x="90" y="416">buffers per </tspan>
-      <tspan x="90" y="444">worker: 4 GiB</tspan>
+    <rect x="60" y="398" width="340" height="74" rx="8" fill="#e8f1ea"/>
+    <text x="75" y="428" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Runtime memory per </tspan>
+      <tspan x="75" dy="28">worker: 3 GiB</tspan>
     </text>
 
-    <!-- Item 4: Runtime memory per worker: 3 GiB (24px) -->
-    <rect x="70" y="472" width="340" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="90" y="512">Runtime memory </tspan>
-      <tspan x="90" y="540">per worker: 3 GiB</tspan>
-    </text>
-
-    <!-- Item 5: Cached weights: 15 GiB (24px) -->
-    <rect x="70" y="568" width="340" height="86" rx="10" fill="#ffffff" stroke="#a9c4b3" stroke-width="1.5"/>
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="90" y="608">Cached weights: </tspan>
-      <tspan x="90" y="636">15 GiB</tspan>
-    </text>
+    <rect x="60" y="482" width="340" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="75" y="516" font-family="sans-serif" font-size="24" fill="#303a36">Cached weights: 15 GiB</text>
   </g>
 
-  <!-- MIDDLE COLUMN: Stacked bar 'Cannot be reclaimed' (x=470, y=110, w=700, h=565) -->
-  <g id="stacked-bar-card">
-    <rect x="470" y="110" width="700" height="565" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g id="middle-bar-card">
+    <rect x="440" y="105" width="800" height="465" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <!-- Memory chip icon (40x40, stroke 4) -->
-    <g transform="translate(495, 135)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="8" width="40" height="40" rx="6" fill="#ffffff"/>
-      <rect x="18" y="18" width="20" height="20" rx="3" fill="#e8f1ea"/>
-      <line x1="18" y1="2" x2="18" y2="8"/>
-      <line x1="28" y1="2" x2="28" y2="8"/>
-      <line x1="38" y1="2" x2="38" y2="8"/>
-      <line x1="18" y1="48" x2="18" y2="54"/>
-      <line x1="28" y1="48" x2="28" y2="54"/>
-      <line x1="38" y1="48" x2="38" y2="54"/>
-      <line x1="2" y1="18" x2="8" y2="18"/>
-      <line x1="2" y1="28" x2="8" y2="28"/>
-      <line x1="2" y1="38" x2="8" y2="38"/>
-      <line x1="48" y1="18" x2="54" y2="18"/>
-      <line x1="48" y1="28" x2="54" y2="28"/>
-      <line x1="48" y1="38" x2="54" y2="38"/>
+    
+    <g transform="translate(465, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="6" width="46" height="24" rx="2"/>
+      <line x1="8" y1="12" x2="8" y2="24"/>
+      <line x1="16" y1="12" x2="16" y2="24"/>
+      <line x1="24" y1="12" x2="24" y2="24"/>
+      <line x1="32" y1="12" x2="32" y2="24"/>
+      <line x1="6" y1="30" x2="6" y2="34"/>
+      <line x1="14" y1="30" x2="14" y2="34"/>
+      <line x1="22" y1="30" x2="22" y2="34"/>
+      <line x1="30" y1="30" x2="30" y2="34"/>
+      <line x1="38" y1="30" x2="38" y2="34"/>
     </g>
+
     
-    <!-- Card Title: Cannot be reclaimed (30px bold) -->
-    <text x="560" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cannot be reclaimed</text>
+    <text x="525" y="155" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Cannot be reclaimed</text>
 
-    <!-- Sub-container for the stacked bar -->
-    <rect x="490" y="212" width="660" height="442" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-
-    <!-- Stacked Bar (4 segments of 7 GiB totalling 28 GiB, width = 660 px, x=490, y=310, h=160) -->
-    <!-- Scale: 28 GiB = 660 px -> 7 GiB = 165 px. 24 GiB = 565.71 px -> x = 1056 px -->
     
-    <!-- Segment 1: Worker 1 (4 + 3) (x=490, w=165) -->
-    <rect x="490" y="310" width="163" height="160" rx="8" fill="#207448"/>
-    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-      <tspan x="572" y="368">Worker 1 </tspan>
-      <tspan x="572" y="412">(4 + 3)</tspan>
-    </text>
-
-    <!-- Segment 2: Worker 2 (4 + 3) (x=655, w=165) -->
-    <rect x="655" y="310" width="163" height="160" rx="8" fill="#207448"/>
-    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-      <tspan x="737" y="368">Worker 2 </tspan>
-      <tspan x="737" y="412">(4 + 3)</tspan>
-    </text>
-
-    <!-- Segment 3: Worker 3 (4 + 3) (x=820, w=165) -->
-    <rect x="820" y="310" width="163" height="160" rx="8" fill="#207448"/>
-    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-      <tspan x="902" y="368">Worker 3 </tspan>
-      <tspan x="902" y="412">(4 + 3)</tspan>
-    </text>
-
-    <!-- Segment 4: Worker 4 (4 + 3) (x=985, w=165) -->
-    <rect x="985" y="310" width="165" height="160" rx="8" fill="#207448"/>
-    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-      <tspan x="1067" y="368">Worker 4 </tspan>
-      <tspan x="1067" y="412">(4 + 3)</tspan>
-    </text>
-
-    <!-- Vertical Marker at 24 GiB: x = 1056 px -->
-    <line x1="1056" y1="230" x2="1056" y2="520" stroke="#207448" stroke-width="4" stroke-dasharray="8 6"/>
     
-    <!-- Marker Label box: Limit (24px bold) -->
-    <rect x="998" y="230" width="116" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="1056" y="271" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Limit</text>
+    <rect x="448" y="240" width="196" height="170" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="546" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Worker 1 (4 + 3)</text>
 
-    <!-- Overflow bracket showing segment 4 breaches limit -->
-    <path d="M 1056 540 L 1056 565 L 1150 565 L 1150 540" fill="none" stroke="#207448" stroke-width="2"/>
-    <circle cx="1103" cy="565" r="4" fill="#207448"/>
+    
+    <rect x="644" y="240" width="196" height="170" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="742" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Worker 2 (4 + 3)</text>
+
+    
+    <rect x="840" y="240" width="196" height="170" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="938" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Worker 3 (4 + 3)</text>
+
+    
+    <rect x="1036" y="240" width="196" height="170" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="1134" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Worker 4 (4 + 3)</text>
+
+    
+    
+    <rect x="1075" y="140" width="90" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="1120" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Limit</text>
+    
+    
+    <line x1="1120" y1="182" x2="1120" y2="236" stroke="#db8129" stroke-width="3"/>
+    <polygon points="1120,240 1114,226 1126,226" fill="#db8129"/>
+
+    
+    <line x1="1120" y1="240" x2="1120" y2="275" stroke="#db8129" stroke-width="3" stroke-dasharray="6,4"/>
+    <line x1="1120" y1="375" x2="1120" y2="410" stroke="#db8129" stroke-width="3" stroke-dasharray="6,4"/>
   </g>
 
-  <!-- RIGHT COLUMN: Verdict box in orange outline (x=1210, y=110, w=340, h=565) -->
+  
   <g id="verdict-box">
-    <rect x="1210" y="110" width="340" height="565" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <rect x="1260" y="105" width="300" height="465" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
     
-    <!-- Alert / Warning octagon icon in orange -->
-    <g transform="translate(1352, 160)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="16,0 40,0 56,16 56,40 40,56 16,56 0,40 0,16"/>
-      <line x1="28" y1="16" x2="28" y2="34"/>
-      <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+    
+    <g transform="translate(1386, 140)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24,0 L 48,42 L 0,42 Z"/>
+      <line x1="24" y1="16" x2="24" y2="26"/>
+      <circle cx="24" cy="33" r="1.5" fill="#db8129"/>
     </g>
 
-    <!-- Verdict text: OOM kill expected: 28.0 GiB cannot be reclaimed, limit is lower (24px bold) -->
-    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="1380" y="290">OOM kill expected: </tspan>
-      <tspan x="1380" y="332">28.0 GiB cannot </tspan>
-      <tspan x="1380" y="374">be reclaimed, </tspan>
-      <tspan x="1380" y="416">limit is lower</tspan>
+    
+    <text x="1410" y="240" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1410" dy="0">OOM kill expected: </tspan>
+      <tspan x="1410" dy="44">28.0 GiB cannot </tspan>
+      <tspan x="1410" dy="44">be reclaimed, </tspan>
+      <tspan x="1410" dy="44">limit is lower</tspan>
     </text>
-
-    <!-- Graphic barrier block -->
-    <rect x="1240" y="500" width="280" height="60" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4"/>
-    <circle cx="1275" cy="530" r="14" fill="#db8129"/>
-    <line x1="1268" y1="530" x2="1282" y2="530" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
   </g>
 
-  <!-- ================= ROW 2: SECOND SCENARIO CARD ================= -->
-  <!-- Below, a second scenario card with a 40 GiB limit (x=50, y=715, w=1500, h=180) -->
-  <g id="second-scenario-card">
-    <rect x="50" y="715" width="1500" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g id="scenario-card-2">
+    <rect x="40" y="590" width="1520" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <!-- Refresh / Cache checkmark icon (stroke 4) -->
-    <g transform="translate(85, 735)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="24"/>
-      <path d="M 16 28 L 24 36 L 40 20"/>
+    
+    <g transform="translate(70, 645)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24,4 L 44,12 L 44,28 C 44,38 24,46 24,46 C 24,46 4,38 4,28 L 4,12 Z"/>
+      <polyline points="15,24 21,30 33,18"/>
     </g>
 
-    <!-- Main verdict of scenario 2: Fits, but page cache will be reclaimed constantly (30px bold) -->
-    <text x="170" y="770" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fits, but page cache will be reclaimed constantly</text>
-
-    <!-- Visual budget bar illustrating 40 GiB limit vs 28 unreclaimable + 15 cache = 43 total -->
-    <!-- Scale: 45 GiB = 900 px -> 1 GiB = 20 px. -->
-    <!-- Unreclaimable (28 GiB): 28 * 20 = 560 px. Cache (15 GiB): 15 * 20 = 300 px. Total = 860 px (43 GiB) -->
-    <!-- Limit (40 GiB): 40 * 20 = 800 px -> x = 170 + 800 = 970 px -->
-    <rect x="170" y="805" width="560" height="42" rx="6" fill="#207448"/>
-    <rect x="730" y="805" width="300" height="42" rx="6" fill="url(#hatchCache)" stroke="#207448" stroke-width="2"/>
-    
-    <!-- Marker at 40 GiB: 170 + 800 = 970 px -->
-    <line x1="970" y1="790" x2="970" y2="860" stroke="#207448" stroke-width="4"/>
-    <polygon points="970,785 962,797 978,797" fill="#207448"/>
-    
-    <!-- Overflow tail indicator -->
-    <rect x="970" y="805" width="60" height="42" rx="4" fill="#207448" fill-opacity="0.25" stroke="#207448" stroke-width="2"/>
+    <text x="140" y="658" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Fits, but page cache will be reclaimed constantly</text>
+    <text x="140" y="725" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">28 plus 15 equals 43 GiB</text>
   </g>
 
-  <!-- ================= ROW 3: FORMULA & NOTE ================= -->
-  <!-- Formula strip at bottom in monospace (x=50, y=935, w=840, h=80) -->
+  
   <g id="formula-strip">
-    <rect x="50" y="935" width="840" height="80" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="470" y="982" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">unreclaimable = workers x (pinned + runtime)</text>
-  </g>
+    <rect x="40" y="795" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
-  <!-- Note: 'Page cache is left out of the sum.' (x=930, y=935, w=620, h=80) -->
-  <g id="note-box">
-    <rect x="930" y="935" width="620" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <text x="1240" y="982" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Page cache is left out of the sum.</text>
-  </g>
+    
+    <g transform="translate(70, 835)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="48" height="38" rx="4"/>
+      <polyline points="10,12 18,19 10,26"/>
+      <line x1="24" y1="26" x2="36" y2="26"/>
+    </g>
 
+    <text x="140" y="845" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">unreclaimable = workers x (pinned + runtime)</text>
+    <text x="140" y="895" font-family="sans-serif" font-size="24" fill="#303a36">Page cache is left out of the sum.</text>
+  </g>
 </svg>

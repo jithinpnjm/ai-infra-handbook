@@ -1,190 +1,215 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
   <title>One call mapped onto def f(a, /, b, c=3, *ps, e=4, **ks)</title>
-  <desc>Visual mapping of arguments in a Python function call to parameters across positional-only, positional-or-keyword, collector, and keyword-only sections.</desc>
+  <desc>Visual explanation of Python argument binding and parameter categories</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 18 9 L 0 16 Z" fill="#207448"/>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 0 2 L 18 9 L 0 16 Z" fill="#db8129"/>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect x="0" y="0" width="1600" height="1380" fill="#f5f8f5" />
 
   
-  <text x="800" y="58" font-family="sans-serif" font-size="46" font-weight="bold" fill="#303a36" text-anchor="middle">One call mapped onto def f(a, /, b, c=3, *ps, e=4, **ks)</text>
+  <text x="800" y="58" font-family="monospace, sans-serif" font-size="38" font-weight="bold" fill="#303a36" text-anchor="middle">One call mapped onto def f(a, /, b, c=3, *ps, e=4, **ks)</text>
 
   
   
-  <g id="header-section-1">
-    <rect x="40" y="95" width="290" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+
+  
+  <g id="sec-pos-only">
+    <rect x="50" y="90" width="360" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
     
-    <path d="M 68 118 h 24 v 16 h -24 Z M 74 118 v -6 a 6 6 0 0 1 12 0 v 6" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="185" y="150" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="185" dy="0">positional-only:</tspan>
-      <tspan x="185" dy="36">a, /</tspan>
+    <g transform="translate(205, 102)">
+      <circle cx="25" cy="16" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="16" y1="25" x2="34" y2="7" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="230" y="172" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="230" dy="0">positional-only: a, /</tspan>
     </text>
   </g>
 
   
-  <g id="header-section-2">
-    <rect x="345" y="95" width="360" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g id="sec-pos-or-kw">
+    <rect x="430" y="90" width="360" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
     
-    <path d="M 370 120 h 28 M 384 114 v 12 M 370 134 h 28 M 378 128 v 12" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="525" y="150" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="525" dy="0">positional-or-keyword:</tspan>
-      <tspan x="525" dy="36">b, c=3</tspan>
+    <g transform="translate(585, 102)">
+      <rect x="12" y="6" width="26" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="16" x2="30" y2="16" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="610" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="610" dy="0">positional-or-keyword:</tspan>
+      <tspan x="610" dy="30" fill="#207448">b, c=3</tspan>
     </text>
   </g>
 
   
-  <g id="header-section-3">
-    <rect x="720" y="95" width="450" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g id="sec-collector-kwonly">
+    <rect x="810" y="90" width="360" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
     
-    <path d="M 744 115 h 28 l -10 14 v 12 l -8 -4 v -8 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
-    <text x="945" y="150" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="945" dy="0">collector and keyword-only:</tspan>
-      <tspan x="945" dy="36">*ps, e=4</tspan>
+    <g transform="translate(965, 102)">
+      <line x1="25" y1="5" x2="25" y2="27" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="11" x2="36" y2="21" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="21" x2="36" y2="11" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="990" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="990" dy="0">collector and keyword-only:</tspan>
+      <tspan x="990" dy="30" fill="#207448">*ps, e=4</tspan>
     </text>
   </g>
 
   
-  <g id="header-section-4">
-    <rect x="1185" y="95" width="375" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g id="sec-kw-collector">
+    <rect x="1190" y="90" width="360" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
     
-    <circle cx="1215" cy="125" r="7" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 1222 125 h 16 m -6 0 v 6 m -5 -6 v 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="1372" y="150" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
-      <tspan x="1372" dy="0">keyword collector:</tspan>
-      <tspan x="1372" dy="36">**ks (must be last)</tspan>
+    <g transform="translate(1345, 102)">
+      <path d="M 17 8 C 10 8 10 16 10 16 C 10 16 10 24 17 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 33 8 C 40 8 40 16 40 16 C 40 16 40 24 33 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="1370" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1370" dy="0">keyword collector:</tspan>
+      <tspan x="1370" dy="30" fill="#207448">**ks (must be last)</tspan>
     </text>
   </g>
 
   
   
-  <path d="M 100 430 V 239" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="116" y="295" width="190" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="211" y="336" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">0 goes to a</text>
+  
+  <rect x="50" y="250" width="1500" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="293" font-family="monospace, sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">f(0, 1, 2, 3, 4, e=5, f=6, g=7)</text>
 
   
-  <path d="M 360 430 V 239" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="375" y="285" width="135" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="442" y="320" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="442" dy="0">1 goes</tspan>
-    <tspan x="442" dy="28">to b</tspan>
+  
+  
+
+  
+  <line x1="145" y1="315" x2="145" y2="385" stroke="#207448" stroke-width="3" />
+  <rect x="65" y="385" width="160" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="145" y="419" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">0 goes to a</text>
+  <line x1="145" y1="437" x2="145" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="335" y1="315" x2="335" y2="385" stroke="#207448" stroke-width="3" />
+  <rect x="255" y="385" width="160" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="335" y="419" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">1 goes to b</text>
+  <line x1="335" y1="437" x2="335" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="525" y1="315" x2="525" y2="385" stroke="#207448" stroke-width="3" />
+  <rect x="445" y="385" width="160" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="525" y="419" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">2 goes to c</text>
+  <line x1="525" y1="437" x2="525" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="775" y1="315" x2="775" y2="370" stroke="#db8129" stroke-width="3.5" />
+  <rect x="610" y="370" width="330" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="775" y="403" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="775" dy="0">3 and 4 are collected</tspan>
+    <tspan x="775" dy="30" fill="#db8129">into ps=(3, 4)</tspan>
   </text>
+  <line x1="775" y1="450" x2="775" y2="520" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
 
   
-  <path d="M 540 430 V 239" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="555" y="285" width="135" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="622" y="320" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="622" dy="0">2 goes</tspan>
-    <tspan x="622" dy="28">to c</tspan>
+  <line x1="1065" y1="315" x2="1065" y2="370" stroke="#207448" stroke-width="3" />
+  <rect x="940" y="370" width="250" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1065" y="403" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1065" dy="0">e=5 goes to the</tspan>
+    <tspan x="1065" dy="30" fill="#207448">keyword-only e</tspan>
   </text>
+  <line x1="1065" y1="450" x2="1065" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <path d="M 735 430 V 239" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="748" y="272" width="196" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="846" y="304" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="846" dy="0">3 and 4 are</tspan>
-    <tspan x="846" dy="28">collected into</tspan>
-    <tspan x="846" dy="28">ps=(3, 4)</tspan>
+  <line x1="1355" y1="315" x2="1355" y2="370" stroke="#207448" stroke-width="3" />
+  <rect x="1185" y="370" width="340" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1355" y="403" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1355" dy="0">f=6 and g=7 are</tspan>
+    <tspan x="1355" dy="30" fill="#207448">collected into ks={f: 6, g: 7}</tspan>
   </text>
+  <line x1="1355" y1="450" x2="1355" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
 
   
-  <path d="M 970 430 V 239" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
-  <rect x="984" y="272" width="186" height="110" rx="8" fill="#fef3e7" stroke="#db8129" stroke-width="2"/>
-  <text x="1077" y="304" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="1077" dy="0">e=5 goes to the</tspan>
-    <tspan x="1077" dy="28">keyword-only</tspan>
-    <tspan x="1077" dy="28">e</tspan>
-  </text>
+  
+  
+  <rect x="50" y="525" width="1500" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="800" y="572" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">a=0, b=1, c=2, ps=(3, 4), e=5, ks={f: 6, g: 7}</text>
 
   
-  <path d="M 1205 430 V 239" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
-  <rect x="1222" y="272" width="310" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
-  <text x="1377" y="304" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
-    <tspan x="1377" dy="0">f=6 and g=7 are</tspan>
-    <tspan x="1377" dy="28">collected into</tspan>
-    <tspan x="1377" dy="28">ks={f: 6, g: 7}</tspan>
-  </text>
+  
+  
 
   
-  <g id="call-box">
-    <rect x="40" y="430" width="1520" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g id="rules-strip-left">
+    <rect x="50" y="630" width="730" height="580" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
     
-    <path d="M 65 455 l 12 13 l -12 13 M 85 481 h 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="800" y="479" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">f(0, 1, 2, 3, 4, e=5, f=6, g=7)</text>
-  </g>
+    <g transform="translate(75, 650)">
+      <path d="M 20 6 L 38 14 L 38 28 C 38 40 20 48 20 48 C 20 48 2 40 2 28 L 2 14 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="130" y="682" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Parameter Default Rules</text>
 
-  
-  <g id="output-line">
-    <rect x="40" y="524" width="1520" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="800" y="565" font-family="monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">a=0, b=1, c=2, ps=(3, 4), e=5, ks={f: 6, g: 7}</text>
-  </g>
-
-  
-  
-  
-  <g id="rule-1">
-    <rect x="40" y="612" width="740" height="224" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
     
-    <circle cx="78" cy="650" r="18" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 68 650 h 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
-    <text x="120" y="660" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="120" dy="0">before *, once one parameter has a default, every</tspan>
-      <tspan x="120" dy="36">later one up to * must also have one:</tspan>
-      <tspan x="120" dy="40" font-family="monospace" font-weight="bold" fill="#207448">def f(a, b=2, /, c): is a SyntaxError</tspan>
+    <rect x="75" y="715" width="680" height="225" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="755" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">before *, once one parameter has a default,</tspan>
+      <tspan x="95" dy="34">every later one up to * must also have one:</tspan>
+      <tspan x="95" dy="38" font-family="monospace" font-weight="bold" fill="#db8129">def f(a, b=2, /, c):</tspan>
+      <tspan font-family="sans-serif" font-weight="bold" fill="#db8129"> is a SyntaxError</tspan>
+    </text>
+
+    
+    <rect x="75" y="960" width="680" height="225" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="1000" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">after * or *args, keyword-only parameters can</tspan>
+      <tspan x="95" dy="34">mix with and without defaults:</tspan>
+      <tspan x="95" dy="38" font-family="monospace" font-weight="bold" fill="#207448">def kwonly(a, *, b=2, c, d=4)</tspan>
+      <tspan font-family="sans-serif" font-weight="bold" fill="#207448"> is valid</tspan>
     </text>
   </g>
 
-  
-  <g id="rule-2">
-    <rect x="40" y="856" width="740" height="224" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    
-    <circle cx="78" cy="894" r="18" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 68 894 l 8 8 l 14 -14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="120" y="904" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="120" dy="0">after * or *args, keyword-only parameters can</tspan>
-      <tspan x="120" dy="36">mix with and without defaults:</tspan>
-      <tspan x="120" dy="40" font-family="monospace" font-weight="bold" fill="#207448">def kwonly(a, *, b=2, c, d=4) is valid</tspan>
-    </text>
-  </g>
-
-  
   
   <g id="call-site-strip">
-    <rect x="820" y="612" width="740" height="294" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="820" y="630" width="730" height="580" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
     
-    <rect x="850" y="636" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
-    <path d="M 850 646 h 36 M 858 654 l 4 4 l -4 4" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
-    <text x="908" y="654" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="908" dy="0">plain positional before keyword;</tspan>
-      <tspan x="908" dy="34">several *iterable and **mapping allowed;</tspan>
-      <tspan x="908" dy="34">positional and *iterable must precede **mapping;</tspan>
-      <tspan x="908" dy="38" font-family="monospace" font-weight="bold" fill="#207448">func(*[1], **dict(b=2, c=3), *[4])</tspan>
-      <tspan x="908" dy="34" font-family="monospace" font-weight="bold" fill="#207448">raises SyntaxError</tspan>
+    <g transform="translate(845, 650)">
+      <rect x="4" y="6" width="38" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <polyline points="14,18 22,24 14,30" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="900" y="682" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Call-Site Ordering</text>
+
+    <rect x="845" y="715" width="680" height="240" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="865" y="755" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">plain positional before keyword; several</tspan>
+      <tspan x="865" dy="34">*iterable and **mapping allowed; positional</tspan>
+      <tspan x="865" dy="34">and *iterable must precede **mapping;</tspan>
+      <tspan x="865" dy="42" font-family="monospace" font-weight="bold" fill="#db8129">func(*[1], **dict(b=2, c=3), *[4]) raises SyntaxError</tspan>
+    </text>
+
+    
+    <g transform="translate(845, 975)">
+      <circle cx="20" cy="18" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <polygon points="17,11 27,18 17,25" fill="#207448" />
+    </g>
+    <text x="900" y="998" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Unpacking Example</text>
+
+    <rect x="845" y="1025" width="680" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="865" y="1080" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="865" dy="0">func(*[1], *(2,), **dict(c=3), **{d: 4})</tspan>
+      <tspan x="865" dy="38" fill="#207448">prints 1 2 3 4</tspan>
     </text>
   </g>
 
   
-  <g id="examples">
-    <rect x="820" y="924" width="740" height="156" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    
-    <circle cx="858" cy="962" r="18" fill="none" stroke="#207448" stroke-width="3"/>
-    <polygon points="854,952 866,962 854,972" fill="#207448"/>
-    <text x="908" y="984" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="908" dy="0">func(*[1], *(2,), **dict(c=3), **{d: 4})</tspan>
-      <tspan x="908" dy="36" fill="#207448">prints 1 2 3 4</tspan>
-    </text>
-  </g>
-
   
-  <g id="takeaway-bar">
-    <rect x="40" y="1108" width="1520" height="64" rx="10" fill="#207448"/>
-    <text x="800" y="1149" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Prefer keyword-only parameters for booleans and options, as in deploy(app, *, dry_run=True)</text>
-  </g>
+  
+  <rect x="50" y="1235" width="1500" height="85" rx="10" fill="#207448" />
+  <text x="800" y="1288" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Prefer keyword-only parameters for booleans and options, as in deploy(app, *, dry_run=True)</text>
+
 </svg>

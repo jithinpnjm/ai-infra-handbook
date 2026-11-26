@@ -1,136 +1,147 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Why a pooled connection resets: idle timeouts that do not line up</title>
-  <desc>Visual explanation of connection pool resets caused by load balancer and client pool idle timeout mismatches.</desc>
+  <desc>Visual comparison showing how mismatched idle timeouts between a load balancer and client pool cause connection reset errors, along with timing rules and protocol context.</desc>
 
   <defs>
-    <marker id="arrow-down" viewBox="0 0 16 16" refX="8" refY="14" markerWidth="16" markerHeight="16" orient="auto">
-      <path d="M 2 2 L 8 14 L 14 2 z" fill="#db8129" />
+    <marker id="arrow-down" viewBox="0 0 16 16" refX="8" refY="12" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 4 L 8 12 L 14 4 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="8" refY="12" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 4 L 8 12 L 14 4 Z" fill="#207448" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1120" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
 
   
-  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why a pooled connection resets: idle timeouts that do not line up</text>
+  <text x="50" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Why a pooled connection resets: idle timeouts that do not line up</text>
 
   
-  <rect x="40" y="120" width="860" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(50, 110)">
+    <rect x="0" y="0" width="860" height="630" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="40" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Connection Lifecycle Timeline</text>
 
-  
-  <g transform="translate(70, 145)">
-    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 28 12 L 28 28 L 40 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <line x1="80" y1="100" x2="800" y2="100" stroke="#c0d0c5" stroke-width="2" />
+
+    
+    <line x1="120" y1="90" x2="120" y2="390" stroke="#d5dfd8" stroke-width="2" stroke-dasharray="4 4" />
+    <text x="120" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">0 s</text>
+
+    
+    <line x1="440" y1="90" x2="440" y2="390" stroke="#db8129" stroke-width="2" stroke-dasharray="4 4" />
+    <text x="440" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">60 s</text>
+
+    
+    <line x1="760" y1="90" x2="760" y2="390" stroke="#c0d0c5" stroke-width="2" stroke-dasharray="4 4" />
+    <text x="760" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">120 s</text>
+
+    
+    <rect x="120" y="125" width="320" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="135" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Load balancer closes idle connections after 60 s</text>
+    
+    
+    <circle cx="440" cy="157" r="20" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <line x1="428" y1="145" x2="452" y2="169" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <line x1="452" y1="145" x2="428" y2="169" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+
+    
+    <rect x="120" y="215" width="640" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="135" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Client pool keeps connections for 120 s</text>
+
+    
+    <rect x="440" y="305" width="320" height="135" rx="10" fill="#fff5ec" stroke="#db8129" stroke-width="3" />
+    
+    <text x="600" y="348" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">the pool hands out connections</text>
+    <text x="600" y="382" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">that are already closed</text>
+    <text x="600" y="416" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#db8129">(idle 60 s – 120 s)</text>
+
+    
+    <line x1="600" y1="440" x2="600" y2="495" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-down)" />
+
+    
+    <rect x="120" y="510" width="720" height="75" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(145, 525)">
+      <polygon points="22,2 42,38 2,38" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+      <line x1="22" y1="15" x2="22" y2="26" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <circle cx="22" cy="32" r="2" fill="#db8129" />
+    </g>
+    <text x="210" y="557" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">next request fails with a connection reset</text>
   </g>
 
   
-  <rect x="80" y="220" width="370" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-  <text x="255" y="258" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="255" dy="0">Load balancer closes idle</tspan>
-    <tspan x="255" dy="32">connections after 60 s</tspan>
-  </text>
+  <g transform="translate(940, 110)">
+    <rect x="0" y="0" width="610" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(35, 30)">
+      <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="110" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix the timing</text>
 
-  
-  <circle cx="450" cy="265" r="18" fill="#ffffff" stroke="#303a36" stroke-width="3" />
-  <path d="M 440 255 L 460 275 M 460 255 L 440 275" stroke="#303a36" stroke-width="3.5" stroke-linecap="round" />
+    
+    <rect x="25" y="110" width="560" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="50" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Golden Rule:</text>
+    <text x="50" y="194" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="50" dy="0">the server's idle timeout must be longer</tspan>
+      <tspan x="50" dy="38">than the client's idle period, or shorter</tspan>
+      <tspan x="50" dy="38">than the client's pool lifetime</tspan>
+    </text>
 
-  
-  <line x1="450" y1="285" x2="450" y2="335" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6,4" />
-
-  
-  <rect x="80" y="335" width="370" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-  <text x="265" y="385" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="265" dy="0">Client pool keeps</tspan>
-    <tspan x="265" dy="32">connections for 120 s</tspan>
-  </text>
-
-  
-  <rect x="450" y="335" width="370" height="110" rx="10" fill="#db8129" stroke="#db8129" stroke-width="2" />
-  <text x="635" y="370" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
-    <tspan x="635" dy="0">the pool hands out</tspan>
-    <tspan x="635" dy="30">connections that are</tspan>
-    <tspan x="635" dy="30">already closed</tspan>
-  </text>
-
-  
-  <path d="M 635 445 L 635 506" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-down)" />
-
-  
-  <rect x="80" y="520" width="740" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-  <text x="450" y="569" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">next request fails with a connection reset</text>
-
-  
-  <rect x="930" y="120" width="630" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-  
-  <g transform="translate(960, 145)">
-    <path d="M 28 6 L 50 14 C 50 36 38 48 28 54 C 18 48 6 36 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <rect x="25" y="345" width="560" height="255" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="50" y="388" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Why Pool &amp; Reuse?</text>
+    <text x="50" y="428" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="50" dy="0">clients reuse sessions through connection</tspan>
+      <tspan x="50" dy="36">pools, requests.Session or gRPC channels</tspan>
+      <tspan x="50" dy="36">because reuse saves the TCP and TLS</tspan>
+      <tspan x="50" dy="36">handshake costs, 1 RTT + 1 RTT</tspan>
+    </text>
   </g>
 
   
-  <text x="1035" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix the timing</text>
+  <g transform="translate(50, 770)">
+    <rect x="0" y="0" width="1500" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(30, 32)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
 
-  
-  <rect x="960" y="215" width="570" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="985" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="985" dy="0">the server's idle timeout must be</tspan>
-    <tspan x="985" dy="36">longer than the client's idle period, or</tspan>
-    <tspan x="985" dy="36">shorter than the client's pool lifetime</tspan>
-  </text>
+    <text x="105" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Real-World Server Timeouts</text>
 
-  
-  <rect x="960" y="385" width="570" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="985" y="425" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="985" dy="0">clients reuse sessions through</tspan>
-    <tspan x="985" dy="36">connection pools, <tspan font-family="ui-monospace, monospace">requests.Session</tspan></tspan>
-    <tspan x="985" dy="36">or gRPC channels because reuse saves</tspan>
-    <tspan x="985" dy="36">the TCP and TLS handshake costs,</tspan>
-    <tspan x="985" dy="36" font-weight="bold">1 RTT + 1 RTT</tspan>
-  </text>
+    
+    <rect x="105" y="60" width="560" height="42" rx="6" fill="#e8f1ea" />
+    <text x="120" y="89" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">nginx keepalive_timeout 75 s</text>
 
-  
-  <rect x="40" y="670" width="1520" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-  
-  <g transform="translate(70, 702)">
-    <line x1="6" y1="18" x2="50" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="20" cy="18" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
-    <line x1="6" y1="38" x2="50" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="36" cy="38" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <rect x="700" y="60" width="560" height="42" rx="6" fill="#e8f1ea" />
+    <text x="715" y="89" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">cloud load balancers 60 to 350 s</text>
   </g>
 
   
-  <rect x="160" y="695" width="630" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="475" y="739" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan font-family="ui-monospace, monospace" font-weight="bold">nginx keepalive_timeout 75 s</tspan>
-  </text>
-
-  
-  <rect x="820" y="695" width="710" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="1175" y="739" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">cloud load balancers 60 to 350 s</text>
-
-  
-  <rect x="40" y="810" width="1520" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-  
-  <g transform="translate(70, 845)">
-    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="6" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3" />
-    <circle cx="15" cy="13" r="2.5" fill="#207448" />
-    <circle cx="23" cy="13" r="2.5" fill="#207448" />
-    <line x1="14" y1="32" x2="38" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    <line x1="14" y1="40" x2="30" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <g transform="translate(50, 915)">
+    <rect x="0" y="0" width="1500" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="35" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="35" dy="0">HTTP/1.0 opened one TCP connection per request; HTTP/1.1 added keep-alive, the Host</tspan>
+      <tspan x="35" dy="36">header, chunked encoding and caching controls; still one request in flight per connection,</tspan>
+      <tspan x="35" dy="36">so browsers open several connections</tspan>
+    </text>
   </g>
 
   
-  <text x="160" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-    <tspan x="160" dy="0">HTTP/1.0 opened one TCP connection per request; HTTP/1.1 added keep-alive,</tspan>
-    <tspan x="160" dy="38">the Host header, chunked encoding and caching controls; still one request in</tspan>
-    <tspan x="160" dy="38">flight per connection, so browsers open several connections</tspan>
-  </text>
+  <g transform="translate(50, 1075)">
+    <rect x="0" y="0" width="1500" height="80" rx="14" fill="#207448" />
+    <text x="750" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Stale connections are not reused only when the timers line up</text>
+  </g>
 
-  
-  <rect x="40" y="1005" width="1520" height="80" rx="12" fill="#207448" />
-  <text x="800" y="1054" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Stale connections are not reused only when the timers line up</text>
 </svg>

@@ -1,254 +1,125 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" width="1600" height="1220">
   <title>Half-split on the 5-hop Clos path: which hops get probed</title>
-  <desc>Visual infographic explaining the half-split search strategy across a 5-hop Clos network path.</desc>
+  <desc>Infographic illustrating half-split bisection troubleshooting across a 5-hop Clos network path.</desc>
 
   <defs>
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
-    </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1220" fill="#f5f8f5"/>
 
   
-  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Half-split on the 5-hop Clos path: which hops get probed</text>
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Half-split on the 5-hop Clos path: which hops get probed</text>
 
   
-  <g transform="translate(40, 78)">
-    <rect width="1520" height="116" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(24, 28)">
-      <line x1="10" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="30" y1="20" x2="30" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <line x1="16" y1="56" x2="44" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <path d="M 10 20 L 4 38 L 16 38 Z" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 50 20 L 44 38 L 56 38 Z" fill="none" stroke="#207448" stroke-width="3" />
-    </g>
-    
-    <text x="96" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="96" dy="0">split the path roughly in half; test the signal at the midpoint;</tspan>
-      <tspan x="96" dy="34">incorrect means move toward the source, correct means move toward the destination;</tspan>
-      <tspan x="96" dy="34">repeat on the remaining half</tspan>
-    </text>
+  <rect x="50" y="85" width="1500" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="132" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">split the path roughly in half; test the signal at the midpoint; incorrect means</text>
+  <text x="800" y="172" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">move toward the source, correct means move toward the destination; repeat on the remaining half</text>
+
+  
+  
+  <rect x="50" y="230" width="220" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(136, 245)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="48" height="34" rx="4"/>
+    <line x1="8" y1="24" x2="14" y2="24"/>
+    <line x1="20" y1="24" x2="26" y2="24"/>
+    <line x1="14" y1="34" x2="8" y2="44"/>
+    <line x1="34" y1="34" x2="40" y2="44"/>
+    <line x1="4" y1="44" x2="44" y2="44"/>
   </g>
+  <text x="160" y="336" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">src_host</text>
 
   
-  <g transform="translate(40, 214)">
-    <rect width="1520" height="136" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <line x1="270" y1="295" x2="358" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-    
-    <g transform="translate(30, 22)">
-      <rect width="215" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(14, 20)">
-        <rect width="44" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-        <line x1="6" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" />
-        <circle cx="14" cy="44" r="2.5" fill="#207448" />
-        <circle cx="22" cy="44" r="2.5" fill="#207448" />
-      </g>
-      <text x="72" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">src_host</text>
-    </g>
-
-    
-    <line x1="245" y1="68" x2="340" y2="68" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g transform="translate(345, 22)">
-      <rect width="215" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(14, 24)">
-        <rect width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-        <line x1="10" y1="18" x2="34" y2="18" stroke="#207448" stroke-width="3" />
-        <line x1="10" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" />
-        <line x1="22" y1="12" x2="22" y2="32" stroke="#207448" stroke-width="3" />
-      </g>
-      <text x="76" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">leaf_a</text>
-    </g>
-
-    
-    <line x1="560" y1="68" x2="655" y2="68" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g transform="translate(660, 22)">
-      <rect width="200" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" />
-      
-      <g transform="translate(14, 24)">
-        <rect width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-        <path d="M 12 18 L 22 28 L 32 18 M 12 26 L 22 16 L 32 26" fill="none" stroke="#207448" stroke-width="3" />
-      </g>
-      <text x="76" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#207448">spine</text>
-    </g>
-
-    
-    <line x1="860" y1="68" x2="955" y2="68" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g transform="translate(960, 22)">
-      <rect width="215" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(14, 24)">
-        <rect width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-        <line x1="10" y1="18" x2="34" y2="18" stroke="#207448" stroke-width="3" />
-        <line x1="10" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" />
-        <line x1="22" y1="12" x2="22" y2="32" stroke="#207448" stroke-width="3" />
-      </g>
-      <text x="76" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">leaf_b</text>
-    </g>
-
-    
-    <line x1="1175" y1="68" x2="1270" y2="68" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-    
-    <g transform="translate(1275, 22)">
-      <rect width="215" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-      
-      <g transform="translate(14, 20)">
-        <rect width="44" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-        <line x1="6" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" />
-        <circle cx="14" cy="44" r="2.5" fill="#207448" />
-        <circle cx="22" cy="44" r="2.5" fill="#207448" />
-      </g>
-      <text x="72" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">dst_host</text>
-    </g>
+  
+  <rect x="370" y="230" width="220" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(456, 246)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="48" height="36" rx="4"/>
+    <path d="M 10 18 L 38 18 M 30 11 L 38 18 L 30 25"/>
+    <circle cx="10" cy="18" r="3" fill="#207448"/>
   </g>
+  <text x="480" y="336" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">leaf_a</text>
 
   
+  <line x1="590" y1="295" x2="678" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
   
-  <g transform="translate(40, 370)">
-    <rect width="740" height="300" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
-
-    
-    <g transform="translate(26, 24)">
-      <circle cx="24" cy="24" r="22" fill="none" stroke="#db8129" stroke-width="4" />
-      <line x1="24" y1="8" x2="24" y2="40" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
-      <line x1="8" y1="24" x2="40" y2="24" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
-    </g>
-
-    
-    <text x="86" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Example A</text>
-    <text x="86" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">leaf_b is the first failing hop</text>
-
-    
-    <circle cx="50" cy="130" r="24" fill="#db8129" />
-    <text x="50" y="138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-    <text x="88" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="88" dy="0">probe 1 at spine (correct) so move toward the</tspan>
-      <tspan x="88" dy="32">destination;</tspan>
-    </text>
-
-    
-    <circle cx="50" cy="222" r="24" fill="#db8129" />
-    <text x="50" y="230" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-    <text x="88" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="88" dy="0">probe 2 at leaf_b (incorrect) so the fault is at or</tspan>
-      <tspan x="88" dy="32">before leaf_b, and leaf_b's predecessor spine was</tspan>
-      <tspan x="88" dy="32">correct, which isolates leaf_b.</tspan>
-    </text>
+  <rect x="690" y="230" width="220" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(776, 246)" stroke="#207448" stroke-width="3" fill="none">
+    <polygon points="24,2 48,18 48,34 24,46 0,34 0,18"/>
+    <line x1="12" y1="24" x2="36" y2="24"/>
+    <line x1="24" y1="12" x2="24" y2="36"/>
   </g>
+  <text x="800" y="336" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">spine</text>
 
   
-  <g transform="translate(820, 370)">
-    <rect width="740" height="300" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <line x1="910" y1="295" x2="998" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-    
-    <g transform="translate(26, 24)">
-      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="24" y1="8" x2="24" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-      <line x1="8" y1="24" x2="40" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-
-    
-    <text x="86" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Example B</text>
-    <text x="86" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">leaf_a is the first failing hop</text>
-
-    
-    <circle cx="50" cy="130" r="24" fill="#207448" />
-    <text x="50" y="138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-    <text x="88" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="88" dy="0">probe 1 at spine (incorrect) so move toward</tspan>
-      <tspan x="88" dy="32">the source;</tspan>
-    </text>
-
-    
-    <circle cx="50" cy="222" r="24" fill="#207448" />
-    <text x="50" y="230" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-    <text x="88" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="88" dy="0">probe 2 at leaf_a (incorrect) and src_host</tspan>
-      <tspan x="88" dy="32">(correct) isolates leaf_a.</tspan>
-    </text>
+  
+  <rect x="1010" y="230" width="220" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(1096, 246)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="48" height="36" rx="4"/>
+    <path d="M 10 18 L 38 18 M 30 11 L 38 18 L 30 25"/>
+    <circle cx="10" cy="18" r="3" fill="#db8129"/>
   </g>
+  <text x="1120" y="336" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">leaf_b</text>
 
   
-  <g transform="translate(40, 690)">
-    <rect width="1520" height="186" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <line x1="1230" y1="295" x2="1318" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-    
-    <g transform="translate(28, 20)">
-      <rect width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 12 36 L 24 16 L 36 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-      <line x1="16" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" />
-    </g>
-
-    
-    <text x="96" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Spine and leaf worked example</text>
-
-    
-    <text x="36" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="36" dy="0">a flow fails between a spine and a host; the midpoint test is at the leaf;</tspan>
-      <tspan x="36" dy="32">if the leaf's counters show the packet arrived and also left, the fault lies past the leaf, so move toward the host;</tspan>
-      <tspan x="36" dy="32">if it never left the leaf, the fault lies before it, so move toward the spine</tspan>
-    </text>
+  
+  <rect x="1330" y="230" width="220" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1416, 245)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="48" height="34" rx="4"/>
+    <line x1="8" y1="24" x2="14" y2="24"/>
+    <line x1="20" y1="24" x2="26" y2="24"/>
+    <line x1="14" y1="34" x2="8" y2="44"/>
+    <line x1="34" y1="34" x2="40" y2="44"/>
+    <line x1="4" y1="44" x2="44" y2="44"/>
   </g>
+  <text x="1440" y="336" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">dst_host</text>
 
   
-  
-  <g transform="translate(40, 896)">
-    <rect width="860" height="186" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
-    
-    <g transform="translate(28, 20)">
-      <rect width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 16 16 L 32 32 M 32 16 L 16 32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-
-    
-    <text x="96" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Tools</text>
-
-    
-    <text x="36" y="98" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="36" dy="0">choose the path with <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">traceroute</tspan>, <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">ip route get</tspan> or an ECMP-aware <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">mtr</tspan>;</tspan>
-      <tspan x="36" dy="34">capture at the midpoint with a packet capture or counters,</tspan>
-      <tspan x="36" dy="34">then bisect</tspan>
-    </text>
-  </g>
+  <rect x="50" y="390" width="730" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="75" y="435" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">leaf_b is the first failing hop</text>
+  <text x="75" y="480" font-family="sans-serif" font-size="24" fill="#303a36">probe 1 at spine (correct) so move</text>
+  <text x="75" y="518" font-family="sans-serif" font-size="24" fill="#303a36">toward the destination; probe 2 at</text>
+  <text x="75" y="556" font-family="sans-serif" font-size="24" fill="#303a36">leaf_b (incorrect) so the fault is at or</text>
+  <text x="75" y="594" font-family="sans-serif" font-size="24" fill="#303a36">before leaf_b, and leaf_b's predecessor</text>
+  <text x="75" y="632" font-family="sans-serif" font-size="24" fill="#303a36">spine was correct, which isolates leaf_b</text>
 
   
-  <g transform="translate(920, 896)">
-    <rect width="640" height="186" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-    
-    <g transform="translate(28, 24)">
-      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 18 16 C 18 10, 30 10, 30 18 C 30 24, 24 24, 24 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-      <circle cx="24" cy="38" r="2.5" fill="#207448" />
-    </g>
-
-    
-    <text x="92" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="92" dy="0" font-weight="bold">At each test ask two questions:</tspan>
-      <tspan x="92" dy="34">what is the actual state of the system</tspan>
-      <tspan x="92" dy="34">and the signal here, and what should</tspan>
-      <tspan x="92" dy="34">normal look like?</tspan>
-    </text>
-  </g>
+  <rect x="820" y="390" width="730" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="845" y="435" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">leaf_a is the first failing hop</text>
+  <text x="845" y="488" font-family="sans-serif" font-size="24" fill="#303a36">probe 1 at spine (incorrect) so move</text>
+  <text x="845" y="534" font-family="sans-serif" font-size="24" fill="#303a36">toward the source; probe 2 at leaf_a</text>
+  <text x="845" y="580" font-family="sans-serif" font-size="24" fill="#303a36">(incorrect) and src_host (correct)</text>
+  <text x="845" y="626" font-family="sans-serif" font-size="24" fill="#303a36">isolates leaf_a</text>
 
   
-  <g transform="translate(40, 1104)">
-    <rect width="1520" height="66" rx="12" fill="#207448" />
-    <text x="760" y="42" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A long path takes a handful of tests if each test cuts it in half</text>
-  </g>
+  <rect x="50" y="695" width="1500" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="748" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">a flow fails between a spine and a host; the midpoint test is at the leaf; if the leaf's counters</text>
+  <text x="800" y="792" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">show the packet arrived and also left, the fault lies past the leaf, so move toward the host;</text>
+  <text x="800" y="836" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">if it never left the leaf, the fault lies before it, so move toward the spine</text>
+
+  
+  <rect x="50" y="895" width="840" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="75" y="950" font-family="sans-serif" font-size="25" fill="#303a36">choose the path with traceroute, ip route get or an</text>
+  <text x="75" y="995" font-family="sans-serif" font-size="25" fill="#303a36">ECMP-aware mtr; capture at the midpoint with a</text>
+  <text x="75" y="1040" font-family="sans-serif" font-size="25" fill="#303a36">packet capture or counters, then bisect</text>
+
+  
+  <rect x="920" y="895" width="630" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="945" y="944" font-family="sans-serif" font-size="25" fill="#303a36">At each test ask two questions:</text>
+  <text x="945" y="984" font-family="sans-serif" font-size="25" fill="#303a36">what is the actual state of the</text>
+  <text x="945" y="1024" font-family="sans-serif" font-size="25" fill="#303a36">system and the signal here, and</text>
+  <text x="945" y="1064" font-family="sans-serif" font-size="25" fill="#303a36">what should normal look like?</text>
+
+  
+  <rect x="50" y="1105" width="1500" height="75" rx="10" fill="#207448"/>
+  <text x="800" y="1152" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A long path takes a handful of tests if each test cuts it in half</text>
 </svg>

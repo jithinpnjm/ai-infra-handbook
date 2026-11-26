@@ -1,178 +1,187 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1250" width="1600" height="1250">
   <title>Two writers and a 409 Conflict</title>
-  <desc>Swimlane diagram illustrating optimistic concurrency control and 409 Conflict in the Kubernetes API server when two engineers modify a ConfigMap concurrently.</desc>
+  <desc>Swimlane diagram showing Kubernetes optimistic concurrency control and conflict resolution between two engineers and the API server.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 14 10" refX="12" refY="5" markerWidth="14" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 0 1 L 12 5 L 0 9 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
     </marker>
-    <marker id="arrow-dark" viewBox="0 0 14 10" refX="12" refY="5" markerWidth="14" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 0 1 L 12 5 L 0 9 z" fill="#303a36" />
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#c53030" />
     </marker>
-    <marker id="arrow-red" viewBox="0 0 14 10" refX="12" refY="5" markerWidth="14" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 0 1 L 12 5 L 0 9 z" fill="#d32f2f" />
-    </marker>
+
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1160" fill="#f5f8f5" />
+  <rect width="1600" height="1250" fill="#f5f8f5" />
 
   
-  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Two writers and a 409 Conflict</text>
-
-  
-  <line x1="240" y1="170" x2="240" y2="1015" stroke="#a3c4b2" stroke-width="3" stroke-dasharray="8 8" />
-  <line x1="800" y1="170" x2="800" y2="1015" stroke="#a3c4b2" stroke-width="3" stroke-dasharray="8 8" />
-  <line x1="1360" y1="170" x2="1360" y2="1015" stroke="#a3c4b2" stroke-width="3" stroke-dasharray="8 8" />
-
-  
-  
-  <g id="header-engineer-a">
-    <rect x="70" y="85" width="340" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    
-    <g transform="translate(100, 100)">
-      <circle cx="28" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 52 C 6 38, 16 34, 28 34 C 40 34, 50 38, 50 52" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
-    <text x="175" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Engineer A</text>
+  <g transform="translate(80, 70)">
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Two writers and a 409 Conflict</text>
   </g>
 
   
-  <g id="header-api-server">
-    <rect x="580" y="85" width="440" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <rect x="70" y="110" width="400" height="960" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+  
+  <rect x="520" y="110" width="560" height="960" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+  
+  <rect x="1130" y="110" width="400" height="960" rx="16" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <line x1="270" y1="230" x2="270" y2="1050" stroke="#b2c9b8" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="800" y1="230" x2="800" y2="1050" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.4" />
+  <line x1="1330" y1="230" x2="1330" y2="1050" stroke="#b2c9b8" stroke-width="3" stroke-dasharray="8 8" />
+
+  
+  
+  <g transform="translate(90, 125)">
+    <rect width="360" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <g transform="translate(605, 100)">
-      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 14 V 28 C 6 34, 50 34, 50 28 V 14" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 28 V 42 C 6 48, 50 48, 50 42 V 28" fill="none" stroke="#207448" stroke-width="4" />
-    </g>
-    <text x="675" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">API server (etcd)</text>
+    <circle cx="50" cy="42" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 26 70 C 26 56 36 52 50 52 C 64 52 74 56 74 70" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="95" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Engineer A</text>
   </g>
 
   
-  <g id="header-engineer-b">
-    <rect x="1190" y="85" width="340" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(600, 125)">
+    <rect width="400" height="85" rx="12" fill="#207448" filter="url(#card-shadow)" />
     
-    <g transform="translate(1220, 100)">
-      <circle cx="28" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4" />
-      <path d="M 6 52 C 6 38, 16 34, 28 34 C 40 34, 50 34, 50 52" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    </g>
-    <text x="1295" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Engineer B</text>
+    <ellipse cx="50" cy="30" rx="20" ry="8" fill="none" stroke="#ffffff" stroke-width="3.5" />
+    <path d="M 30 30 v 14 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -14" fill="none" stroke="#ffffff" stroke-width="3.5" />
+    <path d="M 30 44 v 14 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -14" fill="none" stroke="#ffffff" stroke-width="3.5" />
+    <text x="92" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">API server (etcd)</text>
   </g>
 
   
-  <g id="initial-read-section">
+  <g transform="translate(1150, 125)">
+    <rect width="360" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
     
-    <rect x="70" y="195" width="1460" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <text x="800" y="227" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Both engineers first read the same ConfigMap at resourceVersion 5012</text>
-
-    
-    <rect x="720" y="255" width="160" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
-    
-    <line x1="240" y1="280" x2="718" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <text x="480" y="271" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">read</text>
-
-    
-    <line x1="1360" y1="280" x2="882" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <text x="1120" y="271" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">read</text>
+    <circle cx="50" cy="42" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 26 70 C 26 56 36 52 50 52 C 64 52 74 56 74 70" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="95" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Engineer B</text>
   </g>
 
   
-  <g id="step-1-section">
-    
-    <rect x="70" y="330" width="1460" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <circle cx="105" cy="353" r="20" fill="#207448" />
-    <text x="105" y="361" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
-    <text x="140" y="363" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1: Engineer A saves</text>
-
-    
-    <rect x="720" y="405" width="160" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-
-    
-    <line x1="240" y1="430" x2="718" y2="430" stroke="#303a36" stroke-width="3" marker-end="url(#arrow-dark)" />
-    <text x="480" y="420" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan font-family="sans-serif">write at </tspan>
-      <tspan font-family="monospace">resourceVersion 5012</tspan>
-    </text>
-
-    
-    <line x1="720" y1="485" x2="242" y2="485" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <text x="480" y="475" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448">
-      <tspan font-family="sans-serif">stored, now </tspan>
-      <tspan font-family="monospace">5013</tspan>
-    </text>
+  
+  <g transform="translate(630, 240)">
+    <rect width="340" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    <text x="170" y="41" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">resourceVersion: 5012</text>
   </g>
 
   
-  <g id="step-2-section">
-    
-    <rect x="70" y="540" width="1460" height="46" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="1.5" />
-    <circle cx="105" cy="563" r="20" fill="#db8129" />
-    <text x="105" y="571" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
-    <text x="140" y="573" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Step 2: Engineer B saves</text>
+  <line x1="270" y1="272" x2="620" y2="272" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="390" y="244" width="110" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="445" y="273" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">read</text>
 
-    
-    <rect x="90" y="620" width="560" height="85" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="2.5" />
-    <text x="370" y="656" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="370" dy="0">the server refuses to guess,</tspan>
-      <tspan x="370" dy="30">so no edit is lost</tspan>
-    </text>
+  
+  <line x1="1330" y1="272" x2="980" y2="272" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1100" y="244" width="110" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1155" y="273" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">read</text>
 
-    
-    <rect x="720" y="615" width="160" height="110" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
 
-    
-    <line x1="1360" y1="635" x2="882" y2="635" stroke="#303a36" stroke-width="3" marker-end="url(#arrow-dark)" />
-    <text x="1120" y="625" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan font-family="sans-serif">write at </tspan>
-      <tspan font-family="monospace">resourceVersion 5012</tspan>
-    </text>
+  
+  
+  <circle cx="120" cy="390" r="24" fill="#207448" />
+  <text x="120" y="399" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="156" y="398" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Step 1</text>
 
-    
-    <circle cx="895" cy="700" r="18" fill="#d32f2f" />
-    <line x1="883" y1="688" x2="907" y2="712" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
-    <line x1="907" y1="688" x2="883" y2="712" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  
+  <line x1="270" y1="420" x2="620" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="300" y="365" width="310" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="455" y="396" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">write at resourceVersion 5012</text>
 
-    
-    <line x1="915" y1="700" x2="1358" y2="700" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-red)" />
-    <text x="1135" y="668" text-anchor="middle" font-size="24" font-weight="bold" fill="#d32f2f">
-      <tspan x="1135" dy="0" font-family="monospace">409 Conflict,</tspan>
-      <tspan x="1135" dy="26" font-family="sans-serif">the object has been modified</tspan>
-    </text>
+  
+  <g transform="translate(630, 420)">
+    <rect width="340" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    <text x="170" y="41" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">stored, now 5013</text>
   </g>
 
   
-  <g id="step-3-section">
-    
-    <rect x="70" y="760" width="1460" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <circle cx="105" cy="783" r="20" fill="#207448" />
-    <text x="105" y="791" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
-    <text x="140" y="793" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3: Engineer B reads the new version, then reapplies the change and saves again</text>
+  <line x1="630" y1="465" x2="280" y2="465" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="345" y="480" width="220" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="455" y="509" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">stored, now 5013</text>
 
-    
-    <rect x="720" y="830" width="160" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
 
-    
-    <line x1="1360" y1="850" x2="882" y2="850" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <text x="1120" y="841" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">read latest</text>
+  
+  
+  <circle cx="1470" cy="580" r="24" fill="#207448" />
+  <text x="1470" y="589" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="1360" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Step 2</text>
 
-    
-    <line x1="1360" y1="920" x2="882" y2="920" stroke="#303a36" stroke-width="3" marker-end="url(#arrow-dark)" />
-    <text x="1120" y="911" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan font-family="sans-serif">write at </tspan>
-      <tspan font-family="monospace">5013</tspan>
-    </text>
+  
+  <line x1="1330" y1="610" x2="980" y2="610" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="990" y="560" width="330" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1155" y="591" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">write at resourceVersion 5012</text>
 
-    
-    <line x1="880" y1="975" x2="1358" y2="975" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <text x="1120" y="966" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">stored</text>
+  
+  <g transform="translate(630, 610)">
+    <rect width="340" height="64" rx="10" fill="#fbebe8" stroke="#c53030" stroke-width="2" filter="url(#card-shadow)" />
+    <text x="170" y="41" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">5012 ≠ current 5013</text>
   </g>
 
   
-  <g id="takeaway-bar">
-    <rect x="70" y="1040" width="1460" height="75" rx="12" fill="#207448" />
-    <text x="800" y="1087" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">optimistic concurrency checks only at write time</text>
+  <line x1="970" y1="680" x2="1320" y2="680" stroke="#c53030" stroke-width="3" marker-end="url(#arrow-red)" />
+  
+  <g transform="translate(950, 660)">
+    <circle cx="20" cy="20" r="16" fill="#c53030" />
+    <path d="M 12 12 L 28 28 M 28 12 L 12 28" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="1000" y="695" width="460" height="50" rx="8" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+  <text x="1230" y="729" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">409 Conflict, the object has been modified</text>
+
+  
+  <g transform="translate(610, 720)">
+    <rect width="380" height="80" rx="10" fill="#fff7ed" stroke="#db8129" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="40" cy="40" r="18" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 40 28 v 14 M 40 48 v 4" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <text x="75" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#db8129">the server refuses to guess,</text>
+    <text x="75" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#db8129">so no edit is lost</text>
+  </g>
+
+
+  
+  
+  <circle cx="1470" cy="830" r="24" fill="#207448" />
+  <text x="1470" y="839" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="1360" y="838" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Step 3</text>
+
+  
+  <line x1="1330" y1="860" x2="980" y2="860" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1080" y="830" width="160" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1160" y="859" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">read latest</text>
+
+  
+  <line x1="1330" y1="925" x2="980" y2="925" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1060" y="895" width="200" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1160" y="924" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">write at 5013</text>
+
+  
+  <g transform="translate(630, 920)">
+    <rect width="340" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    <text x="170" y="41" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">stored: updated to 5014</text>
+  </g>
+
+  
+  <line x1="980" y1="980" x2="1320" y2="980" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1100" y="995" width="120" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1160" y="1024" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">stored</text>
+
+
+  
+  <g transform="translate(100, 1100)">
+    <rect width="1400" height="85" rx="14" fill="#207448" filter="url(#card-shadow)" />
+    
+    <circle cx="50" cy="42" r="22" fill="#ffffff" />
+    <path d="M 38 42 L 46 50 L 62 34" fill="none" stroke="#207448" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="90" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">optimistic concurrency checks only at write time</text>
   </g>
 </svg>

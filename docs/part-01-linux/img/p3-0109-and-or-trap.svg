@@ -1,255 +1,150 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
   <title>a &amp;&amp; b || c is not an if/else</title>
-  <desc>Two side-by-side flow diagrams comparing if-then-else with the and-or construct, showing that c runs even though a succeeded when b fails.</desc>
+  <desc>Flowchart comparison showing why the shell idiom a and and b or or c fails when command b returns non-zero, contrasting with a true if-then-else construct.</desc>
 
   <defs>
-    
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
 
   
-  <text x="800" y="68" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36"><tspan font-family="ui-monospace, monospace">a &amp;&amp; b || c</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> is not an if/else</tspan></text>
+  <text x="800" y="58" text-anchor="middle" font-size="44" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">a &amp;&amp; b || c is not an if/else</text>
 
   
-  
-  
-  <rect x="40" y="105" width="710" height="705" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  
-  <text x="395" y="152" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">if a; then b; else c; fi</text>
+  <rect x="60" y="90" width="710" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  
-  <line x1="395" y1="218" x2="395" y2="246" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="90" y="110" width="650" height="56" rx="10" fill="#207448"/>
+  <text x="415" y="147" text-anchor="middle" font-size="28" font-weight="bold" fill="#ffffff" font-family="monospace">if a; then b; else c; fi</text>
 
   
-  <path d="M 145 320 L 145 385 L 210 385 L 210 438" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="135" y="360" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <rect x="335" y="205" width="160" height="50" rx="25" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="415" y="238" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">start</text>
 
   
-  <path d="M 645 320 L 645 385 L 580 385 L 580 438" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="655" y="360" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+  <line x1="415" y1="255" x2="415" y2="295" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
 
   
-  <path d="M 210 550 L 210 749 L 303 749" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <polygon points="415,295 550,350 415,405 280,350" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="415" y="358" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">a succeeds?</text>
 
   
-  <path d="M 580 550 L 580 749 L 487 749" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <polyline points="280,350 220,350 220,465" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="195" y="390" width="50" height="30" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="220" y="412" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, sans-serif">yes</text>
 
   
-  
-  <g id="left-start">
-    <rect x="305" y="148" width="180" height="70" rx="35" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <polygon points="328,173 328,193 344,183" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
-    <text x="408" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">start</text>
-  </g>
+  <rect x="150" y="465" width="140" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="220" y="505" text-anchor="middle" font-size="28" font-weight="bold" fill="#303a36" font-family="monospace">b</text>
 
   
-  <g id="left-diamond-a">
-    <polygon points="395,248 645,320 395,392 145,320" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(285, 302)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="18" cy="18" r="15" />
-      <path d="M 14 12 C 14 7, 22 7, 22 13 C 22 17, 18 17, 18 22" />
-      <circle cx="18" cy="27" r="1.5" fill="#207448" />
-    </g>
-    <text x="428" y="330" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">a succeeds?</text>
-  </g>
+  <polyline points="550,350 610,350 610,465" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="588" y="390" width="44" height="30" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="610" y="412" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, sans-serif">no</text>
 
   
-  <g id="left-box-b">
-    <rect x="105" y="440" width="210" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(125, 471)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="48" height="42" rx="6" />
-      <line x1="2" y1="16" x2="50" y2="16" stroke-width="2.5" />
-      <polyline points="12,26 20,33 12,40" stroke-width="3" />
-      <line x1="24" y1="40" x2="38" y2="40" stroke-width="3" />
-    </g>
-    <text x="235" y="507" text-anchor="middle" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">b</text>
-  </g>
+  <rect x="540" y="465" width="140" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="610" y="505" text-anchor="middle" font-size="28" font-weight="bold" fill="#303a36" font-family="monospace">c</text>
 
   
-  <g id="left-box-c">
-    <rect x="475" y="440" width="210" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(495, 471)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="48" height="42" rx="6" />
-      <line x1="2" y1="16" x2="50" y2="16" stroke-width="2.5" />
-      <polyline points="12,26 20,33 12,40" stroke-width="3" />
-      <line x1="24" y1="40" x2="38" y2="40" stroke-width="3" />
-    </g>
-    <text x="605" y="507" text-anchor="middle" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">c</text>
-  </g>
+  <polyline points="220,525 220,565 415,565" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <polyline points="610,525 610,565 415,565" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <line x1="415" y1="565" x2="415" y2="605" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
 
   
-  <g id="left-end">
-    <rect x="305" y="714" width="180" height="70" rx="35" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <circle cx="333" cy="749" r="13" fill="none" stroke="#207448" stroke-width="3.5" />
-    <circle cx="333" cy="749" r="4.5" fill="#207448" />
-    <text x="408" y="759" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">end</text>
-  </g>
+  <rect x="335" y="605" width="160" height="50" rx="25" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="415" y="638" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">end</text>
 
   
-  
-  
-  <rect x="780" y="105" width="780" height="705" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  
-  <text x="1170" y="152" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">a &amp;&amp; b || c</text>
+  <rect x="830" y="90" width="710" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  
-  <line x1="1025" y1="218" x2="1025" y2="240" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="860" y="110" width="650" height="56" rx="10" fill="#207448"/>
+  <text x="1185" y="147" text-anchor="middle" font-size="28" font-weight="bold" fill="#ffffff" font-family="monospace">a &amp;&amp; b || c</text>
 
   
-  <line x1="1025" y1="400" x2="1025" y2="418" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="1042" y="414" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <rect x="905" y="205" width="160" height="50" rx="25" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="985" y="238" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">start</text>
 
   
-  <line x1="1025" y1="497" x2="1025" y2="518" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="985" y1="255" x2="985" y2="290" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
 
   
-  <line x1="1025" y1="690" x2="1025" y2="712" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="1042" y="704" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <polygon points="985,290 1100,335 985,380 870,335" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="985" y="343" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">a succeeds?</text>
 
   
-  
-  <path d="M 1265 320 L 1410 320 L 1410 380" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="1335" y="308" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">a failed</text>
+  <line x1="985" y1="380" x2="985" y2="425" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="920" y="388" width="46" height="28" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="943" y="408" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, sans-serif">yes</text>
 
   
-  
-  <path d="M 1265 604 L 1410 604 L 1410 564" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <text x="1335" y="630" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">b failed</text>
+  <rect x="915" y="425" width="140" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="985" y="460" text-anchor="middle" font-size="28" font-weight="bold" fill="#303a36" font-family="monospace">b</text>
 
   
-  
-  <g id="right-start">
-    <rect x="935" y="148" width="180" height="70" rx="35" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <polygon points="958,173 958,193 974,183" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
-    <text x="1038" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">start</text>
-  </g>
+  <line x1="985" y1="475" x2="985" y2="505" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
 
   
-  <g id="right-diamond-a">
-    <polygon points="1025,240 1265,320 1025,400 785,320" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(910, 304)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="13" />
-      <path d="M 13 11 C 13 6, 19 6, 19 12 C 19 15, 16 15, 16 19" />
-      <circle cx="16" cy="24" r="1.5" fill="#207448" />
-    </g>
-    <text x="1055" y="330" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">a succeeds?</text>
-  </g>
+  <polygon points="985,505 1110,550 985,595 860,550" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="985" y="558" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">b succeeded?</text>
 
   
-  <g id="right-box-b">
-    <rect x="925" y="421" width="200" height="76" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(945, 439)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="44" height="38" rx="5" />
-      <line x1="2" y1="14" x2="46" y2="14" stroke-width="2.5" />
-      <polyline points="10,23 17,29 10,35" stroke-width="2.5" />
-      <line x1="21" y1="35" x2="33" y2="35" stroke-width="2.5" />
-    </g>
-    <text x="1045" y="471" text-anchor="middle" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">b</text>
-  </g>
+  <line x1="985" y1="595" x2="985" y2="635" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="920" y="601" width="46" height="28" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="943" y="621" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, sans-serif">yes</text>
 
   
-  <g id="right-diamond-b">
-    <polygon points="1025,518 1265,604 1025,690 785,604" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <g transform="translate(895, 588)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="16" cy="16" r="13" />
-      <path d="M 13 11 C 13 6, 19 6, 19 12 C 19 15, 16 15, 16 19" />
-      <circle cx="16" cy="24" r="1.5" fill="#207448" />
-    </g>
-    <text x="1050" y="614" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">b succeeded?</text>
-  </g>
+  <rect x="905" y="635" width="160" height="50" rx="25" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="985" y="668" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">end</text>
 
   
-  <g id="right-end">
-    <rect x="935" y="714" width="180" height="70" rx="35" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
-    <circle cx="963" cy="749" r="13" fill="none" stroke="#207448" stroke-width="3.5" />
-    <circle cx="963" cy="749" r="4.5" fill="#207448" />
-    <text x="1038" y="759" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">end</text>
-  </g>
+  <rect x="1170" y="390" width="340" height="120" rx="12" fill="#fff9f5" stroke="#db8129" stroke-width="3"/>
+  <text x="1340" y="425" text-anchor="middle" font-size="28" font-weight="bold" fill="#db8129" font-family="monospace">c</text>
+  <text x="1340" y="462" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36" font-family="system-ui, sans-serif">
+    <tspan x="1340" dy="0">c runs even though</tspan>
+    <tspan x="1340" dy="28">a succeeded</tspan>
+  </text>
 
   
-  
-  <g id="right-box-c">
-    <rect x="1270" y="382" width="275" height="182" rx="14" fill="#fff9f3" stroke="#db8129" stroke-width="3.5" />
-    
-    <g transform="translate(1288, 442)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="24,4 46,42 2,42" />
-      <line x1="24" y1="17" x2="24" y2="29" stroke-width="3.5" />
-      <line x1="24" y1="35" x2="24" y2="37" stroke-width="4" />
-    </g>
-    
-    <text x="1360" y="432" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">c</text>
-    
-    <text x="1360" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-      <tspan x="1360" dy="0">c runs even </tspan>
-      <tspan x="1360" dy="28">though </tspan>
-      <tspan x="1360" dy="28">a succeeded</tspan>
-    </text>
-  </g>
+  <line x1="1100" y1="335" x2="1160" y2="335" stroke="#db8129" stroke-width="2.5"/>
+  <polyline points="1280,335 1340,335 1340,390" fill="none" stroke="#db8129" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <rect x="1160" y="320" width="120" height="30" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5"/>
+  <text x="1220" y="342" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129" font-family="system-ui, sans-serif">a failed</text>
 
   
-  
-  
-  <rect x="50" y="825" width="1500" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <line x1="1110" y1="550" x2="1165" y2="550" stroke="#db8129" stroke-width="2.5"/>
+  <polyline points="1285,550 1340,550 1340,510" fill="none" stroke="#db8129" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <rect x="1165" y="535" width="120" height="30" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5"/>
+  <text x="1225" y="557" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129" font-family="system-ui, sans-serif">b failed</text>
 
   
-  <g id="guard-1">
-    <rect x="65" y="834" width="1470" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 850)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 3 6 L 11 6 L 15 11 L 26 11 A 2 2 0 0 1 28 13 L 28 24 A 2 2 0 0 1 26 26 L 3 26 A 2 2 0 0 1 1 24 L 1 8 A 2 2 0 0 1 3 6 Z" />
-    </g>
-    <text x="135" y="874" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">[ -d "$d" ] || mkdir -p "$d"</text>
-  </g>
+  <rect x="60" y="745" width="1480" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
 
   
-  <g id="guard-2">
-    <rect x="65" y="902" width="1470" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 918)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="5" width="20" height="20" rx="3" />
-      <circle cx="15" cy="15" r="4" />
-      <line x1="10" y1="1" x2="10" y2="5" />
-      <line x1="20" y1="1" x2="20" y2="5" />
-      <line x1="10" y1="25" x2="10" y2="29" />
-      <line x1="20" y1="25" x2="20" y2="29" />
-      <line x1="1" y1="10" x2="5" y2="10" />
-      <line x1="1" y1="20" x2="5" y2="20" />
-      <line x1="25" y1="10" x2="29" y2="10" />
-      <line x1="25" y1="20" x2="29" y2="20" />
-    </g>
-    <text x="135" y="942" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">command -v nvidia-smi &gt;/dev/null || exit 0</text>
-  </g>
+  <rect x="90" y="765" width="1420" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="130" y="801" font-size="25" font-family="monospace" fill="#303a36">[ -d "$d" ] || mkdir -p "$d"</text>
 
   
-  <g id="guard-3">
-    <rect x="65" y="970" width="1470" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 986)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="5,21 15,8 25,21" />
-      <line x1="15" y1="10" x2="15" y2="26" />
-    </g>
-    <text x="135" y="1010" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">cd "$dir" || exit 1</text>
-  </g>
+  <rect x="90" y="833" width="1420" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="130" y="869" font-size="25" font-family="monospace" fill="#303a36">command -v nvidia-smi &gt;/dev/null || exit 0</text>
 
   
-  <g id="guard-4">
-    <rect x="65" y="1038" width="1470" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-    <g transform="translate(85, 1054)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 15 3 L 26 7 C 26 19 15 26 15 26 C 15 26 4 19 4 7 Z" />
-      <polyline points="10,14 13,17 20,10" />
-    </g>
-    <text x="135" y="1078" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">[ -z "$x" ] &amp;&amp; &#123; echo "empty" &gt;&amp;2; exit 1; &#125;</text>
-  </g>
+  <rect x="90" y="901" width="1420" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="130" y="937" font-size="25" font-family="monospace" fill="#303a36">cd "$dir" || exit 1</text>
 
   
+  <rect x="90" y="969" width="1420" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="130" y="1005" font-size="25" font-family="monospace" fill="#303a36">[ -z "$x" ] &amp;&amp; { echo "empty" &gt;&amp;2; exit 1; }</text>
+
   
-  
-  <rect x="50" y="1120" width="1500" height="64" rx="14" fill="#207448" />
-  <text x="800" y="1161" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">&amp;&amp; runs the next command only if the last one succeeded; || only if it failed</text>
+  <rect x="60" y="1070" width="1480" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1114" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">&amp;&amp; runs the next command only if the last one succeeded; || only if it failed</text>
 </svg>

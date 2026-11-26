@@ -1,120 +1,152 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
   <title>Envelope encryption: a KEK wraps each Secret's DEK</title>
-  <desc>Infographic illustrating envelope encryption in Kubernetes where KMS manages the KEK outside the cluster, encrypting per-Secret DEKs stored with encrypted Secret objects.</desc>
+  <desc>Visual infographic showing how a KMS Key Encryption Key outside the cluster encrypts a per-Secret Data Encryption Key inside the Kubernetes cluster.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
 
   
-  <rect width="1600" height="980" fill="#f5f8f5" />
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Envelope encryption: a KEK wraps each Secret's DEK</text>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Envelope encryption: a KEK wraps each Secret's DEK
+  </text>
 
   
-  <g id="kms-group">
-    <rect x="60" y="140" width="440" height="700" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <path d="M 264 195 V 180 A 16 16 0 0 1 296 180 V 195" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <rect x="256" y="195" width="48" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
-    <circle cx="280" cy="210" r="4" fill="#207448" />
-    <path d="M 280 214 V 222" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <rect x="50" y="120" width="310" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(185, 155)">
+    <rect x="6" y="16" width="28" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 12 16 V 10 A 8 8 0 0 1 28 10 V 16" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="20" cy="26" r="2.5" fill="#207448"/>
+  </g>
+  
+  
+  <text text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="205" y="232">KMS</tspan>
+    <tspan x="205" y="264">(outside the cluster)</tspan>
+  </text>
 
-    <text x="280" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KMS (outside the cluster)</text>
-
-    
-    <rect x="90" y="370" width="380" height="150" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
-    
-    
-    <circle cx="258" cy="415" r="14" fill="none" stroke="#db8129" stroke-width="4" />
-    <path d="M 272 415 H 304" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-    <path d="M 292 415 V 425 M 302 415 V 427" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
-
-    <text x="280" y="475" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Key encryption key (KEK)</text>
+  
+  <rect x="80" y="370" width="250" height="200" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  
+  
+  <g transform="translate(185, 400)">
+    <circle cx="16" cy="16" r="10" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 23 23 L 36 36 M 31 31 L 35 27 M 35 35 L 39 31" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
   </g>
 
-  
-  <g id="k8s-cluster-group">
-    <rect x="580" y="140" width="960" height="700" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-dasharray="14,10" />
-    <text x="620" y="185" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Kubernetes cluster</text>
-
-    
-    <rect x="640" y="215" width="840" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <circle cx="700" cy="262" r="10" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="700" cy="262" r="20" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 6" />
-
-    <text x="750" y="272" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">kube-apiserver</text>
-
-    
-    <rect x="640" y="370" width="840" height="150" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="3" />
-    
-    
-    <circle cx="700" cy="445" r="14" fill="none" stroke="#207448" stroke-width="4" />
-    <path d="M 714 445 H 746" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <path d="M 734 445 V 455 M 744 445 V 457" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-
-    <text x="770" y="455" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Data encryption key (DEK), one per Secret</text>
-
-    
-    <rect x="640" y="650" width="840" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <path d="M 686 700 H 714 L 726 712 V 748 H 686 Z" fill="#ffffff" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
-    <path d="M 714 700 V 712 H 726" fill="none" stroke="#207448" stroke-width="3" />
-    <rect x="696" y="726" width="18" height="14" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
-    <path d="M 700 726 V 721 A 5 5 0 0 1 710 721 V 726" fill="none" stroke="#207448" stroke-width="2.5" />
-
-    <text x="770" y="735" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Secret object, encrypted with the DEK</text>
-  </g>
+  <text text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="205" y="490">Key encryption key</tspan>
+    <tspan x="205" y="524">(KEK)</tspan>
+  </text>
 
   
-  <g id="arrow-1-group">
-    <line x1="470" y1="445" x2="636" y2="445" stroke="#207448" stroke-width="4" />
-    <polygon points="638,445 620,436 620,454" fill="#207448" />
-    
-    
-    <circle cx="555" cy="355" r="24" fill="#207448" />
-    <text x="555" y="364" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-    
-    <text x="555" y="415" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="555" dy="0">KEK encrypts</tspan>
-      <tspan x="555" dy="28">the DEK</tspan>
-    </text>
-  </g>
+  <rect x="400" y="120" width="1150" height="730" rx="16" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="10 8"/>
+  <text x="440" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    Kubernetes cluster
+  </text>
 
   
-  <g id="arrow-2-group">
-    <line x1="820" y1="520" x2="820" y2="646" stroke="#207448" stroke-width="4" />
-    <polygon points="820,648 811,630 829,630" fill="#207448" />
-
-    
-    <circle cx="865" cy="585" r="24" fill="#207448" />
-    <text x="865" y="594" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-
-    <text x="905" y="575" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
-      <tspan x="905" dy="0">DEK encrypts</tspan>
-      <tspan x="905" dy="28">the Secret</tspan>
-    </text>
+  <rect x="750" y="195" width="430" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(780, 218)">
+    <rect x="4" y="6" width="36" height="14" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <rect x="4" y="24" width="36" height="14" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="12" cy="13" r="2" fill="#207448"/>
+    <circle cx="12" cy="31" r="2" fill="#207448"/>
   </g>
+  <text x="980" y="250" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">
+    kube-apiserver
+  </text>
 
   
-  <g id="arrow-3-group">
-    <line x1="1160" y1="520" x2="1160" y2="646" stroke="#207448" stroke-width="4" />
-    <polygon points="1160,648 1151,630 1169,630" fill="#207448" />
-
-    
-    <circle cx="1205" cy="585" r="24" fill="#207448" />
-    <text x="1205" y="594" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-
-    <text x="1245" y="575" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-      <tspan x="1245" dy="0">Encrypted DEK is</tspan>
-      <tspan x="1245" dy="28">stored with the data</tspan>
-    </text>
-  </g>
+  <path d="M 965 285 V 350" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6 6"/>
 
   
-  <g id="takeaway-bar">
-    <rect x="60" y="875" width="1480" height="75" rx="12" fill="#207448" />
-    <text x="800" y="922" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The envelope is protected by the outer seal, and the seal is held somewhere else.</text>
+  <rect x="750" y="350" width="430" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(775, 405)">
+    <circle cx="18" cy="18" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 27 27 L 44 44 M 37 37 L 43 31 M 42 42 L 48 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
   </g>
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="840" y="422">Data encryption key (DEK),</tspan>
+    <tspan x="840" y="456">one per Secret</tspan>
+  </text>
+
+  
+  <rect x="750" y="670" width="430" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(775, 720)">
+    <path d="M 8 4 L 32 4 L 44 16 L 44 48 L 8 48 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 32 4 V 16 H 44" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="18" y="28" width="16" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 22 28 V 24 A 4 4 0 0 1 30 24 V 28" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="840" y="742">Secret object,</tspan>
+    <tspan x="840" y="776">encrypted with the DEK</tspan>
+  </text>
+
+  
+
+  
+  
+  <path d="M 330 450 H 430" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 720 450 H 750" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="430" y="425" width="290" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="575" y="458" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    KEK encrypts the DEK
+  </text>
+
+  
+  <circle cx="575" cy="370" r="22" fill="#207448"/>
+  <text x="575" y="378" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <path d="M 870 510 V 555" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 870 615 V 670" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="725" y="555" width="290" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="870" y="589" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    DEK encrypts the Secret
+  </text>
+
+  
+  <circle cx="675" cy="581" r="22" fill="#207448"/>
+  <text x="675" y="589" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  
+  <path d="M 1180 430 H 1260 V 750 H 1180" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1285" y="555" width="245" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1407" y="587">Encrypted DEK is</tspan>
+    <tspan x="1407" y="617">stored with the data</tspan>
+  </text>
+
+  
+  <circle cx="1407" cy="505" r="22" fill="#207448"/>
+  <text x="1407" y="513" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <rect x="50" y="885" width="1500" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="927" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    The envelope is protected by the outer seal, and the seal is held somewhere else.
+  </text>
 </svg>

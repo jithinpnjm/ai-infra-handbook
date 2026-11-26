@@ -1,150 +1,167 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1260" width="1600" height="1260">
   <title>Prefill and decode pools, split only when interference is measured</title>
-  <desc>Visual comparison showing colocated prefill and decode on a single GPU causing stalls versus a disaggregated split architecture connected by fast links.</desc>
+  <desc>Visual comparison between colocated prefill and decode on one GPU versus split pools with KV cache transfer and backpressure.</desc>
 
   <defs>
     
-    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1,2 L 11,7 L 1,12 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
     </marker>
-    
-    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
-      <path d="M 1,2 L 11,7 L 1,12 Z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1000" fill="#f5f8f5" />
+  <rect width="1600" height="1260" fill="#f5f8f5" />
 
   
-  <text x="800" y="64" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Prefill and decode pools, split only when interference is measured</text>
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Prefill and decode pools, split only when interference is measured
+  </text>
 
   
-  <g id="colocated-gpu-group">
+  <g id="colocated-panel">
     
-    <rect x="50" y="105" width="1500" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <rect x="80" y="90" width="1440" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
 
     
-    <g transform="translate(80, 125)">
-      <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <rect x="15" y="15" width="18" height="18" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
-      
-      <line x1="14" y1="1" x2="14" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="24" y1="1" x2="24" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="34" y1="1" x2="34" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="14" y1="42" x2="14" y2="47" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="24" y1="42" x2="24" y2="47" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="34" y1="42" x2="34" y2="47" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="1" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="1" y1="24" x2="6" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="1" y1="34" x2="6" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="42" y1="14" x2="47" y2="14" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="42" y1="24" x2="47" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="42" y1="34" x2="47" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <g transform="translate(110, 112)">
+      <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <rect x="14" y="14" width="20" height="20" rx="2" fill="#207448" opacity="0.2" />
+      <line x1="14" y1="2" x2="14" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="24" y1="2" x2="24" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="34" y1="2" x2="34" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="42" x2="14" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="24" y1="42" x2="24" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="34" y1="42" x2="34" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="24" x2="6" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="34" x2="6" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="14" x2="46" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="24" x2="46" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="34" x2="46" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
     </g>
 
-    
-    <text x="145" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Colocated: prefill and decode share one GPU</text>
-
-    
-    <rect x="80" y="185" width="1440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="800" y="226" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Long prefill: compute heavy</text>
-
-    
-    <g transform="translate(0, 0)">
-      
-      <path d="M 120,285 L 155,270 L 190,300 L 225,270 L 260,300 L 295,270 L 330,300 L 365,270 L 400,300 L 435,285" fill="none" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-      
-      
-      <rect x="470" y="260" width="660" height="50" rx="25" fill="#ffffff" stroke="#d32f2f" stroke-width="2" />
-      <text x="800" y="295" font-family="sans-serif" font-size="25" font-weight="bold" fill="#d32f2f" text-anchor="middle">Streaming users see a stall</text>
-      
-      
-      <path d="M 1165,285 L 1200,270 L 1235,300 L 1270,270 L 1305,300 L 1340,270 L 1375,300 L 1410,270 L 1445,300 L 1480,285" fill="none" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-
-    
-    <rect x="80" y="330" width="1440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="800" y="371" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Decode: memory-bandwidth heavy, one token at a time</text>
-  </g>
-
-  
-  <g id="split-design-group">
-    
-    <rect x="50" y="470" width="220" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <g transform="translate(132, 510)">
-      <rect x="0" y="10" width="56" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
-      <circle cx="14" cy="28" r="4" fill="#207448" />
-      <circle cx="28" cy="28" r="4" fill="#207448" />
-      <circle cx="42" cy="28" r="4" fill="#207448" />
-      
-      <line x1="16" y1="10" x2="16" y2="2" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-      <line x1="40" y1="10" x2="40" y2="2" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-    <text x="160" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Router</text>
-
-    
-    <rect x="360" y="470" width="370" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <g transform="translate(517, 505)">
-      <rect x="0" y="4" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="14" y1="16" x2="42" y2="16" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="14" y1="25" x2="42" y2="25" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="14" y1="34" x2="32" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
-      <circle cx="42" cy="34" r="3" fill="#207448" />
-    </g>
-    <text x="545" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="545" dy="0">Prefill pool:</tspan>
-      <tspan x="545" dy="40" font-size="24" font-weight="normal">picks by cache and load</tspan>
+    <text x="175" y="146" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      Colocated: prefill and decode share one GPU
     </text>
 
     
-    <rect x="1180" y="470" width="370" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-    
-    
-    <g transform="translate(1337, 505)">
-      <rect x="4" y="2" width="48" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="16" y1="2" x2="16" y2="48" stroke="#207448" stroke-width="2" />
-      <line x1="28" y1="2" x2="28" y2="48" stroke="#207448" stroke-width="2" />
-      <line x1="40" y1="2" x2="40" y2="48" stroke="#207448" stroke-width="2" />
-      <line x1="4" y1="16" x2="52" y2="16" stroke="#207448" stroke-width="2" />
-      <line x1="4" y1="34" x2="52" y2="34" stroke="#207448" stroke-width="2" />
-    </g>
-    <text x="1365" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="1365" dy="0">Decode pool:</tspan>
-      <tspan x="1365" dy="40" font-size="24" font-weight="normal">picks by free KV memory</tspan>
+    <rect x="110" y="175" width="1380" height="64" rx="10" fill="#207448" />
+    <text x="800" y="217" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Long prefill: compute heavy
     </text>
 
     
-    <line x1="270" y1="560" x2="344" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <g id="zigzag-interference">
+      <path d="M 120 272 L 280 272 L 305 254 L 330 290 L 355 254 L 380 290 L 405 272 L 530 272" fill="none" stroke="#c83232" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <rect x="545" y="247" width="510" height="50" rx="25" fill="#fdf0ed" stroke="#c83232" stroke-width="2.5" />
+      <text x="800" y="281" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#c83232">
+        Streaming users see a stall
+      </text>
+
+      <path d="M 1070 272 L 1195 272 L 1220 254 L 1245 290 L 1270 254 L 1295 290 L 1320 272 L 1480 272" fill="none" stroke="#c83232" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
 
     
-    <path d="M 270,660 L 315,660 L 315,765 L 1365,765 L 1365,736" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-    
-    <line x1="730" y1="535" x2="1164" y2="535" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
-    
-    
-    <text x="955" y="515" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">KV cache moved between pools, needs a fast link</text>
-
-    
-    <rect x="745" y="565" width="420" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-    <text x="955" y="594" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Keep prefill and decode inside one fast domain where possible</text>
-
-    
-    <line x1="1180" y1="645" x2="746" y2="645" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
-    
-    
-    <text x="955" y="688" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Backpressure: decode queue full, prefill slows down</text>
+    <rect x="110" y="325" width="1380" height="64" rx="10" fill="#207448" />
+    <text x="800" y="367" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Decode: memory-bandwidth heavy, one token at a time
+    </text>
   </g>
 
   
-  <g id="bottom-rule-group">
-    <rect x="50" y="855" width="1500" height="95" rx="14" fill="#207448" />
-    <text x="800" y="897" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Start colocated with chunked prefill.</text>
-    <text x="800" y="933" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Split when p99 inter-token latency is dominated by prefill interference.</text>
+
+  
+  <g id="router-node">
+    <rect x="80" y="480" width="260" height="570" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(182, 705)">
+      <rect x="4" y="16" width="64" height="36" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="20" cy="34" r="4" fill="#207448" />
+      <circle cx="36" cy="34" r="4" fill="#207448" />
+      <circle cx="52" cy="34" r="4" fill="#207448" />
+      <line x1="20" y1="16" x2="12" y2="4" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="52" y1="16" x2="60" y2="4" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="12" cy="4" r="3" fill="#207448" />
+      <circle cx="60" cy="4" r="3" fill="#207448" />
+    </g>
+
+    <text x="210" y="795" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      Router
+    </text>
+  </g>
+
+  
+  <line x1="340" y1="560" x2="424" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="340" y1="970" x2="424" y2="970" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="pool1-node">
+    <rect x="440" y="480" width="1080" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(480, 532)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    <text x="560" y="575" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      Prefill pool: picks by cache and load
+    </text>
+  </g>
+
+  
+  <g id="pool2-node">
+    <rect x="440" y="890" width="1080" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(480, 942)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 14 v 16 c 0 4.5 10 8 22 8 s 22 -3.5 22 -8 v -16" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 30 v 14 c 0 4.5 10 8 22 8 s 22 -3.5 22 -8 v -14" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+
+    <text x="560" y="985" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      Decode pool: picks by free KV memory
+    </text>
+  </g>
+
+  
+  <line x1="510" y1="640" x2="510" y2="874" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  
+  <g id="forward-link-label">
+    <rect x="540" y="665" width="880" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="980" y="704" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="bold" fill="#207448">
+      KV cache moved between pools, needs a fast link
+    </text>
+    <text x="980" y="740" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      Keep prefill and decode inside one fast domain where possible
+    </text>
+  </g>
+
+  
+  <line x1="1450" y1="890" x2="1450" y2="656" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  
+  
+  <g id="backward-link-label">
+    <rect x="680" y="785" width="740" height="60" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+    <text x="1050" y="823" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      Backpressure: decode queue full, prefill slows down
+    </text>
+  </g>
+
+  
+  <g id="takeaway-rule">
+    <rect x="80" y="1090" width="1440" height="110" rx="16" fill="#207448" />
+    <text x="800" y="1138" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      Start colocated with chunked prefill. Split when p99 inter-token latency is dominated by prefill interference.
+    </text>
   </g>
 </svg>

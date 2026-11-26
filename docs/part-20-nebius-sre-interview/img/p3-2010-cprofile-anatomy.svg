@@ -1,191 +1,141 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>Reading a cProfile report: which function is hot, and what it cannot show</title>
-  <desc>Visual breakdown of a Python cProfile table, header definitions, hidden overheads, code optimization fix, and benchmarking tools comparison.</desc>
+  <desc>Visual guide explaining cProfile metrics (ncalls, tottime, cumtime), identifying hot functions, profiler blind spots, and the fix.</desc>
 
   <defs>
-    
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
 
   
-  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="50" y="65">Reading a cProfile report:</tspan>
-    <tspan x="50" y="120">which function is hot, and what it cannot show</tspan>
+  <text x="60" y="75" font-family="sans-serif" font-size="40" font-weight="bold" fill="#303a36">Reading a cProfile report: which function is hot, and what it cannot show</text>
+
+  
+  <rect x="60" y="115" width="1050" height="260" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  
+  <text x="85" y="158" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">4002 function calls in 0.133 seconds</text>
+
+  
+  <rect x="80" y="186" width="95" height="34" rx="6" fill="#e8f1ea"/>
+  <rect x="185" y="186" width="105" height="34" rx="6" fill="#e8f1ea"/>
+  <rect x="420" y="186" width="105" height="34" rx="6" fill="#e8f1ea"/>
+
+  
+  <text x="85" y="211" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ncalls tottime percall cumtime percall filename:lineno(function)</text>
+
+  
+  <rect x="75" y="242" width="1020" height="52" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+  <text x="85" y="277" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">1 0.133 0.133 0.133 0.133 c10_profile_demo.py:7(dedupe_slow)</text>
+
+  
+  <rect x="75" y="306" width="1020" height="48" rx="8" fill="#f5f8f5"/>
+  <text x="85" y="339" font-family="monospace" font-size="24" fill="#303a36">4000 0.000 0.000 0.000 0.000 {method append of list objects}</text>
+
+  
+  <rect x="1145" y="115" width="395" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="1185" cy="155" r="22" fill="#207448"/>
+  <path d="M 1175 155 L 1182 162 L 1196 148" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1220" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">The fix</text>
+  <text x="1170" y="210" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">dedupe_fast with a set: 0.001 s</text>
+
+  
+  
+  <rect x="1145" y="250" width="395" height="125" rx="14" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+  
+  <circle cx="1185" cy="292" r="22" fill="#db8129"/>
+  <path d="M 1185 277 C 1188 285 1195 289 1195 297 C 1195 303 1190 307 1185 307 C 1180 307 1175 303 1175 297 C 1175 291 1180 286 1185 277 Z" fill="#ffffff"/>
+  <text x="1220" y="300" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1220" dy="0">all 0.133 s sits in</tspan>
+    <tspan x="1220" dy="32">the function itself</tspan>
   </text>
 
   
-  <rect x="50" y="150" width="1020" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 1095 268 L 1145 268" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
 
   
-  <rect x="50" y="150" width="1020" height="42" rx="12" fill="#e8f1ea" />
-  <circle cx="75" cy="171" r="6" fill="#207448" />
-  <circle cx="95" cy="171" r="6" fill="#207448" opacity="0.5" />
-  <circle cx="115" cy="171" r="6" fill="#207448" opacity="0.3" />
-
   
-  <text x="75" y="222" font-family="monospace" font-size="24" fill="#303a36">4002 function calls in 0.133 seconds</text>
-
-  
-  <rect x="65" y="240" width="990" height="38" rx="6" fill="#e8f1ea" />
-  <text x="75" y="267" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ncalls tottime percall cumtime percall filename:lineno(function)</text>
-
-  
-  <rect x="65" y="285" width="990" height="42" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2.5" />
-  <text x="75" y="314" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">1 0.133 0.133 0.133 0.133 c10_profile_demo.py:7(dedupe_slow)</text>
-
-  
-  <text x="75" y="360" font-family="monospace" font-size="24" fill="#303a36">4000 0.000 0.000 0.000 0.000 {method append of list objects}</text>
-
-  
-  <rect x="1100" y="150" width="450" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  
-  <g transform="translate(1125, 170)">
-    <path d="M 6 42 A 24 24 0 0 1 50 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <line x1="28" y1="42" x2="42" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <circle cx="28" cy="42" r="4" fill="#207448" />
-  </g>
-  <text x="1195" y="210" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">The fix</text>
-
-  <rect x="1120" y="250" width="410" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
-  <text x="1140" y="295" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="1140" y="295">dedupe_fast with a</tspan>
-    <tspan x="1140" y="332">set: 0.001 s</tspan>
+  <rect x="60" y="440" width="410" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="495" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="85" dy="0">ncalls: how many times</tspan>
+    <tspan x="85" dy="34">the function ran</tspan>
   </text>
 
   
-  
-  <path d="M 210 435 L 125 435 L 125 285" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
-  
-  
-  <rect x="50" y="445" width="310" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(70, 460)">
-    <rect x="4" y="6" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="4" y1="20" x2="48" y2="20" stroke="#207448" stroke-width="3" />
-    <line x1="16" y1="6" x2="16" y2="20" stroke="#207448" stroke-width="3" />
-    <line x1="36" y1="6" x2="36" y2="20" stroke="#207448" stroke-width="3" />
-    <circle cx="26" cy="33" r="3" fill="#207448" />
-  </g>
-  <text x="70" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="70" y="545">ncalls: how many times</tspan>
-    <tspan x="70" y="580">the function ran</tspan>
+  <rect x="495" y="440" width="410" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="520" y="495" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="520" dy="0">tottime: time inside</tspan>
+    <tspan x="520" dy="34">the function itself</tspan>
   </text>
 
   
-  <path d="M 525 435 L 235 435 L 235 285" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
-  
-  
-  <rect x="385" y="445" width="320" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(405, 460)">
-    <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="4" />
-    <polyline points="26,14 26,26 36,26" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-  </g>
-  <text x="405" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="405" y="545">tottime: time inside the</tspan>
-    <tspan x="405" y="580">function itself</tspan>
-  </text>
-
-  
-  <path d="M 740 435 L 440 435 L 440 285" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
-  
-  
-  <rect x="730" y="445" width="820" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-  
-  <g transform="translate(755, 460)">
-    <circle cx="16" cy="14" r="7" fill="none" stroke="#207448" stroke-width="3.5" />
-    <circle cx="38" cy="38" r="7" fill="none" stroke="#207448" stroke-width="3.5" />
-    <circle cx="12" cy="40" r="6" fill="none" stroke="#207448" stroke-width="3.5" />
-    <path d="M 20 20 L 32 32" stroke="#207448" stroke-width="3.5" />
-    <path d="M 14 21 L 12 34" stroke="#207448" stroke-width="3.5" />
-  </g>
-  <text x="755" y="535" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="755" y="535">cumtime: adds the functions it calls; much larger</tspan>
-    <tspan x="755" y="572">than tottime means the time goes into its callees</tspan>
+  <rect x="930" y="440" width="610" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="955" y="482" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="955" dy="0">cumtime: adds the functions it calls;</tspan>
+    <tspan x="955" dy="34">much larger than tottime means the</tspan>
+    <tspan x="955" dy="34">time goes into its callees</tspan>
   </text>
 
   
   
-  <path d="M 1060 306 L 1090 306 L 1090 670 L 580 670" fill="none" stroke="#db8129" stroke-width="2.5" marker-end="url(#arrow-orange)" />
+  <path d="M 127 375 L 127 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
   
-  <rect x="50" y="645" width="510" height="180" rx="12" fill="#fff3e6" stroke="#db8129" stroke-width="2" />
+  <path d="M 237 375 L 237 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
   
-  <g transform="translate(75, 665)">
-    <circle cx="26" cy="26" r="22" fill="none" stroke="#db8129" stroke-width="4" />
-    <circle cx="26" cy="26" r="8" fill="#db8129" />
-  </g>
-  <text x="75" y="745" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
-    <tspan x="75" y="745">all 0.133 s sits in the</tspan>
-    <tspan x="75" y="780">function itself</tspan>
-  </text>
+  <path d="M 472 375 L 472 405 L 1150 405 L 1150 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
 
   
-  <rect x="585" y="645" width="965" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="60" y="625" width="1480" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(615, 665)">
-    <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="34" y1="34" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <line x1="16" y1="22" x2="28" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="615" y="735" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="615" y="735">The in operator is not a function call, so the profiler cannot</tspan>
-    <tspan x="615" y="770">point at the line: you read the code, and the section 2 table says</tspan>
-    <tspan x="615" y="805">what to suspect (x in list)</tspan>
+  <circle cx="105" cy="692" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <path d="M 97 684 A 8 8 0 1 1 109 696 A 8 8 0 1 1 97 684 M 109 696 L 119 706" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="155" y="682" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="155" dy="0">The in operator is not a function call, so the profiler cannot point at the line:</tspan>
+    <tspan x="155" dy="36">you read the code, and the section 2 table says what to suspect (x in list)</tspan>
   </text>
 
   
   
-  <rect x="50" y="855" width="410" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="60" y="795" width="460" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(75, 875)">
-    <circle cx="26" cy="28" r="20" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="26" y1="8" x2="26" y2="2" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-    <polyline points="26,18 26,28 34,28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="75" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="75" y="955">timeit: snippets, report the</tspan>
-    <tspan x="75" y="992">minimum of repeats</tspan>
+  <circle cx="105" cy="845" r="22" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <path d="M 105 833 L 105 845 L 114 845 M 101 820 L 109 820" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="140" y="853" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">timeit</text>
+  <text x="85" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">timeit: snippets, report the</tspan>
+    <tspan x="85" dy="34">minimum of repeats</tspan>
   </text>
 
   
-  <rect x="485" y="855" width="700" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="545" y="795" width="570" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(510, 875)">
-    <rect x="10" y="10" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="2" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3" />
-    <line x1="2" y1="32" x2="10" y2="32" stroke="#207448" stroke-width="3" />
-    <line x1="42" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3" />
-    <line x1="42" y1="32" x2="50" y2="32" stroke="#207448" stroke-width="3" />
-    <line x1="20" y1="2" x2="20" y2="10" stroke="#207448" stroke-width="3" />
-    <line x1="32" y1="2" x2="32" y2="10" stroke="#207448" stroke-width="3" />
-    <line x1="20" y1="42" x2="20" y2="50" stroke="#207448" stroke-width="3" />
-    <line x1="32" y1="42" x2="32" y2="50" stroke="#207448" stroke-width="3" />
-  </g>
-  <text x="510" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
-    <tspan x="510" y="955">cProfile: test environment, 1,000,000</tspan>
-    <tspan x="510" y="992">calls took 0.045 s without it and 0.110 s</tspan>
-    <tspan x="510" y="1029">with it, a factor of 2.4</tspan>
+  <circle cx="590" cy="845" r="22" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <path d="M 576 853 A 15 15 0 1 1 604 853 M 590 845 L 598 835" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="625" y="853" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">cProfile</text>
+  <text x="570" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="570" dy="0">cProfile: test environment,</tspan>
+    <tspan x="570" dy="34">1,000,000 calls took 0.045 s without</tspan>
+    <tspan x="570" dy="34">it and 0.110 s with it, a factor of 2.4</tspan>
   </text>
 
   
-  <rect x="1210" y="855" width="340" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="1140" y="795" width="400" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
   
-  <g transform="translate(1235, 875)">
-    <polyline points="6,44 18,24 30,34 46,12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-    <line x1="6" y1="48" x2="48" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-  </g>
-  <text x="1235" y="975" font-family="sans-serif" font-size="24" fill="#303a36">metrics: production</text>
+  <circle cx="1185" cy="845" r="22" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <path d="M 1173 855 L 1181 843 L 1189 849 L 1197 835" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1220" y="853" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">metrics</text>
+  <text x="1165" y="930" font-family="sans-serif" font-size="24" fill="#303a36">metrics: production</text>
 
   
-  <rect x="50" y="1095" width="1500" height="65" rx="10" fill="#207448" />
-  <text x="800" y="1137" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Measure the whole, find where the time goes, change one thing, measure again.</text>
+  <rect x="60" y="1045" width="1480" height="85" rx="14" fill="#207448"/>
+  <text x="800" y="1098" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Measure the whole, find where the time goes, change one thing, measure again.</text>
 </svg>

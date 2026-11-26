@@ -1,171 +1,201 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200" style="background:#f5f8f5;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>Who connects to which port</title>
-  <desc>Hub-and-spoke diagram showing connections to kube-apiserver on 6443 HTTPS, etcd, kube-scheduler, kube-controller-manager, kubelet, kube-proxy, NodePort, and CoreDNS.</desc>
+  <desc>Hub-and-spoke architecture diagram showing network ports and connections around Kubernetes kube-apiserver, etcd, kubelet, and control plane components.</desc>
+
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 0 2 L 18 9 L 0 16 z" fill="#db8129"/>
+    <marker id="arrow-green-reverse" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 11 2 L 1 7 L 11 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
     </marker>
   </defs>
 
   
-  <text x="800" y="65" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Who connects to which port</text>
+  <rect width="1600" height="1350" fill="#f5f8f5"/>
 
   
-  <g id="node-etcd">
-    <rect x="340" y="110" width="920" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <g transform="translate(400, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
-      <ellipse cx="28" cy="14" rx="24" ry="10"/>
-      <path d="M 4 14 v 36 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10 v -36"/>
-      <path d="M 4 32 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10"/>
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Who connects to which port</text>
+
+  
+  <g transform="translate(420, 105)">
+    <rect width="760" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(30, 28)" stroke="#207448" stroke-width="3.5" fill="none">
+      <ellipse cx="26" cy="18" rx="26" ry="10"/>
+      <path d="M 0 18 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24"/>
+      <path d="M 0 42 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24"/>
     </g>
-    <text x="830" y="165" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
-      <tspan x="830" dy="0">etcd 2379 client, 2380 peer,</tspan>
-      <tspan x="830" dy="38">mTLS, only API servers are clients</tspan>
-    </text>
-  </g>
-
-  
-  <line x1="800" y1="250" x2="800" y2="380" stroke="#207448" stroke-width="4" marker-start="url(#arrow-green)" marker-end="url(#arrow-green)"/>
-
-  
-  <g id="node-kubectl">
-    <rect x="50" y="390" width="370" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <g transform="translate(207, 412)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="0" y="0" width="56" height="42" rx="6"/>
-      <path d="M 12 14 l 10 7 l -10 7"/>
-      <line x1="28" y1="28" x2="42" y2="28"/>
-    </g>
-    <text x="235" y="495" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">kubectl, CI, operators</text>
-  </g>
-
-  
-  <line x1="420" y1="465" x2="565" y2="465" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <g id="node-apiserver">
-    <rect x="570" y="390" width="460" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
-    <g transform="translate(772, 410)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="28,4 52,18 52,46 28,60 4,46 4,18"/>
-      <circle cx="28" cy="32" r="9"/>
-      <line x1="28" y1="4" x2="28" y2="23"/>
-      <line x1="28" y1="41" x2="28" y2="60"/>
-      <line x1="4" y1="32" x2="19" y2="32"/>
-      <line x1="37" y1="32" x2="52" y2="32"/>
-    </g>
-    <text x="800" y="505" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">kube-apiserver (6443 HTTPS)</text>
-  </g>
-
-  
-  <g id="node-scheduler">
-    <rect x="1170" y="365" width="380" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <g transform="translate(1200, 385)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
-      <circle cx="28" cy="28" r="24"/>
-      <polyline points="28,14 28,28 38,28"/>
-    </g>
-    <text x="1380" y="423" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">kube-scheduler 10259</text>
-  </g>
-
-  <g id="node-controller-manager">
-    <rect x="1170" y="485" width="380" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <g transform="translate(1200, 508)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 46 20 A 20 20 0 1 0 48 34"/>
-      <polyline points="48,14 48,24 38,24"/>
-    </g>
-    <text x="1380" y="528" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
-      <tspan x="1380" dy="0">kube-controller-manager</tspan>
-      <tspan x="1380" dy="34">10257</tspan>
-    </text>
-  </g>
-
-  
-  <path d="M 1170 412.5 L 1110 412.5 L 1110 465 L 1035 465" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
-  <path d="M 1170 537.5 L 1110 537.5 L 1110 465" stroke="#207448" stroke-width="4" fill="none"/>
-  <text x="1070" y="450" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">watch/write</text>
-
-  
-  <g id="node-kubelet">
-    <rect x="420" y="720" width="760" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <g transform="translate(460, 750)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
-      <rect x="0" y="0" width="56" height="24" rx="4"/>
-      <rect x="0" y="32" width="56" height="24" rx="4"/>
-      <line x1="12" y1="12" x2="16" y2="12"/>
-      <line x1="12" y1="44" x2="16" y2="44"/>
-      <circle cx="42" cy="12" r="2" fill="#207448"/>
-      <circle cx="42" cy="44" r="2" fill="#207448"/>
-    </g>
-    <text x="830" y="788" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">kubelet 10250 (healthz 10248 local)</text>
+    
+    <text x="110" y="55" font-family="monospace" font-size="28px" font-weight="bold" fill="#207448">etcd 2379 client, 2380 peer,</text>
+    <text x="110" y="98" font-family="sans-serif" font-size="26px" fill="#303a36">mTLS, only API servers are clients</text>
   </g>
 
   
   
-  <line x1="660" y1="715" x2="660" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="640" y="625" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end" font-family="system-ui, -apple-system, sans-serif">
-    <tspan x="640" dy="0">watch pods,</tspan>
-    <tspan x="640" dy="32">heartbeat Leases</tspan>
-  </text>
+  <line x1="800" y1="244" x2="800" y2="396" stroke="#207448" stroke-width="4" marker-start="url(#arrow-green-reverse)" marker-end="url(#arrow-green)"/>
 
   
-  <line x1="940" y1="545" x2="940" y2="715" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <text x="960" y="625" font-size="24" font-weight="bold" fill="#db8129" text-anchor="start" font-family="system-ui, -apple-system, sans-serif">
-    <tspan x="960" dy="0">logs, exec,</tspan>
-    <tspan x="960" dy="32">attach, port-forward</tspan>
-  </text>
-
-  
-  
-  <g id="node-kube-proxy">
-    <rect x="50" y="875" width="470" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    <g transform="translate(80, 902)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 4 28 h 48"/>
-      <path d="M 38 16 l 14 12 l -14 12"/>
-      <path d="M 18 16 l -14 12 l 14 12"/>
+  <g transform="translate(560, 400)">
+    <rect width="480" height="170" rx="20" fill="#ffffff" stroke="#db8129" stroke-width="5" filter="drop-shadow(0 4px 10px rgba(219, 129, 41, 0.15))"/>
+    
+    <g transform="translate(40, 55)" stroke="#db8129" stroke-width="3.5" fill="none">
+      <circle cx="30" cy="30" r="14"/>
+      <path d="M30 4 v8 M30 48 v8 M4 30 h8 M48 30 h8 M12 12 l6 6 M42 42 l6 6 M12 48 l6 -6 M42 18 l6 -6"/>
     </g>
-    <text x="295" y="920" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
-      <tspan x="295" dy="0">kube-proxy</tspan>
-      <tspan x="295" dy="34" font-size="24">10256 healthz, 10249 metrics</tspan>
-    </text>
+    <text x="130" y="80" font-family="monospace" font-size="34px" font-weight="bold" fill="#db8129">kube-apiserver</text>
+    <text x="130" y="125" font-family="monospace" font-size="28px" font-weight="bold" fill="#303a36">(6443 HTTPS)</text>
   </g>
 
   
-  <g id="node-nodeport">
-    <rect x="565" y="875" width="470" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    <g transform="translate(595, 902)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="44" height="40" rx="4"/>
-      <line x1="20" y1="20" x2="20" y2="36"/>
-      <line x1="28" y1="20" x2="28" y2="36"/>
-      <line x1="36" y1="20" x2="36" y2="36"/>
+  <g transform="translate(40, 420)">
+    <rect width="360" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 38)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="0" y="0" width="52" height="46" rx="6"/>
+      <line x1="0" y1="14" x2="52" y2="14"/>
+      <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="7" r="2.5" fill="#207448"/>
     </g>
-    <text x="810" y="920" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
-      <tspan x="810" dy="0">NodePort</tspan>
-      <tspan x="810" dy="34" font-size="24">30000-32767 on all nodes</tspan>
-    </text>
+    <text x="100" y="75" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">kubectl, CI,</text>
+    <text x="100" y="112" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">operators</text>
   </g>
 
   
-  <g id="node-coredns">
-    <rect x="1080" y="875" width="470" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
-    <g transform="translate(1110, 902)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
-      <circle cx="28" cy="28" r="24"/>
-      <ellipse cx="28" cy="28" rx="11" ry="24"/>
-      <line x1="4" y1="28" x2="52" y2="28"/>
-    </g>
-    <text x="1325" y="920" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
-      <tspan x="1325" dy="0">CoreDNS</tspan>
-      <tspan x="1325" dy="34" font-size="24">53 TCP/UDP, 9153 metrics</tspan>
-    </text>
+  <line x1="400" y1="485" x2="556" y2="485" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <g transform="translate(432, 455)">
+    <rect x="-10" y="-18" width="94" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="37" y="6" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">6443</text>
   </g>
 
   
-  <g id="callout-security">
-    <rect x="50" y="1030" width="1500" height="110" rx="10" fill="#fdf2f2" stroke="#c53030" stroke-width="3"/>
-    <g transform="translate(85, 1057)" stroke="#c53030" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 28 6 L 50 14 C 50 36 28 50 28 50 C 28 50 6 36 6 14 Z"/>
-      <line x1="28" y1="20" x2="28" y2="32"/>
-      <circle cx="28" cy="40" r="2" fill="#c53030"/>
+  
+  <g transform="translate(1190, 360)">
+    <rect width="370" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="27" cy="27" r="24"/>
+      <polyline points="27,13 27,27 38,27"/>
     </g>
-    <text x="815" y="1093" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">etcd holds every secret; kubelet can run commands in every container on its node</text>
+    <text x="96" y="66" font-family="monospace" font-size="28px" font-weight="bold" fill="#303a36">kube-scheduler</text>
+    <text x="96" y="100" font-family="monospace" font-size="26px" fill="#207448">10259</text>
+  </g>
+
+  
+  <g transform="translate(1190, 500)">
+    <rect width="370" height="115" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 30)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="27" cy="27" r="14"/>
+      <path d="M27 3 v7 M27 44 v7 M3 27 h7 M44 27 h7 M10 10 l5 5 M39 39 l5 5 M10 44 l5 -5 M39 15 l5 -5"/>
+    </g>
+    <text x="96" y="58" font-family="monospace" font-size="25px" font-weight="bold" fill="#303a36">kube-controller-</text>
+    <text x="96" y="94" font-family="monospace" font-size="25px" font-weight="bold" fill="#303a36">manager <tspan fill="#207448">10257</tspan></text>
+  </g>
+
+  
+  
+  <path d="M 1190 415 L 1044 450" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+  <g transform="translate(1115, 410)">
+    <rect x="-75" y="-18" width="150" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="6" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">watch/write</text>
+  </g>
+
+  
+  <path d="M 1190 555 L 1044 520" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+  <g transform="translate(1115, 558)">
+    <rect x="-75" y="-18" width="150" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="6" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">watch/write</text>
+  </g>
+
+  
+  <g transform="translate(430, 830)">
+    <rect width="740" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(30, 28)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="12" y="12" width="38" height="38" rx="4"/>
+      <path d="M 22 22 h 18 v 18 h -18 z"/>
+      <path d="M 20 2 v 10 M 31 2 v 10 M 42 2 v 10"/>
+      <path d="M 20 50 v 10 M 31 50 v 10 M 42 50 v 10"/>
+      <path d="M 2 20 h 10 M 2 31 h 10 M 2 42 h 10"/>
+      <path d="M 50 20 h 10 M 50 31 h 10 M 50 42 h 10"/>
+    </g>
+    <text x="105" y="55" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">kubelet 10250</text>
+    <text x="105" y="95" font-family="monospace" font-size="26px" fill="#207448">(healthz 10248 local)</text>
+  </g>
+
+  
+  
+  <line x1="680" y1="826" x2="680" y2="574" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <g transform="translate(680, 700)">
+    <rect x="-175" y="-22" width="350" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="8" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">watch pods, heartbeat Leases</text>
+  </g>
+
+  
+  <line x1="920" y1="574" x2="920" y2="826" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <g transform="translate(920, 700)">
+    <rect x="-190" y="-22" width="380" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="8" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">logs, exec, attach, port-forward</text>
+  </g>
+
+  
+  
+  <g transform="translate(40, 1000)">
+    <rect width="480" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 38)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="26" cy="12" r="8"/>
+      <circle cx="10" cy="40" r="8"/>
+      <circle cx="42" cy="40" r="8"/>
+      <line x1="22" y1="18" x2="14" y2="33"/>
+      <line x1="30" y1="18" x2="38" y2="33"/>
+    </g>
+    <text x="88" y="55" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">kube-proxy</text>
+    <text x="88" y="95" font-family="monospace" font-size="24px" fill="#207448">10256 healthz, 10249 metrics</text>
+  </g>
+
+  
+  <g transform="translate(560, 1000)">
+    <rect width="480" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 38)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="2" y="6" width="48" height="40" rx="6"/>
+      <circle cx="14" cy="26" r="3" fill="#207448"/>
+      <circle cx="26" cy="26" r="3" fill="#207448"/>
+      <circle cx="38" cy="26" r="3" fill="#207448"/>
+    </g>
+    <text x="88" y="55" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">NodePort 30000-32767</text>
+    <text x="88" y="95" font-family="sans-serif" font-size="25px" fill="#207448">on all nodes</text>
+  </g>
+
+  
+  <g transform="translate(1080, 1000)">
+    <rect width="480" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 38)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="26" cy="26" r="22"/>
+      <ellipse cx="26" cy="26" rx="10" ry="22"/>
+      <line x1="4" y1="26" x2="48" y2="26"/>
+    </g>
+    <text x="88" y="55" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">CoreDNS 53 TCP/UDP,</text>
+    <text x="88" y="95" font-family="monospace" font-size="25px" fill="#207448">9153 metrics</text>
+  </g>
+
+  
+  <g transform="translate(40, 1175)">
+    <rect width="1520" height="120" rx="16" fill="#fcf0ed" stroke="#c53030" stroke-width="3"/>
+    
+    <g transform="translate(35, 32)" stroke="#c53030" stroke-width="4" fill="none">
+      <path d="M 28 6 L 50 16 v 18 c 0 16 -12 28 -22 34 c -10 -6 -22 -18 -22 -34 v -18 Z"/>
+      <path d="M 28 26 v 14" stroke-linecap="round"/>
+      <circle cx="28" cy="46" r="2" fill="#c53030"/>
+    </g>
+    <text x="110" y="52" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#9c1c1c">etcd holds every secret; kubelet can run commands</text>
+    <text x="110" y="92" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#9c1c1c">in every container on its node</text>
   </g>
 </svg>

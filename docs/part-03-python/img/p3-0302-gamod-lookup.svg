@@ -1,223 +1,192 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1260" width="1600" height="1260">
   <title>Module __getattr__ and __dir__: which lookups reach the hook</title>
-  <desc>Visual decision flow for Python module attribute lookups in gamod.py under PEP 562, contrasting dictionary lookups against the fallback hook.</desc>
+  <desc>A decision flow diagram illustrating how attribute lookups in Python modules are resolved either via __dict__ or the module-level __getattr__ hook.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
+  <rect x="0" y="0" width="1600" height="1260" fill="#f5f8f5" />
 
   
-  <text x="50" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Module __getattr__ and __dir__: which lookups reach the hook</text>
+  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Module __getattr__ and __dir__: which lookups reach the hook</text>
 
   
-  <g id="start-node">
-    <rect x="100" y="110" width="840" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(60, 115)">
+    <rect x="0" y="0" width="970" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(125, 134)">
-      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
-      <circle cx="12" cy="9" r="3" fill="#207448" />
-      <circle cx="22" cy="9" r="3" fill="#207448" />
-      <line x1="14" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    <text x="210" y="152" font-family="monospace, monospace" font-size="30" font-weight="bold" fill="#207448">
-      <tspan x="210" dy="0">client asks for gamod.name</tspan>
-      <tspan x="210" dy="38">or from gamod import name</tspan>
-    </text>
+    <rect x="25" y="22" width="50" height="46" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 37 38 L 47 45 L 37 52" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="53" y1="52" x2="63" y2="52" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="96" y="55" font-family="'Consolas', 'Fira Code', monospace" font-size="26" font-weight="bold" fill="#303a36">client asks for gamod.name or from gamod import name</text>
   </g>
 
   
-  <line x1="520" y1="215" x2="520" y2="252" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="545" y1="205" x2="545" y2="258" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
 
   
-  <g id="question-node">
-    <rect x="180" y="260" width="680" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(295, 260)">
+    <rect x="0" y="0" width="500" height="84" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
     
-    <g transform="translate(205, 282)">
-      <polygon points="28,2 54,28 28,54 2,28" fill="none" stroke="#207448" stroke-width="4" />
-      <text x="28" y="37" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">?</text>
-    </g>
-    <text x="285" y="322" font-family="monospace, monospace" font-size="32" font-weight="bold" fill="#303a36">is name in gamod.__dict__?</text>
+    <circle cx="45" cy="42" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+    <text x="45" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">?</text>
+    <text x="85" y="52" font-family="'Consolas', 'Fira Code', monospace" font-size="27" font-weight="bold" fill="#303a36">is name in gamod.__dict__?</text>
   </g>
 
   
-  <path d="M 300 360 L 300 422" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
-  <rect x="265" y="378" width="70" height="34" rx="17" fill="#207448" />
-  <text x="300" y="403" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
-
+  <path d="M 360 344 L 360 380 L 250 380 L 250 436" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
   
-  <path d="M 740 360 L 740 422" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
-  <rect x="705" y="378" width="70" height="34" rx="17" fill="#db8129" />
-  <text x="740" y="403" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">No</text>
-
-  
-  <g id="yes-branch-container">
-    <rect x="40" y="430" width="430" height="505" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    
-    
-    <rect x="60" y="450" width="390" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(370, 465)">
-      <ellipse cx="28" cy="14" rx="22" ry="9" fill="none" stroke="#207448" stroke-width="3.5" />
-      <path d="M 6 14 v 24 c 0 5 10 9 22 9 s 22 -4 22 -9 v -24" fill="none" stroke="#207448" stroke-width="3.5" />
-      <polyline points="18 34 26 42 42 24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    <text x="80" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
-      <tspan x="80" dy="0" font-size="30" font-weight="bold" fill="#207448">returned directly:</tspan>
-      <tspan x="80" dy="44">var is a real attribute</tspan>
-      <tspan x="80" dy="40" font-family="monospace, monospace" font-weight="bold">(var = 2)</tspan>
-    </text>
-
-    
-    <rect x="60" y="680" width="390" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(370, 695)">
-      <rect x="6" y="6" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
-      <line x1="28" y1="16" x2="28" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    <text x="80" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="80" dy="0">an outside assignment</tspan>
-      <tspan x="80" dy="36" font-family="monospace, monospace" font-weight="bold" fill="#207448">gamod.hack = "real"</tspan>
-      <tspan x="80" dy="36">creates a real key, so</tspan>
-      <tspan x="80" dy="36">later reads skip </tspan><tspan font-family="monospace, monospace" font-weight="bold">__getattr__</tspan>
-    </text>
+  <g transform="translate(285, 362)">
+    <rect x="0" y="0" width="70" height="36" rx="10" fill="#207448" />
+    <text x="35" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Yes</text>
   </g>
 
   
-  <g id="no-branch-container">
-    <rect x="490" y="430" width="550" height="505" rx="14" fill="#fffbf6" stroke="#db8129" stroke-width="3" />
-    
-    
-    <rect x="510" y="450" width="510" height="110" rx="10" fill="#fdeed9" stroke="#db8129" stroke-width="3" />
-    
-    <g transform="translate(945, 477)">
-      <circle cx="28" cy="28" r="26" fill="none" stroke="#db8129" stroke-width="3.5" />
-      <path d="M 30 12 L 18 30 L 32 30 L 24 46" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    <text x="530" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
-      <tspan x="530" dy="0">Python calls</tspan>
-      <tspan x="530" dy="40" font-family="monospace, monospace">def __getattr__(name)</tspan>
-    </text>
-
-    
-    <line x1="765" y1="560" x2="765" y2="574" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
-
-    
-    <rect x="510" y="580" width="510" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-    
-    <g transform="translate(948, 600)">
-      <rect x="0" y="0" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="16" y1="16" x2="38" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <line x1="38" y1="16" x2="16" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    <text x="530" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="530" dy="0">test returns </tspan><tspan font-family="monospace, monospace" font-weight="bold">name * var</tspan><tspan>,</tspan>
-      <tspan x="530" dy="34">so </tspan><tspan font-family="monospace, monospace" font-weight="bold">gamod.test</tspan><tspan> is </tspan><tspan font-family="monospace, monospace">testtest</tspan>
-    </text>
-
-    
-    <rect x="510" y="690" width="510" height="115" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-    
-    <g transform="translate(948, 720)">
-      <rect x="0" y="0" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3" />
-      <text x="27" y="37" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">AA</text>
-    </g>
-    <text x="530" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="530" dy="0">hack or code returns </tspan><tspan font-family="monospace, monospace" font-weight="bold">name.upper()</tspan><tspan>,</tspan>
-      <tspan x="530" dy="32">so </tspan><tspan font-family="monospace, monospace" font-weight="bold">gamod.hack</tspan><tspan> is </tspan><tspan font-family="monospace, monospace">HACK</tspan><tspan> and</tspan>
-      <tspan x="530" dy="32" font-family="monospace, monospace" font-weight="bold">gamod.code</tspan><tspan> is </tspan><tspan font-family="monospace, monospace">CODE</tspan>
-    </text>
-
-    
-    <rect x="510" y="820" width="510" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
-    
-    <g transform="translate(948, 840)">
-      <polygon points="27,4 52,48 2,48" fill="none" stroke="#c0392b" stroke-width="3.5" stroke-linejoin="round" />
-      <line x1="27" y1="18" x2="27" y2="34" stroke="#c0392b" stroke-width="3.5" stroke-linecap="round" />
-      <circle cx="27" cy="42" r="2.5" fill="#c0392b" />
-    </g>
-    <text x="530" y="855" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="530" dy="0">anything else raises</tspan>
-      <tspan x="530" dy="34" font-family="monospace, monospace" font-weight="bold" fill="#c0392b">AttributeError(name is undefined)</tspan>
-    </text>
+  <path d="M 730 344 L 730 380 L 805 380 L 805 436" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <g transform="translate(735, 362)">
+    <rect x="0" y="0" width="65" height="36" rx="10" fill="#db8129" />
+    <text x="32" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">No</text>
   </g>
 
   
+
   
-  <g id="side-box-1">
-    <rect x="1060" y="110" width="500" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 440)">
+    <rect x="0" y="0" width="460" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1085, 125)">
-      <circle cx="28" cy="28" r="24" fill="none" stroke="#c0392b" stroke-width="4" />
-      <line x1="11" y1="11" x2="45" y2="45" stroke="#c0392b" stroke-width="4" />
-    </g>
-    <text x="1085" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1085" dy="0" font-weight="bold" fill="#207448">Inside the module, a bare global</tspan>
-      <tspan x="1085" dy="32" font-weight="bold" fill="#207448">lookup does not call </tspan><tspan font-family="monospace, monospace">__getattr__</tspan><tspan font-weight="bold" fill="#207448">:</tspan>
-      <tspan x="1085" dy="36" font-family="monospace, monospace">print(test) inside gamod.py</tspan>
-      <tspan x="1085" dy="32" font-weight="bold" fill="#c0392b">raises NameError</tspan>
-    </text>
+    <circle cx="48" cy="48" r="22" fill="#207448" />
+    <path d="M 38 48 L 45 55 L 58 41" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="86" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">returned directly:</text>
+    <text x="30" y="106" font-family="'Consolas', 'Fira Code', monospace" font-size="24" fill="#303a36">var is a real attribute (var = 2)</text>
   </g>
 
   
-  <g id="side-box-2">
-    <rect x="1060" y="350" width="500" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="290" y1="590" x2="290" y2="626" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(60, 630)">
+    <rect x="0" y="0" width="460" height="295" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1085, 368)">
-      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
-      <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <line x1="14" y1="38" x2="30" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    <text x="1085" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1085" dy="0" font-family="monospace, monospace" font-size="26" font-weight="bold" fill="#207448">def __dir__()</tspan><tspan font-size="26" font-weight="bold" fill="#207448"> returns</tspan>
-      <tspan x="1085" dy="34" font-family="monospace, monospace">[var, test, hack, code],</tspan>
-      <tspan x="1085" dy="34">and that is what </tspan><tspan font-family="monospace, monospace" font-weight="bold">dir(gamod)</tspan>
-      <tspan x="1085" dy="34">reports</tspan>
-    </text>
+    <circle cx="50" cy="48" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 64 56 L 90 82 M 78 70 L 85 63 M 84 76 L 91 69" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="105" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">an outside assignment</text>
+    <text x="30" y="112" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#303a36">gamod.hack = "real"</text>
+    <text x="30" y="162" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">creates a real key, so later reads</text>
+    <text x="30" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">skip <tspan font-family="'Consolas', 'Fira Code', monospace" font-weight="bold">__getattr__</tspan></text>
   </g>
 
   
-  <g id="footnote-box">
-    <rect x="1060" y="590" width="500" height="345" rx="14" fill="#f0f5f1" stroke="#7a9a85" stroke-width="2" stroke-dasharray="6,4" />
+
+  
+  <g transform="translate(560, 440)">
+    <rect x="0" y="0" width="470" height="90" rx="14" fill="#fcf3eb" stroke="#db8129" stroke-width="3.5" />
     
-    <g transform="translate(1085, 610)">
-      <path d="M 6 6 h 32 a 12 12 0 0 1 12 12 v 26 a 12 12 0 0 1 -12 12 h -32 a 6 6 0 0 1 -6 -6 v -38 a 6 6 0 0 1 6 -6 z" fill="none" stroke="#7a9a85" stroke-width="3.5" />
-      <line x1="16" y1="22" x2="36" y2="22" stroke="#7a9a85" stroke-width="3" stroke-linecap="round" />
-      <line x1="16" y1="32" x2="36" y2="32" stroke="#7a9a85" stroke-width="3" stroke-linecap="round" />
-      <line x1="16" y1="42" x2="28" y2="42" stroke="#7a9a85" stroke-width="3" stroke-linecap="round" />
-    </g>
-    <text x="1085" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
-      <tspan x="1085" dy="0" font-weight="bold">arrived in Python 3.7</tspan>
-      <tspan x="1085" dy="32">through PEP 562;</tspan>
-      <tspan x="1085" dy="32">replaces the older trick of</tspan>
-      <tspan x="1085" dy="32">swapping </tspan><tspan font-family="monospace, monospace" font-weight="bold">sys.modules[__name__]</tspan>
-      <tspan x="1085" dy="32">for a class instance;</tspan>
-      <tspan x="1085" dy="32">a module-level </tspan><tspan font-family="monospace, monospace" font-weight="bold">__setattr__</tspan><tspan> was</tspan>
-      <tspan x="1085" dy="32">rejected by the steering committee</tspan>
-    </text>
+    <circle cx="45" cy="45" r="22" fill="#db8129" />
+    <path d="M 38 48 C 38 38 46 34 51 34 C 55 34 56 36 54 41 L 41 53 C 37 57 40 60 45 60 C 49 60 52 57 53 54" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="82" y="54" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#303a36">Python calls def __getattr__(name)</text>
   </g>
 
   
-  <g id="bottom-bar">
-    <rect x="40" y="960" width="1520" height="115" rx="14" fill="#207448" />
+  <line x1="795" y1="530" x2="795" y2="560" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g transform="translate(560, 565)">
+    <rect x="0" y="0" width="470" height="105" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="42" cy="52" r="14" fill="#fcf3eb" stroke="#db8129" stroke-width="2.5" />
+    <text x="42" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="bold" fill="#db8129" text-anchor="middle">1</text>
     
-    <g transform="translate(68, 990)">
-      <circle cx="28" cy="28" r="26" fill="none" stroke="#ffffff" stroke-width="3.5" />
-      <polygon points="28,8 34,22 48,23 37,33 41,47 28,39 15,47 19,33 8,23 22,22" fill="#ffffff" />
-    </g>
-    <text x="145" y="1008" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
-      <tspan x="145" dy="0">Real names come straight from the dictionary,</tspan>
-      <tspan x="145" dy="38">everything else falls through to </tspan><tspan font-family="monospace, monospace">__getattr__</tspan>
-    </text>
+    <text x="72" y="45" font-family="'Consolas', 'Fira Code', monospace" font-size="24" fill="#303a36">test returns name * var, so</text>
+    <text x="72" y="80" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#db8129">gamod.test is testtest</text>
   </g>
+
+  
+  <g transform="translate(560, 685)">
+    <rect x="0" y="0" width="470" height="125" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="42" cy="62" r="14" fill="#fcf3eb" stroke="#db8129" stroke-width="2.5" />
+    <text x="42" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="bold" fill="#db8129" text-anchor="middle">2</text>
+    
+    <text x="72" y="42" font-family="'Consolas', 'Fira Code', monospace" font-size="24" fill="#303a36">hack or code returns name.upper(),</text>
+    <text x="72" y="76" font-family="'Consolas', 'Fira Code', monospace" font-size="24" fill="#303a36">so <tspan font-weight="bold" fill="#db8129">gamod.hack is HACK</tspan> and</text>
+    <text x="72" y="108" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#db8129">gamod.code is CODE</text>
+  </g>
+
+  
+  <g transform="translate(560, 825)">
+    <rect x="0" y="0" width="470" height="135" rx="12" fill="#ffffff" stroke="#d9383a" stroke-width="2.5" />
+    
+    <path d="M 44 26 L 66 68 L 22 68 Z" fill="#fff5f5" stroke="#d9383a" stroke-width="3" stroke-linejoin="round" />
+    <line x1="44" y1="40" x2="44" y2="52" stroke="#d9383a" stroke-width="3" stroke-linecap="round" />
+    <circle cx="44" cy="61" r="2" fill="#d9383a" />
+    
+    <text x="82" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">anything else raises</text>
+    <text x="82" y="86" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#d9383a">AttributeError(name is undefined)</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(1080, 115)">
+    <rect x="0" y="0" width="460" height="375" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="30" y="26" width="44" height="54" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="42" y1="42" x2="62" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="42" y1="54" x2="58" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="90" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">Inside the module,</text>
+    <text x="90" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a bare global lookup</text>
+    <text x="30" y="130" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">does not call <tspan font-family="'Consolas', 'Fira Code', monospace" font-weight="bold">__getattr__</tspan>:</text>
+    <text x="30" y="190" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#d9383a">print(test)</text>
+    <text x="30" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">inside gamod.py raises</text>
+    <text x="30" y="295" font-family="'Consolas', 'Fira Code', monospace" font-size="25" font-weight="bold" fill="#d9383a">NameError</text>
+  </g>
+
+  
+  <g transform="translate(1080, 520)">
+    <rect x="0" y="0" width="460" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="30" y="28" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="42" y1="42" x2="66" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="42" y1="52" x2="66" y2="52" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="42" y1="62" x2="56" y2="62" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="94" y="48" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#207448">def __dir__()</text>
+    <text x="94" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">returns</text>
+    <text x="30" y="136" font-family="'Consolas', 'Fira Code', monospace" font-size="24" font-weight="bold" fill="#303a36">[var, test, hack, code],</text>
+    <text x="30" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and that is what</text>
+    <text x="30" y="246" font-family="'Consolas', 'Fira Code', monospace" font-size="25" font-weight="bold" fill="#207448">dir(gamod)</text>
+    <text x="30" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">reports</text>
+  </g>
+
+  
+  <g transform="translate(60, 990)">
+    <rect x="0" y="0" width="1480" height="120" rx="12" fill="#ffffff" stroke="#c0cec4" stroke-width="2" />
+    
+    <circle cx="40" cy="40" r="18" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="40" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#207448" text-anchor="middle">i</text>
+    
+    <text x="74" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">arrived in Python 3.7 through PEP 562; replaces the older trick of swapping sys.modules[__name__] for a class instance;</text>
+    <text x="74" y="86" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a module-level __setattr__ was rejected by the steering committee</text>
+  </g>
+
+  
+  <g transform="translate(60, 1135)">
+    <rect x="0" y="0" width="1480" height="75" rx="12" fill="#207448" />
+    <text x="740" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="27" font-weight="bold" fill="#ffffff" text-anchor="middle">Real names come straight from the dictionary, everything else falls through to __getattr__</text>
+  </g>
+
 </svg>

@@ -1,190 +1,255 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
   <title>Half split: test the middle of the path first</title>
-  <desc>Infographic illustrating the half-split troubleshooting methodology along a network path from Application to Remote service.</desc>
+  <desc>Infographic explaining the half-split troubleshooting strategy across a seven-stage network path.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
     </marker>
     <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
     </marker>
-    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1b382b" flood-opacity="0.08"/>
     </filter>
   </defs>
 
   
-  <rect width="1600" height="1020" fill="#f5f8f5" />
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Half split: test the middle of the path first</text>
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Half split: test the middle of the path first
+  </text>
 
   
-  
-  <path d="M 45,150 L 45,135 L 785,135 L 800,120 L 815,135 L 1555,135 L 1555,150" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="800" y="110" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Fault somewhere on this path</text>
+  <g id="top-bracket">
+    
+    <rect x="570" y="92" width="460" height="46" rx="23" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="123" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Fault somewhere on this path
+    </text>
 
-  
-  
-  <line x1="800" y1="230" x2="800" y2="295" stroke="#db8129" stroke-width="6" marker-end="url(#arrow-orange)" />
-  <g transform="translate(490, 165)">
-    <rect x="0" y="0" width="620" height="60" rx="30" fill="#ffffff" stroke="#db8129" stroke-width="4" filter="url(#shadow)" />
-    <text x="310" y="40" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#db8129">Test 1: can the node reach the destination IP?</text>
+    
+    <path d="M 50 165
+             L 50 148
+             Q 50 142 58 142
+             L 780 142
+             Q 800 142 800 136
+             Q 800 142 820 142
+             L 1542 142
+             Q 1550 142 1550 148
+             L 1550 165"
+          fill="none" stroke="#207448" stroke-width="3"/>
   </g>
 
   
-  
-  <line x1="220" y1="410" x2="265" y2="410" stroke="#207448" stroke-width="4" />
-  <line x1="440" y1="410" x2="485" y2="410" stroke="#207448" stroke-width="4" />
-  <line x1="660" y1="410" x2="705" y2="410" stroke="#207448" stroke-width="4" />
-  <line x1="880" y1="410" x2="925" y2="410" stroke="#207448" stroke-width="4" />
-  <line x1="1100" y1="410" x2="1145" y2="410" stroke="#207448" stroke-width="4" />
-  <line x1="1320" y1="410" x2="1365" y2="410" stroke="#207448" stroke-width="4" />
+  <line x1="135" y1="235" x2="1465" y2="235" stroke="#9bbba6" stroke-width="6" stroke-linecap="round"/>
 
   
-  <g transform="translate(45, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    <rect x="62" y="24" width="50" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="62" y1="38" x2="112" y2="38" stroke="#207448" stroke-width="4" />
-    <circle cx="72" cy="31" r="2.5" fill="#207448" />
-    <circle cx="81" cy="31" r="2.5" fill="#207448" />
-    <text x="87" y="125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Application</text>
-  </g>
 
   
-  <g transform="translate(265, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+  <g id="box-application">
+    <rect x="45" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <circle cx="87" cy="45" r="16" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="87" cy="45" r="7" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="87" y1="23" x2="87" y2="28" stroke="#207448" stroke-width="4" />
-    <line x1="87" y1="62" x2="87" y2="67" stroke="#207448" stroke-width="4" />
-    <line x1="65" y1="45" x2="70" y2="45" stroke="#207448" stroke-width="4" />
-    <line x1="104" y1="45" x2="109" y2="45" stroke="#207448" stroke-width="4" />
-    <line x1="72" y1="30" x2="76" y2="34" stroke="#207448" stroke-width="4" />
-    <line x1="98" y1="56" x2="102" y2="60" stroke="#207448" stroke-width="4" />
-    <line x1="72" y1="60" x2="76" y2="56" stroke="#207448" stroke-width="4" />
-    <line x1="98" y1="34" x2="102" y2="30" stroke="#207448" stroke-width="4" />
-    <text x="87" y="125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Resolver</text>
-  </g>
-
-  
-  <g transform="translate(485, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    <circle cx="87" cy="30" r="7" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="67" cy="60" r="7" fill="none" stroke="#207448" stroke-width="4" />
-    <circle cx="107" cy="60" r="7" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="82" y1="36" x2="72" y2="54" stroke="#207448" stroke-width="3" />
-    <line x1="92" y1="36" x2="102" y2="54" stroke="#207448" stroke-width="3" />
-    <line x1="74" y1="60" x2="100" y2="60" stroke="#207448" stroke-width="3" />
-    <text x="87" y="115" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="87" dy="0">Pod</tspan>
-      <tspan x="87" dy="32">network</tspan>
+    <rect x="117" y="193" width="36" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="117" y1="202" x2="153" y2="202" stroke="#207448" stroke-width="2"/>
+    <circle cx="124" cy="197.5" r="1.5" fill="#207448"/>
+    <circle cx="129" cy="197.5" r="1.5" fill="#207448"/>
+    <text x="135" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Application
     </text>
   </g>
 
   
-  <g transform="translate(705, 305)">
-    <rect width="175" height="185" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="5" filter="url(#shadow)" />
+  <g id="box-resolver">
+    <rect x="266" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <rect x="65" y="24" width="44" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="75" y1="16" x2="75" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="87" y1="16" x2="87" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="99" y1="16" x2="99" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="75" y1="66" x2="75" y2="74" stroke="#207448" stroke-width="3" />
-    <line x1="87" y1="66" x2="87" y2="74" stroke="#207448" stroke-width="3" />
-    <line x1="99" y1="66" x2="99" y2="74" stroke="#207448" stroke-width="3" />
-    <text x="87" y="125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Node</text>
-  </g>
-
-  
-  <g transform="translate(925, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    <line x1="62" y1="30" x2="112" y2="30" stroke="#207448" stroke-width="3" />
-    <line x1="62" y1="46" x2="112" y2="46" stroke="#207448" stroke-width="3" />
-    <line x1="62" y1="62" x2="112" y2="62" stroke="#207448" stroke-width="3" />
-    <line x1="70" y1="22" x2="70" y2="70" stroke="#207448" stroke-width="3" />
-    <line x1="87" y1="22" x2="87" y2="70" stroke="#207448" stroke-width="3" />
-    <line x1="104" y1="22" x2="104" y2="70" stroke="#207448" stroke-width="3" />
-    <text x="87" y="125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Fabric</text>
-  </g>
-
-  
-  <g transform="translate(1145, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    <rect x="65" y="24" width="44" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-    <line x1="75" y1="16" x2="75" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="87" y1="16" x2="87" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="99" y1="16" x2="99" y2="24" stroke="#207448" stroke-width="3" />
-    <line x1="75" y1="66" x2="75" y2="74" stroke="#207448" stroke-width="3" />
-    <line x1="87" y1="66" x2="87" y2="74" stroke="#207448" stroke-width="3" />
-    <line x1="99" y1="66" x2="99" y2="74" stroke="#207448" stroke-width="3" />
-    <text x="87" y="115" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="87" dy="0">Remote</tspan>
-      <tspan x="87" dy="32">node</tspan>
+    <circle cx="150" cy="207" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="159" y1="216" x2="167" y2="224" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="356" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Resolver
     </text>
   </g>
 
   
-  <g transform="translate(1365, 305)">
-    <rect width="175" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+  <g id="box-pod-network">
+    <rect x="487" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <circle cx="80" cy="40" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
-    <circle cx="80" cy="40" r="6" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="98" cy="54" r="10" fill="none" stroke="#207448" stroke-width="3" />
-    <circle cx="98" cy="54" r="4" fill="none" stroke="#207448" stroke-width="2.5" />
-    <text x="87" y="115" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="87" dy="0">Remote</tspan>
-      <tspan x="87" dy="32">service</tspan>
+    <circle cx="560" cy="200" r="6" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="594" cy="200" r="6" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="577" cy="218" r="6" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="565" y1="203" x2="573" y2="213" stroke="#207448" stroke-width="2"/>
+    <line x1="589" y1="203" x2="581" y2="213" stroke="#207448" stroke-width="2"/>
+    <text x="577" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Pod network
     </text>
   </g>
 
   
-  <path d="M 45,510 L 45,525 L 403,525 L 418,540 L 433,525 L 792,525 L 792,510" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-
-  
-  <path d="M 808,510 L 808,525 L 1166,525 L 1181,540 L 1196,525 L 1555,525 L 1555,510" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-
-  
-  
-  <g transform="translate(45, 560)">
+  <g id="box-node">
+    <rect x="708" y="175" width="184" height="120" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="4.5" filter="url(#card-shadow)"/>
     
-    <line x1="373" y1="-20" x2="373" y2="10" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <rect width="747" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    
-    <rect x="233" y="24" width="280" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="373" y="56" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Node reaches the IP</text>
-    
-    
-    <text x="373" y="125" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="373" dy="0">Fault is above the network layer:</tspan>
-      <tspan x="373" dy="42">names, ports or the application</tspan>
+    <g transform="translate(800, 206)">
+      <circle cx="0" cy="0" r="16" fill="#207448" stroke="#db8129" stroke-width="3"/>
+      
+      <circle cx="0" cy="0" r="6" fill="#ffffff"/>
+      <circle cx="0" cy="0" r="2" fill="#207448"/>
+    </g>
+    <text x="800" y="265" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      Node
     </text>
   </g>
 
   
-  <g transform="translate(808, 560)">
+  <g id="box-fabric">
+    <rect x="933" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
     
-    <line x1="373" y1="-20" x2="373" y2="10" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-    <rect width="747" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
-    
-    
-    <rect x="203" y="24" width="340" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <text x="373" y="56" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Node does not reach the IP</text>
-    
-    
-    <text x="373" y="145" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Fault is in the fabric or the remote node</text>
+    <path d="M 1007 200 L 1039 200 M 1007 214 L 1039 214 M 1015 194 L 1031 220 M 1031 194 L 1015 220"
+          stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="1023" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Fabric
+    </text>
   </g>
 
   
-  <g transform="translate(45, 835)">
-    <rect width="1510" height="85" rx="14" fill="#207448" />
-    <text x="755" y="53" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Each test removes about half the places a fault can hide.</text>
+  <g id="box-remote-node">
+    <rect x="1154" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <rect x="1228" y="195" width="32" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="1233" y1="206" x2="1255" y2="206" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="1252" cy="201" r="1.5" fill="#207448"/>
+    <text x="1244" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Remote node
+    </text>
   </g>
+
+  
+  <g id="box-remote-service">
+    <rect x="1375" y="175" width="180" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <circle cx="1465" cy="207" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1465 192 L 1465 196 M 1465 218 L 1465 222 M 1450 207 L 1454 207 M 1476 207 L 1480 207" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="1465" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Remote service
+    </text>
+  </g>
+
+  
+  
+  <path d="M 800 295 L 800 358" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="test-1-pill">
+    <rect x="430" y="365" width="740" height="66" rx="33" fill="#ffffff" stroke="#db8129" stroke-width="3.5" filter="url(#card-shadow)"/>
+    <text x="800" y="407" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      Test 1: can the node reach the destination IP?
+    </text>
+  </g>
+
+  
+
+  
+  
+  <path d="M 640 431 L 640 470 Q 640 490 610 490 L 415 490 Q 395 490 395 510 L 395 530"
+        stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 960 431 L 960 470 Q 960 490 990 490 L 1185 490 Q 1205 490 1205 510 L 1205 530"
+        stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <g id="branch-left-pill">
+    <rect x="175" y="534" width="440" height="58" rx="29" fill="#207448" filter="url(#card-shadow)"/>
+    <text x="395" y="571" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      Node reaches the IP
+    </text>
+  </g>
+
+  
+  
+  <g id="branch-right-pill">
+    <rect x="945" y="534" width="520" height="58" rx="29" fill="#207448" filter="url(#card-shadow)"/>
+    <text x="1205" y="571" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      Node does not reach the IP
+    </text>
+  </g>
+
+  
+
+  
+  <g id="card-left-outcome">
+    <rect x="45" y="660" width="715" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+    
+    
+    <path d="M 65 690
+             L 65 675
+             Q 65 668 77 668
+             L 380 668
+             Q 402 668 402 660
+             Q 402 668 424 668
+             L 728 668
+             Q 740 668 740 675
+             L 740 690"
+          fill="none" stroke="#207448" stroke-width="3"/>
+
+    
+    <rect x="240" y="700" width="325" height="38" rx="19" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="402" y="726" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Covers left half of path
+    </text>
+
+    
+    <text x="402" y="780" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      Fault is above the network layer:
+    </text>
+    <text x="402" y="820" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      names, ports or the application
+    </text>
+  </g>
+
+  
+  <g id="card-right-outcome">
+    <rect x="840" y="660" width="715" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+    
+    
+    <path d="M 860 690
+             L 860 675
+             Q 860 668 872 668
+             L 1175 668
+             Q 1197 668 1197 660
+             Q 1197 668 1219 668
+             L 1523 668
+             Q 1535 668 1535 675
+             L 1535 690"
+          fill="none" stroke="#207448" stroke-width="3"/>
+
+    
+    <rect x="1035" y="700" width="325" height="38" rx="19" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1197" y="726" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Covers right half of path
+    </text>
+
+    
+    <text x="1197" y="785" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      Fault is in the fabric or the remote node
+    </text>
+  </g>
+
+  
+  <path d="M 395 592 L 395 655" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 1205 592 L 1205 655" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="bottom-caption">
+    <rect x="100" y="945" width="1400" height="85" rx="20" fill="#207448" filter="url(#card-shadow)"/>
+    <text x="800" y="998" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Each test removes about half the places a fault can hide.
+    </text>
+  </g>
+
 </svg>

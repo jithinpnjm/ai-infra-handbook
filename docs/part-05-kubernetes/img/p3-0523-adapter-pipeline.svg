@@ -1,248 +1,211 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
   <title>From a vLLM metric to an HPA decision</title>
-  <desc>Architecture flow showing custom metric pipeline from vLLM through Prometheus and prometheus-adapter to Kubernetes HPA, alongside an external metric pipeline for Kafka lag, with verification commands and HPA conditions.</desc>
+  <desc>Visual architecture pipeline tracking custom and external metrics from vLLM and Kafka into Kubernetes HPA via Prometheus Adapter.</desc>
 
   <defs>
-    <style>
-      .bg { fill: #f5f8f5; }
-      .title { font-family: system-ui, -apple-system, sans-serif; font-size: 48px; font-weight: bold; fill: #207448; }
-      .section-header { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #207448; letter-spacing: 1px; }
-      .box-bg { fill: #ffffff; stroke: #207448; stroke-width: 2.5; rx: 12; ry: 12; }
-      .box-bg-alt { fill: #ffffff; stroke: #207448; stroke-width: 2.5; rx: 12; ry: 12; }
-      .panel-bg { fill: #e8f1ea; stroke: #c2dcd0; stroke-width: 2; rx: 16; ry: 16; }
-      .callout-bg { fill: #fff8f0; stroke: #db8129; stroke-width: 2.5; rx: 12; ry: 12; }
-      .text-title { font-family: system-ui, -apple-system, sans-serif; font-size: 30px; font-weight: bold; fill: #303a36; }
-      .text-body { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; }
-      .text-body-bold { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #303a36; }
-      .cmd-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 24px; fill: #207448; font-weight: 600; }
-      .cmd-box { fill: #ffffff; stroke: #207448; stroke-width: 2; rx: 8; ry: 8; }
-      .arrow { stroke: #207448; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-      .arrow-orange { stroke: #db8129; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-      .icon-stroke { stroke: #207448; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-      .step-circle { fill: #207448; }
-      .step-num { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
-    </style>
-
-    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
     </marker>
-    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
     </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b382b" flood-opacity="0.08"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" class="bg" />
+  <rect width="1600" height="1450" fill="#f5f8f5"/>
 
   
-  <text x="60" y="70" class="title">From a vLLM metric to an HPA decision</text>
+  <text x="80" y="70" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">From a vLLM metric to an HPA decision</text>
 
   
+  <rect x="50" y="105" width="1500" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
   
-  <g transform="translate(60, 110)">
-    <rect width="250" height="260" class="box-bg" />
-    <circle cx="44" cy="44" r="22" class="step-circle" />
-    <text x="44" y="44" class="step-num">1</text>
+  <g transform="translate(80, 135)">
+    <rect width="250" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(140, 20)">
-      <rect x="0" y="0" width="48" height="48" rx="6" class="icon-stroke" />
-      <line x1="10" y1="14" x2="38" y2="14" class="icon-stroke" />
-      <line x1="10" y1="24" x2="26" y2="24" class="icon-stroke" />
-      <circle cx="34" cy="34" r="4" fill="#207448" />
-    </g>
-    <text x="24" y="125" class="text-body-bold">
-      <tspan x="24" dy="0">vLLM pod</tspan>
-      <tspan x="24" dy="36">exposes</tspan>
-      <tspan x="24" dy="36">vllm:num_requests_</tspan>
-      <tspan x="24" dy="36">waiting</tspan>
-    </text>
-  </g>
-
-  
-  <path d="M 310 240 L 356 240" class="arrow" marker-end="url(#arrowhead)" />
-
-  
-  <g transform="translate(370, 110)">
-    <rect width="250" height="260" class="box-bg" />
-    <circle cx="44" cy="44" r="22" class="step-circle" />
-    <text x="44" y="44" class="step-num">2</text>
+    <rect x="25" y="22" width="46" height="46" rx="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="48" cy="45" r="12" fill="none" stroke="#207448" stroke-width="3"/>
     
-    <g transform="translate(140, 20)">
-      <circle cx="24" cy="24" r="22" class="icon-stroke" />
-      <polyline points="10,26 18,16 26,30 38,18" class="icon-stroke" />
-    </g>
-    <text x="24" y="145" class="text-body-bold">
-      <tspan x="24" dy="0">Prometheus</tspan>
-      <tspan x="24" dy="36">scrapes it</tspan>
-    </text>
-  </g>
-
-  
-  <path d="M 620 240 L 666 240" class="arrow" marker-end="url(#arrowhead)" />
-
-  
-  <g transform="translate(680, 110)">
-    <rect width="470" height="260" class="box-bg" />
-    <circle cx="44" cy="44" r="22" class="step-circle" />
-    <text x="44" y="44" class="step-num">3</text>
+    <circle cx="215" cy="40" r="18" fill="#207448"/>
+    <text x="215" y="47" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
     
-    <g transform="translate(360, 20)">
-      <circle cx="24" cy="24" r="12" class="icon-stroke" />
-      <path d="M 24 4 L 24 12 M 24 36 L 24 44 M 4 24 L 12 24 M 36 24 L 44 24 M 10 10 L 16 16 M 32 32 L 38 38 M 10 38 L 16 32 M 32 16 L 38 10" class="icon-stroke" />
-    </g>
-    <text x="24" y="105" class="text-body">
-      <tspan x="24" dy="0" font-weight="bold">prometheus-adapter rule:</tspan>
-      <tspan x="24" dy="32">seriesQuery</tspan>
-      <tspan x="24" dy="28">vllm:num_requests_waiting with</tspan>
-      <tspan x="24" dy="28">namespace and pod labels;</tspan>
-      <tspan x="24" dy="28">resources overrides map namespace</tspan>
-      <tspan x="24" dy="28">and pod; name as</tspan>
-      <tspan x="24" dy="28">vllm_requests_waiting; metricsQuery</tspan>
-      <tspan x="24" dy="28">sum by group</tspan>
-    </text>
+    <text x="25" y="108" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">vLLM pod exposes</text>
+    <text x="25" y="148" font-family="monospace" font-size="24px" fill="#207448">vllm:</text>
+    <text x="25" y="178" font-family="monospace" font-size="24px" fill="#207448">num_requests_</text>
+    <text x="25" y="208" font-family="monospace" font-size="24px" fill="#207448">waiting</text>
   </g>
 
   
-  <path d="M 1150 240 L 1196 240" class="arrow" marker-end="url(#arrowhead)" />
+  <path d="M 330 250 L 375 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <g transform="translate(1210, 110)">
-    <rect width="330" height="260" class="box-bg" />
-    <circle cx="44" cy="44" r="22" class="step-circle" />
-    <text x="44" y="44" class="step-num">4</text>
+  <g transform="translate(385, 135)">
+    <rect width="250" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(230, 20)">
-      <rect x="0" y="6" width="48" height="36" rx="4" class="icon-stroke" />
-      <line x1="10" y1="18" x2="20" y2="18" class="icon-stroke" />
-      <line x1="10" y1="28" x2="38" y2="28" class="icon-stroke" />
-    </g>
-    <text x="24" y="150" class="text-title">
-      <tspan x="24" dy="0">custom.metrics.</tspan>
-      <tspan x="24" dy="40">k8s.io API</tspan>
-    </text>
-  </g>
-
-  
-  
-  <g transform="translate(60, 400)">
-    <rect width="1480" height="66" class="cmd-box" />
-    <text x="20" y="42" class="cmd-text">kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/serving/pods/*/vllm_requests_waiting</text>
-  </g>
-
-  
-  <g transform="translate(60, 485)">
-    <rect width="1480" height="60" class="callout-bg" />
+    <circle cx="50" cy="45" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 50 30 L 50 46 L 60 52" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
     
-    <g transform="translate(24, 13)">
-      <circle cx="16" cy="16" r="14" stroke="#db8129" stroke-width="3" fill="none" />
-      <line x1="16" y1="9" x2="16" y2="18" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
-      <circle cx="16" cy="24" r="2" fill="#db8129" />
-    </g>
-    <text x="70" y="39" class="text-body-bold" fill="#db8129" style="fill: #db8129;">
-      if the first command returns nothing, no amount of tuning helps
-    </text>
-  </g>
-
-  
-  
-  <g transform="translate(60, 580)">
-    <rect width="450" height="150" class="box-bg-alt" />
+    <circle cx="215" cy="40" r="18" fill="#207448"/>
+    <text x="215" y="47" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
     
-    <g transform="translate(360, 24)">
-      <rect x="0" y="4" width="48" height="38" rx="6" class="icon-stroke" />
-      <line x1="8" y1="16" x2="40" y2="16" class="icon-stroke" />
-      <line x1="8" y1="28" x2="28" y2="28" class="icon-stroke" />
-    </g>
-    <text x="28" y="85" class="text-title">
-      <tspan x="28" dy="0">kafka_consumergroup_</tspan>
-      <tspan x="28" dy="36">lag topic embed</tspan>
-    </text>
+    <text x="25" y="120" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">Prometheus</text>
+    <text x="25" y="160" font-family="sans-serif" font-size="26px" fill="#303a36">scrapes it</text>
   </g>
 
   
-  <path d="M 510 655 L 566 655" class="arrow" marker-end="url(#arrowhead)" />
+  <path d="M 635 250 L 680 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <g transform="translate(580, 580)">
-    <rect width="450" height="150" class="box-bg-alt" />
+  <g transform="translate(690, 135)">
+    <rect width="450" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
     
-    <g transform="translate(360, 24)">
-      <polygon points="4,8 44,8 28,26 28,42 20,38 20,26" class="icon-stroke" />
-    </g>
-    <text x="28" y="70" class="text-body">
-      <tspan x="28" dy="0">rule name</tspan>
-      <tspan x="28" dy="42" font-family="ui-monospace, monospace" font-size="30px" font-weight="bold" fill="#207448">kafka_lag</tspan>
-    </text>
-  </g>
-
-  
-  <path d="M 1030 655 L 1086 655" class="arrow" marker-end="url(#arrowhead)" />
-
-  
-  <g transform="translate(1100, 580)">
-    <rect width="440" height="150" class="box-bg-alt" />
+    <circle cx="48" cy="42" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 48 20 L 48 26 M 48 58 L 48 64 M 26 42 L 32 42 M 64 42 L 70 42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
     
-    <g transform="translate(345, 24)">
-      <path d="M 12 36 A 10 10 0 0 1 8 18 A 14 14 0 0 1 32 10 A 14 14 0 0 1 44 24 A 10 10 0 0 1 40 36 Z" class="icon-stroke" />
-    </g>
-    <text x="28" y="90" class="text-title">
-      external.metrics.k8s.io
-    </text>
-  </g>
-
-  
-  <g transform="translate(60, 755)">
-    <rect width="1480" height="66" class="cmd-box" />
-    <text x="20" y="42" class="cmd-text">kubectl get --raw /apis/external.metrics.k8s.io/v1beta1/namespaces/serving/kafka_lag</text>
-  </g>
-
-  
-  
-  
-  <path d="M 1375 370 L 1375 390" class="arrow" />
-  
-  <path d="M 1320 730 L 1320 745" class="arrow" />
-
-  
-  <g transform="translate(60, 850)">
-    <rect width="640" height="160" class="box-bg" />
+    <circle cx="415" cy="40" r="18" fill="#207448"/>
+    <text x="415" y="47" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
     
-    <g transform="translate(540, 25)">
-      <line x1="8" y1="44" x2="48" y2="44" class="icon-stroke" />
-      <line x1="28" y1="8" x2="28" y2="44" class="icon-stroke" />
-      <polygon points="12,20 28,12 44,20" class="icon-stroke" />
-      <circle cx="16" cy="30" r="8" class="icon-stroke" />
-      <circle cx="40" cy="30" r="8" class="icon-stroke" />
-    </g>
-    <text x="32" y="95" class="text-title">
-      HPA reads it and decides
-    </text>
+    <text x="80" y="48" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">prometheus-adapter rule:</text>
+    <text x="25" y="94" font-family="sans-serif" font-size="24px" fill="#303a36">seriesQuery vllm:num_requests_waiting</text>
+    <text x="25" y="126" font-family="sans-serif" font-size="24px" fill="#303a36">with namespace and pod labels;</text>
+    <text x="25" y="158" font-family="sans-serif" font-size="24px" fill="#303a36">resources overrides map namespace and pod;</text>
+    <text x="25" y="190" font-family="sans-serif" font-size="24px" fill="#303a36">name as vllm_requests_waiting;</text>
+    <text x="25" y="220" font-family="sans-serif" font-size="24px" fill="#303a36">metricsQuery sum by group</text>
   </g>
 
   
-  <path d="M 1540 240 L 1570 240 L 1570 930 L 715 930" class="arrow" marker-end="url(#arrowhead)" />
-  
-  <path d="M 1540 655 L 1560 655 L 1560 910 L 715 910" class="arrow" />
+  <path d="M 1140 250 L 1185 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
   
-  <g transform="translate(730, 850)">
-    <rect width="810" height="210" class="panel-bg" />
-    <g transform="translate(720, 20)">
-      <rect x="0" y="0" width="48" height="48" rx="8" class="icon-stroke" />
-      <polyline points="12,24 22,34 36,16" class="icon-stroke" />
-    </g>
-    <text x="30" y="45" class="section-header">Conditions box:</text>
-    <text x="30" y="95" class="text-body">
-      <tspan x="30" dy="0" font-weight="bold">AbleToScale: can the HPA change the count at all</tspan>
-      <tspan x="30" dy="45" font-weight="bold">ScalingActive: can it read the metrics</tspan>
-      <tspan x="30" dy="45" font-weight="bold">ScalingLimited: has a minimum or maximum capped the result</tspan>
-    </text>
+  <g transform="translate(1195, 135)">
+    <rect width="325" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="25" y="22" width="46" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="37" y1="60" x2="59" y2="60" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="295" cy="40" r="18" fill="#207448"/>
+    <text x="295" y="47" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <text x="25" y="115" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">custom.metrics.k8s.io</text>
+    <text x="25" y="155" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">API</text>
   </g>
 
   
-  <g transform="translate(60, 1080)">
-    <rect width="1480" height="66" class="cmd-box" />
-    <text x="20" y="42" class="cmd-text">kubectl describe hpa vllm -n serving</text>
+  <g transform="translate(80, 395)">
+    <rect width="1440" height="90" rx="8" fill="#ffffff" stroke="#b8d4c0" stroke-width="1.5"/>
+    <text x="25" y="38" font-family="monospace" font-size="24px" fill="#303a36">kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/serving/pods/*/</text>
+    <text x="25" y="70" font-family="monospace" font-size="24px" font-weight="bold" fill="#db8129">vllm_requests_waiting</text>
+  </g>
+
+  
+  <g transform="translate(80, 500)">
+    <rect width="1440" height="75" rx="8" fill="#db8129" fill-opacity="0.12" stroke="#db8129" stroke-width="2"/>
+    <text x="30" y="47" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#af5e12">if the first command returns nothing, no amount of tuning helps</text>
+  </g>
+
+
+  
+  <rect x="50" y="625" width="1500" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <g transform="translate(80, 655)">
+    <rect width="450" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="50" cy="40" rx="18" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 32 40 L 32 60 A 18 8 0 0 0 68 60 L 68 40" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="85" y="55" font-family="monospace" font-size="25px" font-weight="bold" fill="#207448">kafka_consumergroup_lag</text>
+    <text x="85" y="95" font-family="monospace" font-size="25px" fill="#303a36">topic embed</text>
+  </g>
+
+  
+  <path d="M 530 722 L 630 722" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(640, 655)">
+    <rect width="420" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="50" cy="50" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 50 28 L 50 34 M 50 66 L 50 72 M 28 50 L 34 50 M 66 50 L 72 50" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="90" y="55" font-family="sans-serif" font-size="24px" fill="#303a36">prometheus-adapter</text>
+    <text x="90" y="95" font-family="monospace" font-size="25px" font-weight="bold" fill="#207448">rule name kafka_lag</text>
+  </g>
+
+  
+  <path d="M 1060 722 L 1150 722" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(1160, 655)">
+    <rect width="360" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="25" y="32" width="44" height="34" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="35" y1="66" x2="59" y2="66" stroke="#207448" stroke-width="3"/>
+    
+    <text x="85" y="75" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448">external.metrics.k8s.io</text>
+  </g>
+
+  
+  <g transform="translate(80, 810)">
+    <rect width="1440" height="75" rx="8" fill="#ffffff" stroke="#b8d4c0" stroke-width="1.5"/>
+    <text x="25" y="47" font-family="monospace" font-size="24px" fill="#303a36">kubectl get --raw /apis/external.metrics.k8s.io/v1beta1/namespaces/serving/kafka_lag</text>
+  </g>
+
+
+  
+  
+  
+  <path d="M 1357 365 L 1357 930 L 1050 930" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+  
+  <path d="M 1340 790 L 1340 950 L 1050 950" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(50, 930)">
+    <rect width="980" height="155" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#shadow)"/>
+    
+    <rect x="35" y="40" width="56" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 53 40 L 53 30 M 73 40 L 73 30 M 53 96 L 53 106 M 73 96 L 73 106 M 35 58 L 25 58 M 35 78 L 25 78 M 91 58 L 101 58 M 91 78 L 101 78" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="120" y="70" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#303a36">HPA reads it and decides</text>
+    
+    <rect x="120" y="85" width="820" height="50" rx="6" fill="#e8f1ea"/>
+    <text x="140" y="118" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">kubectl describe hpa vllm -n serving</text>
+  </g>
+
+
+  
+  <g transform="translate(50, 1120)">
+    <rect width="1500" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    
+    <circle cx="55" cy="48" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 47 48 L 53 54 L 64 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="90" y="55" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Conditions box:</text>
+
+    
+    <g transform="translate(40, 85)">
+      <circle cx="16" cy="18" r="8" fill="#207448"/>
+      <text x="40" y="24" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">AbleToScale:</text>
+      <text x="210" y="24" font-family="sans-serif" font-size="25px" fill="#303a36">can the HPA change the count at all</text>
+    </g>
+
+    
+    <g transform="translate(40, 145)">
+      <circle cx="16" cy="18" r="8" fill="#207448"/>
+      <text x="40" y="24" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">ScalingActive:</text>
+      <text x="220" y="24" font-family="sans-serif" font-size="25px" fill="#303a36">can it read the metrics</text>
+    </g>
+
+    
+    <g transform="translate(40, 205)">
+      <circle cx="16" cy="18" r="8" fill="#207448"/>
+      <text x="40" y="24" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">ScalingLimited:</text>
+      <text x="235" y="24" font-family="sans-serif" font-size="25px" fill="#303a36">has a minimum or maximum capped the result</text>
+    </g>
   </g>
 
 </svg>

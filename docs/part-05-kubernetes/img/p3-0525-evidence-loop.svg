@@ -1,129 +1,167 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
   <title>During and after an incident: evidence, updates, review</title>
-  <desc>Three-stage loop for incident management showing evidence collection, communication, and blameless review, alongside game day drills.</desc>
+  <desc>Infographic illustrating the three-stage loop of incident evidence collection, communication, and blameless review alongside game day chaos drills.</desc>
+
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto">
-      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1350" fill="#f5f8f5" />
 
   
-  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">During and after an incident: </tspan>
-    <tspan x="800" dy="54">evidence, updates, review</tspan>
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">During and after an incident:</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">evidence, updates, review</text>
+
+  
+  <rect x="50" y="145" width="970" height="1165" rx="16" fill="#f0f5f1" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="75" y="165" width="260" height="44" rx="22" fill="#207448" />
+  <text x="205" y="195" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Three-stage loop</text>
+
+  
+  <rect x="135" y="230" width="855" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="175" cy="270" r="20" fill="#207448" />
+  <text x="175" y="278" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  
+  <g transform="translate(210, 246)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="30" height="36" rx="4" />
+    <path d="M14 8 V4 a2 2 0 0 1 2 -2 h10 a2 2 0 0 1 2 2 v4" />
+    <line x1="12" y1="18" x2="30" y2="18" />
+    <line x1="12" y1="26" x2="30" y2="26" />
+    <line x1="12" y1="34" x2="24" y2="34" />
+  </g>
+  
+  
+  <text x="270" y="278" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Collect as you go:</text>
+  
+  
+  <text x="165" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">incident log with UTC timeline, observations,</tspan>
+    <tspan x="165" dy="32">commands run, changes made, who did what;</tspan>
+    <tspan x="165" dy="32">exact error strings;</tspan>
+    <tspan x="165" dy="32"><tspan font-family="monospace">kubectl get -o yaml</tspan> snapshots, <tspan font-family="monospace">describe</tspan> output,</tspan>
+    <tspan x="165" dy="32">pod logs including <tspan font-family="monospace">--previous</tspan>, node journals, <tspan font-family="monospace">dmesg</tspan>, pcaps,</tspan>
+    <tspan x="165" dy="32">metric screenshots with time ranges, <tspan font-family="monospace">nvidia-bug-report</tspan>,</tspan>
+    <tspan x="165" dy="32">Hubble flows, audit log excerpts;</tspan>
+    <tspan x="165" dy="32">for support <tspan font-family="monospace">kubectl cluster-info dump</tspan>, <tspan font-family="monospace">sosreport</tspan>,</tspan>
+    <tspan x="165" dy="32">vendor bundles</tspan>
   </text>
 
   
-  <g id="card-1">
-    <rect x="50" y="105" width="710" height="490" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
-    
-    <circle cx="95" cy="150" r="24" fill="#207448" />
-    <text x="95" y="159" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
-    
-    <g transform="translate(135, 124)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="36" height="42" rx="4" />
-      <path d="M 16 8 V 4 H 32 V 8" />
-      <line x1="14" y1="19" x2="34" y2="19" />
-      <line x1="14" y1="27" x2="34" y2="27" />
-      <line x1="14" y1="35" x2="26" y2="35" />
-    </g>
-    
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="205" y="160" font-size="30" font-weight="bold" fill="#207448">Collect as you go: </tspan>
-      <tspan x="85" y="215">incident log with UTC timeline, </tspan>
-      <tspan x="85" dy="30">observations, commands run, </tspan>
-      <tspan x="85" dy="30">changes made, who did what; </tspan>
-      <tspan x="85" dy="30">exact error strings; </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">kubectl get -o yaml</tspan> snapshots, </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">describe</tspan> output, pod logs including </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">--previous</tspan>, node journals, <tspan font-family="monospace">dmesg</tspan>, </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">pcaps</tspan>, metric screenshots </tspan>
-      <tspan x="85" dy="30">with time ranges, <tspan font-family="monospace">nvidia-bug-report</tspan>, </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">Hubble</tspan> flows, audit log excerpts; </tspan>
-      <tspan x="85" dy="30">for support <tspan font-family="monospace">kubectl cluster-info dump</tspan>, </tspan>
-      <tspan x="85" dy="30"><tspan font-family="monospace">sosreport</tspan>, vendor bundles</tspan>
-    </text>
+  <line x1="560" y1="645" x2="560" y2="685" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="135" y="685" width="855" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="175" cy="725" r="20" fill="#207448" />
+  <text x="175" y="733" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  
+  <g transform="translate(210, 703)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 16 h8 l14 -8 v24 l-14 -8 h-8 z" />
+    <path d="M10 24 v8 a4 4 0 0 0 4 4 h2" />
+    <path d="M32 14 a8 8 0 0 1 0 12" />
+    <path d="M36 10 a14 14 0 0 1 0 20" />
   </g>
+  
+  
+  <text x="270" y="733" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Communicate:</text>
+  
+  
+  <text x="165" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">status updates at fixed intervals,</tspan>
+    <tspan x="165" dy="36">state the impact clearly,</tspan>
+    <tspan x="165" dy="36">give an ETA only when you have a basis for it</tspan>
+  </text>
 
   
-  <g id="card-2">
-    <rect x="840" y="105" width="710" height="490" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <circle cx="885" cy="150" r="24" fill="#207448" />
-    <text x="885" y="159" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
-    
-    <g transform="translate(925, 124)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 8 10 H 40 C 43 10 45 12 45 15 V 33 C 45 36 43 38 40 38 H 22 L 14 45 V 38 H 8 C 5 38 3 36 3 33 V 15 C 3 12 5 10 8 10 Z" />
-      <line x1="13" y1="20" x2="35" y2="20" />
-      <line x1="13" y1="28" x2="27" y2="28" />
-    </g>
-    
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="995" y="160" font-size="30" font-weight="bold" fill="#207448">Communicate: </tspan>
-      <tspan x="875" y="240">status updates at fixed intervals, </tspan>
-      <tspan x="875" dy="45">state the impact clearly, </tspan>
-      <tspan x="875" dy="45">give an ETA only when you </tspan>
-      <tspan x="875" dy="45">have a basis for it</tspan>
-    </text>
+  <line x1="560" y1="895" x2="560" y2="935" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="135" y="935" width="855" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="175" cy="975" r="20" fill="#207448" />
+  <text x="175" y="983" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  
+  <g transform="translate(210, 953)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="12" />
+    <line x1="27" y1="27" x2="38" y2="38" />
+    <polyline points="12 18 16 22 24 14" />
   </g>
+  
+  
+  <text x="270" y="983" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Blameless review:</text>
+  
+  
+  <text x="165" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">timeline, contributing factors (not one single root cause),</tspan>
+    <tspan x="165" dy="34">detection gaps, how well the mitigation worked,</tspan>
+    <tspan x="165" dy="34">action items with owners for automation, alerts,</tspan>
+    <tspan x="165" dy="34">guardrails, docs and tests;</tspan>
+    <tspan x="165" dy="34">turn recurring manual diagnosis into automated checks</tspan>
+  </text>
 
   
-  <g id="card-3">
-    <rect x="840" y="655" width="710" height="490" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <circle cx="885" cy="700" r="24" fill="#207448" />
-    <text x="885" y="709" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
-    
-    <g transform="translate(925, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 24 6 L 42 12 V 26 C 42 38 24 46 24 46 C 24 46 6 38 6 26 V 12 Z" />
-      <polyline points="15,26 21,32 33,18" />
-    </g>
-    
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="995" y="710" font-size="30" font-weight="bold" fill="#207448">Blameless review: </tspan>
-      <tspan x="875" y="770">timeline, contributing factors </tspan>
-      <tspan x="875" dy="38">(not one single root cause), </tspan>
-      <tspan x="875" dy="38">detection gaps, how well </tspan>
-      <tspan x="875" dy="38">the mitigation worked, </tspan>
-      <tspan x="875" dy="38">action items with owners for </tspan>
-      <tspan x="875" dy="38">automation, alerts, guardrails, </tspan>
-      <tspan x="875" dy="38">docs and tests; turn recurring </tspan>
-      <tspan x="875" dy="38">manual diagnosis into automated checks</tspan>
-    </text>
+  <path d="M 135 1100 L 95 1100 A 16 16 0 0 1 79 1084 L 79 451 A 16 16 0 0 1 95 435 L 127 435" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="1050" y="145" width="500" height="1165" rx="16" fill="#f0f5f1" stroke="#50665b" stroke-width="2" />
+  
+  
+  <rect x="1075" y="165" width="130" height="44" rx="22" fill="#50665b" />
+  <text x="1140" y="195" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Side</text>
+
+  
+  <rect x="1075" y="230" width="450" height="1035" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(1100, 248)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="16" />
+    <circle cx="20" cy="20" r="8" />
+    <line x1="20" y1="0" x2="20" y2="8" />
+    <line x1="20" y1="32" x2="20" y2="40" />
+    <line x1="0" y1="20" x2="8" y2="20" />
+    <line x1="32" y1="20" x2="40" y2="20" />
   </g>
+  
+  
+  <text x="1155" y="278" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">game day:</text>
 
   
-  <g id="card-4">
-    <rect x="50" y="655" width="710" height="490" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    
-    <g transform="translate(85, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="24" cy="24" r="18" />
-      <circle cx="24" cy="24" r="8" />
-      <line x1="24" y1="2" x2="24" y2="46" />
-      <line x1="2" y1="24" x2="46" y2="24" />
-    </g>
-    
-    <text font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="155" y="710" font-size="30" font-weight="bold" fill="#207448">game day: </tspan>
-      <tspan x="85" y="775">planned drill with a fault the team </tspan>
-      <tspan x="85" dy="42">has not seen; measure time-to-detect </tspan>
-      <tspan x="85" dy="42">and time-to-recover; tools <tspan font-family="monospace">tc netem</tspan>, </tspan>
-      <tspan x="85" dy="42"><tspan font-family="monospace">Chaos Mesh NetworkChaos</tspan>, </tspan>
-      <tspan x="85" dy="42">kill pods and nodes, fill disks, </tspan>
-      <tspan x="85" dy="42">stop <tspan font-family="monospace">kubelet</tspan>, break CNI</tspan>
-    </text>
-  </g>
+  <rect x="1095" y="315" width="410" height="150" rx="10" fill="#e8f1ea" stroke="#c0d4c6" stroke-width="1.5" />
+  <text x="1115" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">planned drill with a fault</tspan>
+    <tspan x="1115" dy="36">the team has not seen;</tspan>
+  </text>
 
   
-  
-  <line x1="760" y1="350" x2="838" y2="350" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="1095" y="490" width="410" height="150" rx="10" fill="#e8f1ea" stroke="#c0d4c6" stroke-width="1.5" />
+  <text x="1115" y="550" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">measure time-to-detect</tspan>
+    <tspan x="1115" dy="36">and time-to-recover;</tspan>
+  </text>
 
   
-  <line x1="1195" y1="595" x2="1195" y2="653" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <path d="M 840 870 H 800 V 625 H 405 V 597" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="1095" y="665" width="410" height="570" rx="10" fill="#e8f1ea" stroke="#c0d4c6" stroke-width="1.5" />
+  <text x="1115" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">tools <tspan font-family="monospace">tc netem</tspan>,</tspan>
+    <tspan x="1115" dy="55"><tspan font-family="monospace">Chaos Mesh NetworkChaos</tspan>,</tspan>
+    <tspan x="1115" dy="55">kill pods and nodes,</tspan>
+    <tspan x="1115" dy="55">fill disks,</tspan>
+    <tspan x="1115" dy="55">stop kubelet,</tspan>
+    <tspan x="1115" dy="55">break CNI</tspan>
+  </text>
 </svg>

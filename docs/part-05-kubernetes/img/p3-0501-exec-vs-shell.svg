@@ -1,111 +1,168 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
   <title>Shell form hides your app from SIGTERM; exec form does not</title>
-  <desc>Visual comparison showing why exec form forwards SIGTERM for graceful shutdown while shell form blocks SIGTERM, leading to timeout and abrupt SIGKILL.</desc>
+  <desc>Infographic comparing Docker shell form and exec form signal handling with SIGTERM, PID 1, and timeouts.</desc>
 
   <defs>
     
-    <marker id="arrow-default" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#303a36" />
+    <marker id="arrow-neutral" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#617069" />
     </marker>
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
     </marker>
+    <filter id="shadow" x="-3%" y="-5%" width="106%" height="114%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
 
   
-  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">Shell form hides your app from SIGTERM; exec form does not</text>
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Shell form hides your app from SIGTERM; exec form does not
+  </text>
 
   
-  
-  <rect x="40" y="110" width="1520" height="490" rx="16" fill="#ffffff" stroke="#c93b2b" stroke-width="4" />
+  <g id="shell-form-lane">
+    <rect x="50" y="90" width="1500" height="495" rx="14" fill="#ffffff" stroke="#c83c3c" stroke-width="3" filter="url(#shadow)"/>
+    
+    
+    <rect x="50" y="90" width="1500" height="52" rx="14" fill="#fdf2f2"/>
+    <text x="75" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#c83c3c">
+      Shell form: ENTRYPOINT python app.py
+    </text>
+
+    
+    <line x1="80" y1="230" x2="350" y2="230" stroke="#617069" stroke-width="4" marker-end="url(#arrow-neutral)"/>
+    <rect x="135" y="196" width="140" height="34" rx="8" fill="#e8f1ea" stroke="#617069" stroke-width="1.5"/>
+    <text x="205" y="221" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">SIGTERM</text>
+
+    
+    <rect x="80" y="270" width="250" height="66" rx="8" fill="#fdf2f2" stroke="#c83c3c" stroke-width="1.5"/>
+    <text x="205" y="297" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#c83c3c">
+      <tspan x="205" dy="0">the shell does</tspan>
+      <tspan x="205" dy="26">not forward it</tspan>
+    </text>
+
+    
+    <rect x="360" y="170" width="520" height="120" rx="10" fill="#fcfdfe" stroke="#617069" stroke-width="2.5" filter="url(#shadow)"/>
+    
+    <g transform="translate(385, 202)">
+      <rect x="0" y="0" width="56" height="56" rx="6" fill="#f0f3f1" stroke="#617069" stroke-width="3"/>
+      <path d="M 12 18 L 24 28 L 12 38" fill="none" stroke="#617069" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="28" y1="38" x2="44" y2="38" stroke="#617069" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="465" y="222" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="465" dy="0">PID 1: /bin/sh</tspan>
+      <tspan x="465" dy="34">-c python app.py</tspan>
+    </text>
+
+    
+    <path d="M 620 290 L 620 370" fill="none" stroke="#617069" stroke-width="3" stroke-dasharray="6 6"/>
+
+    
+    <rect x="440" y="370" width="360" height="95" rx="10" fill="#fcfdfe" stroke="#617069" stroke-width="2.5" filter="url(#shadow)"/>
+    
+    <g transform="translate(465, 390)">
+      <rect x="0" y="0" width="56" height="56" rx="6" fill="#f0f3f1" stroke="#617069" stroke-width="3"/>
+      <circle cx="16" cy="14" r="3" fill="#617069"/>
+      <circle cx="28" cy="14" r="3" fill="#617069"/>
+      <circle cx="40" cy="14" r="3" fill="#617069"/>
+      <line x1="8" y1="24" x2="48" y2="24" stroke="#617069" stroke-width="2"/>
+    </g>
+    <text x="545" y="428" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">python app</text>
+
+    
+    <rect x="940" y="165" width="575" height="190" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="2.5" filter="url(#shadow)"/>
+    
+    <g transform="translate(965, 188)">
+      <circle cx="28" cy="28" r="26" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+      <polyline points="28,12 28,28 40,28" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="1040" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1040" dy="0" font-weight="bold">waits the full</tspan>
+      <tspan x="1040" dy="30" font-family="monospace" font-weight="bold" fill="#db8129">terminationGracePeriodSeconds</tspan>
+      <tspan x="1040" dy="34">(30 seconds by default in Kubernetes,</tspan>
+      <tspan x="1040" dy="28">10 seconds for docker stop)</tspan>
+    </text>
+
+    
+    <path d="M 1227 355 L 1227 417 L 810 417" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    <rect x="990" y="399" width="130" height="36" rx="8" fill="#fff2e3" stroke="#db8129" stroke-width="2"/>
+    <text x="1055" y="425" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">SIGKILL</text>
+
+    
+    <rect x="880" y="445" width="580" height="42" rx="8" fill="#fff2e3" stroke="#db8129" stroke-width="1.5"/>
+    <text x="1170" y="474" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      in-flight requests or checkpoints can be corrupted
+    </text>
+  </g>
 
   
-  <text x="70" y="155" font-family="monospace" font-size="28px" font-weight="bold" fill="#c93b2b">Shell form: ENTRYPOINT python app.py</text>
+  <g id="exec-form-lane">
+    <rect x="50" y="615" width="1500" height="260" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    
+    <rect x="50" y="615" width="1500" height="52" rx="14" fill="#e8f1ea"/>
+    <text x="75" y="651" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      Exec form: ENTRYPOINT [python, app.py]
+    </text>
+
+    
+    <line x1="80" y1="760" x2="840" y2="760" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    
+    <rect x="220" y="736" width="140" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="290" y="763" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">SIGTERM</text>
+
+    <rect x="490" y="736" width="260" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="620" y="763" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      graceful shutdown
+    </text>
+
+    
+    <rect x="850" y="705" width="460" height="110" rx="10" fill="#fcfdfe" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+    
+    <g transform="translate(880, 732)">
+      <rect x="0" y="0" width="56" height="56" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <circle cx="16" cy="14" r="3" fill="#207448"/>
+      <circle cx="28" cy="14" r="3" fill="#207448"/>
+      <circle cx="40" cy="14" r="3" fill="#207448"/>
+      <line x1="8" y1="24" x2="48" y2="24" stroke="#207448" stroke-width="2"/>
+      <polyline points="18,44 28,34 38,44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="960" y="771" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+      PID 1: python app
+    </text>
+  </g>
 
   
-  <path d="M 70 310 L 298 310" fill="none" stroke="#303a36" stroke-width="4" marker-end="url(#arrow-default)" />
-  <text x="175" y="295" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">SIGTERM</text>
-  <text x="185" y="355" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#c93b2b">the shell does not forward it</text>
+  <g id="footer-row">
+    <rect x="50" y="900" width="1500" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <g transform="translate(75, 922)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="150" y="958" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">
+      App forks children? Add tini or --init: a tiny init that forwards signals and reaps zombies
+    </text>
+  </g>
 
   
-  <rect x="310" y="220" width="370" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <rect x="330" y="240" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-  <line x1="330" y1="254" x2="378" y2="254" stroke="#207448" stroke-width="3" />
-  <circle cx="342" cy="247" r="2.5" fill="#207448" />
-  <circle cx="352" cy="247" r="2.5" fill="#207448" />
-  <text x="390" y="268" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">PID 1: /bin/sh</text>
-  <text x="330" y="340" font-family="monospace" font-size="25px" fill="#303a36">-c python app.py</text>
-
-  
-  <rect x="370" y="440" width="250" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
-  
-  <path d="M 495 400 L 495 438" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
-  <text x="495" y="495" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">python app</text>
-
-  
-  <path d="M 680 310 L 738 310" fill="none" stroke="#303a36" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow-default)" />
-
-  
-  <rect x="750" y="200" width="370" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <circle cx="935" cy="245" r="24" fill="none" stroke="#207448" stroke-width="4" />
-  <polyline points="935,229 935,245 947,245" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-  <text x="935" y="300" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">waits the full</text>
-  <text x="935" y="332" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">terminationGracePeriodSeconds</text>
-  <text x="935" y="365" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">(30 seconds by default in</text>
-  <text x="935" y="395" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">Kubernetes, 10 seconds for docker stop)</text>
-
-  
-  <path d="M 935 420 L 935 485 L 632 485" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
-  <text x="800" y="470" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#db8129">SIGKILL</text>
-
-  
-  <rect x="1140" y="440" width="395" height="90" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
-  <text x="1337" y="478" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#db8129">in-flight requests or</text>
-  <text x="1337" y="508" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#db8129">checkpoints can be corrupted</text>
-
-  
-  <line x1="935" y1="485" x2="1140" y2="485" stroke="#db8129" stroke-width="2" stroke-dasharray="4,4" />
-
-  
-  
-  <rect x="40" y="625" width="1520" height="345" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
-
-  
-  <text x="70" y="670" font-family="monospace" font-size="28px" font-weight="bold" fill="#207448">Exec form: ENTRYPOINT [python, app.py]</text>
-
-  
-  <path d="M 70 805 L 578 805" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
-  <text x="310" y="785" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#207448">SIGTERM</text>
-  <text x="310" y="845" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">graceful shutdown</text>
-
-  
-  <rect x="590" y="725" width="410" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
-  
-  <rect x="620" y="775" width="56" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4" />
-  <line x1="620" y1="792" x2="676" y2="792" stroke="#207448" stroke-width="3" />
-  <circle cx="632" cy="784" r="3" fill="#207448" />
-  <circle cx="644" cy="784" r="3" fill="#207448" />
-  <text x="695" y="817" font-family="monospace" font-size="30px" font-weight="bold" fill="#303a36">PID 1: python app</text>
-
-  
-  <rect x="1050" y="745" width="485" height="120" rx="10" fill="#f5f8f5" stroke="#303a36" stroke-width="2" />
-  <text x="1292" y="795" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">Exit codes:</text>
-  <text x="1292" y="830" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">143 = SIGTERM with no handler,</text>
-  <text x="1292" y="858" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">137 = SIGKILL</text>
-
-  
-  <rect x="40" y="1000" width="1520" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-  
-  <circle cx="95" cy="1075" r="24" fill="none" stroke="#207448" stroke-width="4" />
-  <path d="M 95 1043 L 95 1051 M 95 1099 L 95 1107 M 63 1075 L 71 1075 M 119 1075 L 127 1075 M 72 1052 L 78 1058 M 112 1092 L 118 1098 M 72 1098 L 78 1092 M 112 1058 L 118 1052" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-  <text x="145" y="1062" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">App forks children? Add tini or --init:</text>
-  <text x="145" y="1102" font-family="sans-serif" font-size="26px" fill="#303a36">a tiny init that forwards signals and reaps zombies</text>
+  <g id="side-note">
+    <rect x="50" y="1025" width="1500" height="70" rx="10" fill="#ffffff" stroke="#c2cfc7" stroke-width="1.5"/>
+    
+    <g transform="translate(75, 1043)">
+      <path d="M 8 16 L 20 4 L 36 4 L 36 20 L 24 32 Z" fill="none" stroke="#617069" stroke-width="3"/>
+      <circle cx="28" cy="12" r="3" fill="#617069"/>
+    </g>
+    <text x="130" y="1068" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      Exit codes: 143 = SIGTERM with no handler, 137 = SIGKILL
+    </text>
+  </g>
 </svg>

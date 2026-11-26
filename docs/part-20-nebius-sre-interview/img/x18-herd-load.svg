@@ -1,149 +1,143 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
   <title>When replicas load together from one source, each one waits longer</title>
-  <desc>Infographic showing a vertical bar chart of load times when 1, 8, and 32 replicas pull model weights concurrently from a single shared bandwidth source, causing queueing and increased load latency.</desc>
+  <desc>Infographic showing load time scaling linearly when multiple model replicas contend for one shared weight source bandwidth.</desc>
 
   
-  <rect width="1600" height="1120" fill="#f5f8f5"/>
+  <rect width="1600" height="1000" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">When replicas load together from one source,</tspan>
-    <tspan x="800" dy="58">each one waits longer</tspan>
-  </text>
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="38px" font-weight="bold" fill="#207448">When replicas load together from one source, each one waits longer</text>
 
   
-  <rect x="60" y="150" width="1480" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="185" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">load time in seconds for a 70 billion parameter FP16 model, 140 GB, pulled from one 14 GB/s source</text>
+  <text x="800" y="92" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">load time in seconds for a 70 billion parameter FP16 model, 140 GB, pulled from one 14 GB/s source</text>
 
   
-  <rect x="60" y="220" width="1480" height="455" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="250" y="122" width="1100" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="157" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">load time = weights x replicas / source bandwidth = 140 x replicas / 14</text>
 
   
-  <line x1="80" y1="263" x2="370" y2="263" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
-  <line x1="1230" y1="263" x2="1520" y2="263" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
-  <rect x="370" y="240" width="860" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="272" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">one shared source at 14 GB/s, split equally between replicas</text>
+  <rect x="80" y="195" width="1440" height="535" rx="16" fill="#ffffff" stroke="#d0ded3" stroke-width="2" />
 
   
-  <text x="310" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">1 replica, 10 s</text>
-  <rect x="230" y="534" width="160" height="16" rx="6" fill="#207448"/>
+  <line x1="120" y1="248" x2="360" y2="248" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+  <line x1="1240" y1="248" x2="1480" y2="248" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
 
   
-  <text x="800" y="465" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">8 replicas, 80 s each</text>
-  <rect x="720" y="480" width="160" height="70" rx="6" fill="#207448"/>
+  <rect x="370" y="224" width="860" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="257" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">one shared source at 14 GB/s, split equally between replicas</text>
 
   
-  <text x="1290" y="290" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">32 replicas, 320 s each</text>
-  <rect x="1210" y="306" width="160" height="244" rx="6" fill="#db8129"/>
-
-  
-  <line x1="120" y1="550" x2="1480" y2="550" stroke="#303a36" stroke-width="2"/>
+  <line x1="140" y1="610" x2="1460" y2="610" stroke="#8fa696" stroke-width="2" />
 
   
   
-  <rect x="300" y="585" width="20" height="20" rx="4" fill="#207448"/>
+  <text x="350" y="565" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">1 replica, 10 s</text>
+  
+  <rect x="270" y="588" width="160" height="22" rx="4" fill="#207448" />
+  
+  <rect x="336" y="630" width="28" height="28" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
 
   
-  <g fill="#207448">
-    <rect x="746" y="575" width="18" height="18" rx="3"/>
-    <rect x="776" y="575" width="18" height="18" rx="3"/>
-    <rect x="806" y="575" width="18" height="18" rx="3"/>
-    <rect x="836" y="575" width="18" height="18" rx="3"/>
-    <rect x="746" y="601" width="18" height="18" rx="3"/>
-    <rect x="776" y="601" width="18" height="18" rx="3"/>
-    <rect x="806" y="601" width="18" height="18" rx="3"/>
-    <rect x="836" y="601" width="18" height="18" rx="3"/>
+  
+  <text x="750" y="485" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">8 replicas, 80 s each</text>
+  
+  <rect x="670" y="515" width="160" height="95" rx="4" fill="#207448" />
+  
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="2">
+    
+    <rect x="704" y="628" width="18" height="18" rx="3" />
+    <rect x="728" y="628" width="18" height="18" rx="3" />
+    <rect x="752" y="628" width="18" height="18" rx="3" />
+    <rect x="776" y="628" width="18" height="18" rx="3" />
+    
+    <rect x="704" y="652" width="18" height="18" rx="3" />
+    <rect x="728" y="652" width="18" height="18" rx="3" />
+    <rect x="752" y="652" width="18" height="18" rx="3" />
+    <rect x="776" y="652" width="18" height="18" rx="3" />
   </g>
 
   
-  <g fill="#db8129">
-    <rect x="1205" y="565" width="16" height="16" rx="3"/>
-    <rect x="1227" y="565" width="16" height="16" rx="3"/>
-    <rect x="1249" y="565" width="16" height="16" rx="3"/>
-    <rect x="1271" y="565" width="16" height="16" rx="3"/>
-    <rect x="1293" y="565" width="16" height="16" rx="3"/>
-    <rect x="1315" y="565" width="16" height="16" rx="3"/>
-    <rect x="1337" y="565" width="16" height="16" rx="3"/>
-    <rect x="1359" y="565" width="16" height="16" rx="3"/>
-
-    <rect x="1205" y="587" width="16" height="16" rx="3"/>
-    <rect x="1227" y="587" width="16" height="16" rx="3"/>
-    <rect x="1249" y="587" width="16" height="16" rx="3"/>
-    <rect x="1271" y="587" width="16" height="16" rx="3"/>
-    <rect x="1293" y="587" width="16" height="16" rx="3"/>
-    <rect x="1315" y="587" width="16" height="16" rx="3"/>
-    <rect x="1337" y="587" width="16" height="16" rx="3"/>
-    <rect x="1359" y="587" width="16" height="16" rx="3"/>
-
-    <rect x="1205" y="609" width="16" height="16" rx="3"/>
-    <rect x="1227" y="609" width="16" height="16" rx="3"/>
-    <rect x="1249" y="609" width="16" height="16" rx="3"/>
-    <rect x="1271" y="609" width="16" height="16" rx="3"/>
-    <rect x="1293" y="609" width="16" height="16" rx="3"/>
-    <rect x="1315" y="609" width="16" height="16" rx="3"/>
-    <rect x="1337" y="609" width="16" height="16" rx="3"/>
-    <rect x="1359" y="609" width="16" height="16" rx="3"/>
-
-    <rect x="1205" y="631" width="16" height="16" rx="3"/>
-    <rect x="1227" y="631" width="16" height="16" rx="3"/>
-    <rect x="1249" y="631" width="16" height="16" rx="3"/>
-    <rect x="1271" y="631" width="16" height="16" rx="3"/>
-    <rect x="1293" y="631" width="16" height="16" rx="3"/>
-    <rect x="1315" y="631" width="16" height="16" rx="3"/>
-    <rect x="1337" y="631" width="16" height="16" rx="3"/>
-    <rect x="1359" y="631" width="16" height="16" rx="3"/>
+  
+  <text x="1150" y="348" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">32 replicas, 320 s each</text>
+  
+  <rect x="1070" y="380" width="160" height="230" rx="4" fill="#db8129" />
+  
+  <g fill="#fbeee0" stroke="#db8129" stroke-width="1.5">
+    
+    <rect x="1072" y="624" width="14" height="14" rx="2" />
+    <rect x="1092" y="624" width="14" height="14" rx="2" />
+    <rect x="1112" y="624" width="14" height="14" rx="2" />
+    <rect x="1132" y="624" width="14" height="14" rx="2" />
+    <rect x="1152" y="624" width="14" height="14" rx="2" />
+    <rect x="1172" y="624" width="14" height="14" rx="2" />
+    <rect x="1192" y="624" width="14" height="14" rx="2" />
+    <rect x="1212" y="624" width="14" height="14" rx="2" />
+    
+    <rect x="1072" y="643" width="14" height="14" rx="2" />
+    <rect x="1092" y="643" width="14" height="14" rx="2" />
+    <rect x="1112" y="643" width="14" height="14" rx="2" />
+    <rect x="1132" y="643" width="14" height="14" rx="2" />
+    <rect x="1152" y="643" width="14" height="14" rx="2" />
+    <rect x="1172" y="643" width="14" height="14" rx="2" />
+    <rect x="1192" y="643" width="14" height="14" rx="2" />
+    <rect x="1212" y="643" width="14" height="14" rx="2" />
+    
+    <rect x="1072" y="662" width="14" height="14" rx="2" />
+    <rect x="1092" y="662" width="14" height="14" rx="2" />
+    <rect x="1112" y="662" width="14" height="14" rx="2" />
+    <rect x="1132" y="662" width="14" height="14" rx="2" />
+    <rect x="1152" y="662" width="14" height="14" rx="2" />
+    <rect x="1172" y="662" width="14" height="14" rx="2" />
+    <rect x="1192" y="662" width="14" height="14" rx="2" />
+    <rect x="1212" y="662" width="14" height="14" rx="2" />
+    
+    <rect x="1072" y="681" width="14" height="14" rx="2" />
+    <rect x="1092" y="681" width="14" height="14" rx="2" />
+    <rect x="1112" y="681" width="14" height="14" rx="2" />
+    <rect x="1132" y="681" width="14" height="14" rx="2" />
+    <rect x="1152" y="681" width="14" height="14" rx="2" />
+    <rect x="1172" y="681" width="14" height="14" rx="2" />
+    <rect x="1192" y="681" width="14" height="14" rx="2" />
+    <rect x="1212" y="681" width="14" height="14" rx="2" />
   </g>
 
   
-  <rect x="60" y="695" width="1480" height="58" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="800" y="733" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">load time = weights x replicas / source bandwidth = 140 x replicas / 14</text>
-
   
-  
-  <rect x="60" y="775" width="466" height="200" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="115" cy="825" r="24" fill="#207448"/>
-  <text x="115" y="834" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="435" y="805" width="48" height="18" rx="4"/>
-    <rect x="435" y="827" width="48" height="18" rx="4"/>
-    <circle cx="447" cy="814" r="2.5" fill="#207448"/>
-    <circle cx="447" cy="836" r="2.5" fill="#207448"/>
-    <line x1="458" y1="814" x2="473" y2="814"/>
-    <line x1="458" y1="836" x2="473" y2="836"/>
+  <g>
+    <rect x="80" y="755" width="450" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="130" cy="807" r="24" fill="#207448" />
+    <text x="130" y="816" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">1</text>
+    <text x="175" y="798" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+      <tspan x="175" dy="0">all replicas</tspan>
+      <tspan x="175" dy="32">start together</tspan>
+    </text>
   </g>
-  <text x="293" y="905" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-    <tspan x="293" dy="0">all replicas</tspan>
-    <tspan x="293" dy="36">start together</tspan>
-  </text>
 
   
-  <rect x="567" y="775" width="466" height="200" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="622" cy="825" r="24" fill="#207448"/>
-  <text x="622" y="834" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <ellipse cx="968" cy="810" rx="24" ry="9"/>
-    <path d="M 944 810 v 26 c 0 5 11 9 24 9 s 24 -4 24 -9 v -26"/>
-    <path d="M 944 823 c 0 5 11 9 24 9 s 24 -4 24 -9"/>
+  <g>
+    <rect x="575" y="755" width="450" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="625" cy="807" r="24" fill="#207448" />
+    <text x="625" y="816" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">2</text>
+    <text x="670" y="798" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+      <tspan x="670" dy="0">the source bandwidth</tspan>
+      <tspan x="670" dy="32">is shared equally</tspan>
+    </text>
   </g>
-  <text x="800" y="905" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
-    <tspan x="800" dy="0">the source bandwidth</tspan>
-    <tspan x="800" dy="36">is shared equally</tspan>
-  </text>
 
   
-  <rect x="1074" y="775" width="466" height="200" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-  <circle cx="1129" cy="825" r="24" fill="#207448"/>
-  <text x="1129" y="834" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
-  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="1475" cy="825" r="22"/>
-    <polyline points="1475,813 1475,825 1487,825"/>
+  <g>
+    <rect x="1070" y="755" width="450" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="1120" cy="807" r="24" fill="#207448" />
+    <text x="1120" y="816" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1165" y="798" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+      <tspan x="1165" dy="0">each replica</tspan>
+      <tspan x="1165" dy="32">waits longer</tspan>
+    </text>
   </g>
-  <text x="1307" y="905" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-    <tspan x="1307" dy="0">each replica</tspan>
-    <tspan x="1307" dy="36">waits longer</tspan>
-  </text>
 
   
-  <rect x="60" y="1005" width="1480" height="74" rx="12" fill="#207448"/>
-  <text x="800" y="1051" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">If many replicas load together, fix the rollout order and the weight source, not the engine.</text>
+  <g>
+    <rect x="80" y="890" width="1440" height="75" rx="12" fill="#207448" />
+    <text x="800" y="938" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">If many replicas load together, fix the rollout order and the weight source, not the engine.</text>
+  </g>
 </svg>
