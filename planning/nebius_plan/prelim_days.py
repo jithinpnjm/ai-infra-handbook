@@ -102,14 +102,14 @@ D=[
 ("Shell (15)","Health check","`nc -z` port, `systemctl is-active`, `df`, exit code")]),
 ("Day 11, Mon 7 Dec (review day: recall 25 min on Days 1-10)",[
 ("Linux + Networking (55)",M(L('2.1','12. A map from symptom to layer'),L('20.3','### 3. The first 60 seconds')),"One timed 30-min Linux mock"),
-("Platform: DevOps + GPU overview (30)",M('SRE basics, read only (10 min, no practice needed):',L('20.19','5. Error budgets','6. Burn rate'),'[IF TIME] GPU overview:',L('10.8','2. The three misleading metrics'),L('12.1','2. RDMA, RoCEv2'),L('15.1','3. Prefill vs. Decode')),"Explain rolling/canary/blue-green, rollback, CI/CD stages aloud; one-minute GPU story: storage feeds GPUs, NVLink/RDMA move gradients, checkpoints go back to storage"),
+("Platform: GPU, PCIe, NUMA, RDMA on Linux (30)",M(L('10.9','1. The Seven-Layer NVIDIA','3. Containerizing the GPU'),L('1.22','4. The NVIDIA driver stack','7. Troubleshooting flow'),L('10.6','1. PCIe, PCIe Switches','2. NVLink, NVSwitch'),L('1.17','7. NUMA in practice'),L('12.2','1. Why TCP/IP Stalls','2. The Verbs Object Hierarchy'),L('13.1','3. Traditional bounce-buffer'),L('1.10','8. Hardware inventory')),"`lspci -tv`, `nvidia-smi topo -m`, `numactl -H`, `lsmod \\| grep nvidia`, `ibv_devinfo` if available; draw CPU - PCIe - GPU - NIC - NVMe with NUMA nodes"),
 ("Coding (30)","Three fresh problems, 30 min each","Timed"),
 ("Python (30)",M('Refresh:',L('3.9','2. pytest essentials','3. Isolating dependencies')),"Program: 6 tests for two earlier programs, one failure case"),
 ("Shell (15)","All one-liners from Days 1-10","From memory")]),
 ("Day 12, Tue 8 Dec",[
 ("Mock (90)","10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each); 30 min a new medium problem aloud, no AI","Record if possible"),
 ("Story (30)","6-8 projects/incidents: problem, role, actions, trade-offs, failures, results with numbers","Write it down"),
-("Gaps (30)",M('Fix weak topics. [Read only, IF TIME] Terraform:',L('20.24','2. Remote state','4. Safe changes'),'Ansible (read only):',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain plan/apply, state, locking, drift, idempotency aloud")]),
+("Gaps (30)",M('Fix weak topics. [Read only, IF TIME] SRE basics:',L('20.19','5. Error budgets','6. Burn rate'),'Deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages: explain aloud. Terraform:',L('20.24','2. Remote state','4. Safe changes'),'Ansible (read only):',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain plan/apply, state, locking, drift, idempotency aloud")]),
 ("Wed 9 Dec morning",[
 ("Light recall",M(L('20.3','### 3. The first 60 seconds'),L('2.1','12. A map from symptom to layer'),'Kubernetes request-path drawing; GPU-cluster tour'),"One easy problem")]),
 ]
@@ -132,6 +132,17 @@ o=["# Prelims plan: Fri 27 Nov to Wed 9 Dec morning","",
 "| 10 | Volumes appear in the pod | CSI plugin + `mount` (bind mounts) |",
 "| 11 | GPUs appear in the pod | device plugin + NVIDIA container toolkit (device files, driver libs) |",
 "| 12 | Probes and eviction | kubelet loop; liveness restarts, memory pressure evicts |","",
+"## Linux internals map (nothing skipped; basic first, advanced marked)","",
+"| Area | Basic (must) | Advanced (if time) | Days |","|---|---|---|---|",
+"| CPU and scheduling | "+L('1.18','Run queues, time sharing')+" | "+L('1.18','Interrupts and softirqs','7. The CPU controller')+" | 3, 8 |",
+"| Memory | "+L('1.17','Demand paging, page faults','Swap','5. The OOM killer')+" | "+L('1.17','4. How Linux frees memory','8. Huge pages')+" | 4, 9 |",
+"| Storage path and filesystems | "+L('1.12','8. Files, file descriptors and the read path')+" | "+L('1.13','4. NVMe in depth')+" | 5, 9 |",
+"| Packet path in the kernel | "+L('2.24','5. The packet path')+" | "+L('2.23','2. Connection tracking')+" | 10 |",
+"| Namespaces and cgroups (containers) | "+L('1.19','2. The namespace types')+" | "+L('5.26','3. cgroups v2 in depth')+" | 8 |",
+"| PCIe, devices, NUMA | "+L('1.10','8. Hardware inventory')+" | "+L('10.6','1. PCIe, PCIe Switches')+" | 11 |",
+"| GPU and NVIDIA on Linux | "+L('10.9','1. The Seven-Layer NVIDIA')+" | "+L('10.10','1. NVLink Domains')+" | 11 |",
+"| RDMA and GPUDirect | "+L('12.2','1. Why TCP/IP Stalls')+" | "+L('10.10','3. From the NVLink Domain')+" | 11 |",
+"| Kubernetes on Linux | "+L('5.26','1. The master map')+" | "+L('5.13','2. Building pod networking by hand')+" | 1-9 |","",
 "Links go to the exact section to read, not the whole chapter. Everything else in a chapter is optional.",""]
 for t,rows in D:
     o+=[f"## {t}","","| Block | Read these sections | Hands-on |","|---|---|---|"]
